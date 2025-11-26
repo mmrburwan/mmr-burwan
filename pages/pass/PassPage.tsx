@@ -7,14 +7,18 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import QRCode from '../../components/ui/QRCode';
 import Badge from '../../components/ui/Badge';
-import { Calendar, Clock, Download, Share2 } from 'lucide-react';
+import { Calendar, Clock, Download, Share2, ArrowLeft } from 'lucide-react';
 import { safeFormatDate } from '../../utils/dateUtils';
+import { pdf } from '@react-pdf/renderer';
+import { AppointmentPassPDF } from '../../components/pass/AppointmentPassPDF';
+import QRCodeLib from 'qrcode';
 
 const PassPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -61,104 +65,143 @@ const PassPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-8">
+    <div className="max-w-3xl mx-auto px-6 py-8">
       <div className="mb-8">
+        <div className="flex items-center gap-4 mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/dashboard')}
+            className="flex-shrink-0"
+          >
+            <ArrowLeft size={18} className="mr-2" />
+            Back
+          </Button>
+        </div>
         <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Your Appointment Pass</h1>
-        <p className="text-gray-600">Show this QR code at the registrar office</p>
+        <p className="text-gray-600">Official appointment pass for the registrar office</p>
       </div>
 
-      <Card className="p-8">
-        <div className="text-center mb-8">
+      <Card className="p-8 shadow-xl">
+        {/* Header Section */}
+        <div className="text-center mb-8 pb-6 border-b-2 border-gold-200">
           <div className="mb-4">
             <Badge variant={appointment.status === 'confirmed' ? 'success' : 'warning'}>
-              {appointment.status}
+              {appointment.status.toUpperCase()}
             </Badge>
           </div>
-          <h2 className="font-serif text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="font-serif text-3xl font-bold text-gray-900 mb-2">
             {user?.name}
           </h2>
-          <p className="text-gray-600">Appointment Pass</p>
+          <p className="text-gray-600 uppercase tracking-wide text-sm">Appointment Pass</p>
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <p className="text-xs text-gray-500 font-medium">
+              Office of the Muhammadan Marriage Registrar & Qaazi
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Vill. & P.O. Gramshalika, P.S. Burwan, Dist. Murshidabad, PIN - 742132
+            </p>
+          </div>
         </div>
 
-        <div className="bg-gray-50 rounded-xl p-6 mb-6">
+        {/* Details Section */}
+        <div className="bg-gradient-to-br from-gray-50 to-gold-50/30 rounded-xl p-6 mb-6 border border-gray-200">
           <div className="space-y-4 mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between py-3 border-b border-gray-200">
               <div className="flex items-center gap-3">
-                <Calendar size={20} className="text-gold-600" />
-                <span className="text-gray-700">Date</span>
+                <div className="w-10 h-10 rounded-full bg-gold-100 flex items-center justify-center">
+                  <Calendar size={20} className="text-gold-600" />
+                </div>
+                <span className="text-gray-700 font-medium">Appointment Date</span>
               </div>
-              <span className="font-semibold text-gray-900">
-                {safeFormatDate(appointment.date, 'MMMM d, yyyy')}
+              <span className="font-bold text-gray-900 text-lg">
+                {safeFormatDate(appointment.date, 'EEEE, MMMM d, yyyy')}
               </span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between py-3 border-b border-gray-200">
               <div className="flex items-center gap-3">
-                <Clock size={20} className="text-gold-600" />
-                <span className="text-gray-700">Time</span>
+                <div className="w-10 h-10 rounded-full bg-gold-100 flex items-center justify-center">
+                  <Clock size={20} className="text-gold-600" />
+                </div>
+                <span className="text-gray-700 font-medium">Appointment Time</span>
               </div>
-              <span className="font-semibold text-gray-900">{appointment.time}</span>
+              <span className="font-bold text-gray-900 text-lg">{appointment.time}</span>
             </div>
+            {user?.email && (
+              <div className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gold-100 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-gold-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span className="text-gray-700 font-medium">Email</span>
+                </div>
+                <span className="font-semibold text-gray-900">{user.email}</span>
+              </div>
+            )}
           </div>
 
-          <div className="flex justify-center mb-4">
-            <QRCode value={appointment.qrCodeData} size={250} />
+          {/* QR Code Section */}
+          <div className="bg-white rounded-xl p-6 border-2 border-gold-200 shadow-sm">
+            <p className="text-center text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">
+              Scan QR Code at Registrar Office
+            </p>
+            <div className="flex justify-center mb-4">
+              <QRCode value={appointment.qrCodeData} size={250} />
+            </div>
+            <p className="text-center text-xs text-gray-500 font-mono">
+              Verification ID: {appointment.id}
+            </p>
           </div>
-
-          <p className="text-center text-xs text-gray-500">
-            Verification ID: {appointment.id}
-          </p>
         </div>
 
         <div className="flex gap-3">
           <Button
             variant="outline"
             className="flex-1"
-            onClick={() => {
-              // Create a printable/downloadable version
-              const printWindow = window.open('', '_blank');
-              if (printWindow) {
-                printWindow.document.write(`
-                  <html>
-                    <head>
-                      <title>Appointment Pass - ${user?.name}</title>
-                      <style>
-                        body { font-family: Arial, sans-serif; padding: 20px; }
-                        .header { text-align: center; margin-bottom: 30px; }
-                        .info { margin: 20px 0; }
-                        .qr-code { text-align: center; margin: 30px 0; }
-                        .verification { font-size: 12px; color: #666; margin-top: 20px; }
-                      </style>
-                    </head>
-                    <body>
-                      <div class="header">
-                        <h1>MMR Burwan - Appointment Pass</h1>
-                        <h2>${user?.name}</h2>
-                      </div>
-                      <div class="info">
-                        <p><strong>Date:</strong> ${safeFormatDate(appointment.date, 'MMMM d, yyyy')}</p>
-                        <p><strong>Time:</strong> ${appointment.time}</p>
-                        <p><strong>Status:</strong> ${appointment.status}</p>
-                      </div>
-                      <div class="qr-code">
-                        <p>Scan QR Code at Registrar Office</p>
-                        <p style="font-size: 10px; color: #999;">Verification ID: ${appointment.id}</p>
-                      </div>
-                      <div class="verification">
-                        <p>Please arrive 15 minutes before your appointment time.</p>
-                        <p>Bring this pass, your ID, and all required documents.</p>
-                      </div>
-                    </body>
-                  </html>
-                `);
-                printWindow.document.close();
-                printWindow.print();
-              } else {
-                window.print();
+            onClick={async () => {
+              if (!appointment || !user) return;
+              
+              setIsGeneratingPDF(true);
+              try {
+                // Generate QR code as data URL using qrcode library
+                const qrCodeImage = await QRCodeLib.toDataURL(appointment.qrCodeData, {
+                  width: 300,
+                  margin: 2,
+                  color: {
+                    dark: '#2B230B',
+                    light: '#FFFFFF',
+                  },
+                });
+                
+                // Generate PDF
+                const pdfDoc = React.createElement(AppointmentPassPDF, {
+                  appointment,
+                  userName: user.name || user.email,
+                  userEmail: user.email,
+                  qrCodeImage,
+                });
+                
+                const blob = await pdf(pdfDoc).toBlob();
+                const pdfUrl = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = pdfUrl;
+                link.download = `Appointment-Pass-${appointment.id}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(pdfUrl);
+              } catch (error) {
+                console.error('Failed to generate PDF:', error);
+                alert('Failed to generate PDF. Please try again.');
+              } finally {
+                setIsGeneratingPDF(false);
               }
             }}
+            isLoading={isGeneratingPDF}
           >
             <Download size={18} className="mr-2" />
-            Download
+            Download PDF
           </Button>
           <Button
             variant="outline"
@@ -179,11 +222,35 @@ const PassPage: React.FC = () => {
         </div>
       </Card>
 
-      <Card className="p-6 mt-6 bg-blue-50 border-blue-200">
-        <p className="text-sm text-blue-800">
-          <strong>Important:</strong> Please arrive 15 minutes before your appointment time.
-          Bring this pass, your ID, and all required documents.
-        </p>
+      <Card className="p-6 mt-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200">
+        <h3 className="font-semibold text-blue-900 mb-3 text-lg">Important Instructions</h3>
+        <ul className="space-y-2 text-sm text-blue-800">
+          <li className="flex items-start gap-2">
+            <span className="text-blue-600 font-bold mt-0.5">•</span>
+            <span>Please arrive <strong>15 minutes before</strong> your scheduled appointment time</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-blue-600 font-bold mt-0.5">•</span>
+            <span>Bring this pass, a <strong>valid government-issued photo ID</strong>, and all required documents</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-blue-600 font-bold mt-0.5">•</span>
+            <span>Present this QR code at the reception desk for verification</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-blue-600 font-bold mt-0.5">•</span>
+            <span>Late arrivals may result in rescheduling of your appointment</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-blue-600 font-bold mt-0.5">•</span>
+            <span>For any queries or changes, contact the office in advance</span>
+          </li>
+        </ul>
+        <div className="mt-4 pt-4 border-t border-blue-200">
+          <p className="text-xs text-blue-700">
+            <strong>Office Hours:</strong> Monday - Saturday, 10:00 AM - 5:00 PM
+          </p>
+        </div>
       </Card>
     </div>
   );

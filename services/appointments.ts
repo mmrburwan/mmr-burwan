@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { AppointmentSlot, Appointment } from '../types';
+import { profileService } from './profile';
 
 export const appointmentService = {
   async getAvailableSlots(startDate?: string, endDate?: string): Promise<AppointmentSlot[]> {
@@ -228,5 +229,75 @@ export const appointmentService = {
         .update({ booked: Math.max(0, slot.booked - 1) })
         .eq('id', appointment.slot_id);
     }
+  },
+
+  async getAppointmentWithUserDetails(appointmentId: string): Promise<{
+    appointment: Appointment;
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      phone?: string;
+      dateOfBirth?: string;
+      idNumber?: string;
+    };
+  } | null> {
+    // Get appointment first
+    const { data: appointment, error: appointmentError } = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('id', appointmentId)
+      .single();
+
+    if (appointmentError) {
+      throw new Error('Appointment not found');
+    }
+
+    // Get profile in parallel with appointment data processing
+    const userProfile = await profileService.getProfile(appointment.user_id);
+
+    // Get user name from profile
+    const userName = userProfile 
+      ? `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || 'Unknown User'
+      : 'Unknown User';
+
+    // Try to get phone from application (non-blocking, but we'll wait briefly)
+    let phoneNumber: string | undefined;
+    try {
+      const { data: appData } = await supabase
+        .from('applications')
+        .select('user_details')
+        .eq('user_id', appointment.user_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (appData?.user_details?.mobileNumber) {
+        phoneNumber = appData.user_details.mobileNumber;
+      }
+    } catch (error) {
+      // Ignore errors - phone is optional
+    }
+
+    return {
+      appointment: {
+        id: appointment.id,
+        userId: appointment.user_id,
+        slotId: appointment.slot_id,
+        date: appointment.date,
+        time: appointment.time,
+        status: appointment.status,
+        qrCodeData: appointment.qr_code_data,
+        createdAt: appointment.created_at,
+      },
+      user: {
+        id: appointment.user_id,
+        email: `User ID: ${appointment.user_id.substring(0, 8)}...`,
+        name: userName,
+        phone: phoneNumber,
+        dateOfBirth: userProfile?.dateOfBirth,
+        idNumber: userProfile?.idNumber,
+      },
+    };
   },
 };

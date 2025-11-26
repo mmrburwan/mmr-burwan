@@ -7,7 +7,7 @@ import { AppointmentSlot, Appointment } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
-import { Calendar, Clock, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, ArrowLeft } from 'lucide-react';
 import { isAfter, parseISO, isValid } from 'date-fns';
 import { safeFormatDate } from '../../utils/dateUtils';
 
@@ -66,6 +66,16 @@ const AppointmentsPage: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
       <div className="mb-8">
+        <div className="flex items-center gap-4 mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/dashboard')}
+            className="flex-shrink-0"
+          >
+            <ArrowLeft size={18} className="mr-2" />
+            Back
+          </Button>
+        </div>
         <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Book Appointment</h1>
         <p className="text-gray-600">Select an available time slot for your registration</p>
       </div>

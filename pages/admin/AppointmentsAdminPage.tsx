@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { appointmentService } from '../../services/appointments';
 import { useNotification } from '../../contexts/NotificationContext';
 import { AppointmentSlot, Appointment } from '../../types';
@@ -6,15 +7,29 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
-import { Calendar, Plus, Clock } from 'lucide-react';
+import Badge from '../../components/ui/Badge';
+import QRCode from '../../components/ui/QRCode';
+import { Calendar, Plus, Clock, User, Mail, Phone, Eye, CheckCircle, XCircle, AlertCircle, IdCard, CalendarDays, ArrowLeft } from 'lucide-react';
 import { safeFormatDate, safeFormatDateObject } from '../../utils/dateUtils';
 
 const AppointmentsAdminPage: React.FC = () => {
+  const navigate = useNavigate();
   const { showToast } = useNotification();
   const [slots, setSlots] = useState<AppointmentSlot[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newSlot, setNewSlot] = useState({ date: '', time: '', capacity: 5 });
+  const [selectedAppointment, setSelectedAppointment] = useState<{
+    appointment: Appointment;
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      phone?: string;
+    };
+  } | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -47,17 +62,56 @@ const AppointmentsAdminPage: React.FC = () => {
     }
   };
 
+  const handleViewAppointmentDetails = async (appointmentId: string) => {
+    // Open modal immediately with loading state
+    setIsDetailsModalOpen(true);
+    setIsLoadingDetails(true);
+    setSelectedAppointment(null);
+    
+    try {
+      const details = await appointmentService.getAppointmentWithUserDetails(appointmentId);
+      setSelectedAppointment(details);
+    } catch (error: any) {
+      showToast(error.message || 'Failed to load appointment details', 'error');
+      setIsDetailsModalOpen(false);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, 'success' | 'warning' | 'error' | 'info' | 'default'> = {
+      confirmed: 'success',
+      pending: 'warning',
+      completed: 'info',
+      cancelled: 'error',
+    };
+    return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
+  };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Appointment Management</h1>
-          <p className="text-gray-600">Create and manage appointment slots</p>
+      <div className="mb-8">
+        <div className="flex items-center gap-4 mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/admin')}
+            className="flex-shrink-0"
+          >
+            <ArrowLeft size={18} className="mr-2" />
+            Back
+          </Button>
         </div>
-        <Button variant="primary" onClick={() => setIsModalOpen(true)}>
-          <Plus size={18} className="mr-2" />
-          Create Slot
-        </Button>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Appointment Management</h1>
+            <p className="text-gray-600">Create and manage appointment slots</p>
+          </div>
+          <Button variant="primary" onClick={() => setIsModalOpen(true)}>
+            <Plus size={18} className="mr-2" />
+            Create Slot
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -84,14 +138,38 @@ const AppointmentsAdminPage: React.FC = () => {
         <Card className="p-6">
           <h3 className="font-semibold text-gray-900 mb-4">Booked Appointments</h3>
           <div className="space-y-3">
-            {appointments.map((apt) => (
-              <div key={apt.id} className="p-4 bg-gray-50 rounded-xl">
-                <p className="font-medium text-gray-900">
-                  {safeFormatDate(apt.date, 'MMM d, yyyy')} at {apt.time}
-                </p>
-                <p className="text-sm text-gray-500">Status: {apt.status}</p>
+            {appointments.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar size={32} className="mx-auto mb-2 text-gray-300" />
+                <p>No appointments booked yet</p>
               </div>
-            ))}
+            ) : (
+              appointments.map((apt) => (
+                <div 
+                  key={apt.id} 
+                  className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                  onClick={() => handleViewAppointmentDetails(apt.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar size={16} className="text-gray-400" />
+                        <p className="font-medium text-gray-900">
+                          {safeFormatDate(apt.date, 'MMM d, yyyy')} at {apt.time}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {getStatusBadge(apt.status)}
+                        <span className="text-xs text-gray-400">
+                          ID: {apt.id.substring(0, 8)}...
+                        </span>
+                      </div>
+                    </div>
+                    <Eye size={18} className="text-gray-400 ml-2" />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </Card>
       </div>
@@ -126,6 +204,143 @@ const AppointmentsAdminPage: React.FC = () => {
           <Button variant="primary" onClick={handleCreateSlot} className="w-full">
             Create Slot
           </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedAppointment(null);
+        }}
+        title="Appointment Details"
+        size="xl"
+      >
+        <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+          {isLoadingDetails ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500 mb-4"></div>
+              <p className="text-sm text-gray-600">Loading appointment details...</p>
+            </div>
+          ) : selectedAppointment ? (
+            <div className="space-y-6">
+              {/* User Information */}
+              <div className="bg-gray-50 rounded-xl p-5">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <User size={18} className="text-gold-600" />
+                  User Information
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
+                      <User size={20} className="text-gold-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500 mb-1">Full Name</p>
+                      <p className="font-medium text-gray-900">{selectedAppointment.user.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                      <Mail size={20} className="text-gray-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500 mb-1">Email / User ID</p>
+                      <p className="font-medium text-gray-900 text-sm break-all">{selectedAppointment.user.email}</p>
+                    </div>
+                  </div>
+                  {selectedAppointment.user.phone && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Phone size={20} className="text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-500 mb-1">Phone Number</p>
+                        <p className="font-medium text-gray-900">{selectedAppointment.user.phone}</p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedAppointment.user.dateOfBirth && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <CalendarDays size={20} className="text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-500 mb-1">Date of Birth</p>
+                        <p className="font-medium text-gray-900">
+                          {safeFormatDate(selectedAppointment.user.dateOfBirth, 'MMMM d, yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedAppointment.user.idNumber && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <IdCard size={20} className="text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-500 mb-1">ID Number</p>
+                        <p className="font-medium text-gray-900">{selectedAppointment.user.idNumber}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            {/* Appointment Information */}
+            <div className="bg-gray-50 rounded-xl p-5">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Calendar size={18} className="text-gold-600" />
+                Appointment Information
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Date</span>
+                  <span className="font-medium text-gray-900">
+                    {safeFormatDate(selectedAppointment.appointment.date, 'MMMM d, yyyy')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Time</span>
+                  <span className="font-medium text-gray-900">{selectedAppointment.appointment.time}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Status</span>
+                  {getStatusBadge(selectedAppointment.appointment.status)}
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Appointment ID</span>
+                  <span className="font-mono text-xs text-gray-600">{selectedAppointment.appointment.id}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm text-gray-600">Booked On</span>
+                  <span className="text-sm text-gray-900">
+                    {safeFormatDateObject(new Date(selectedAppointment.appointment.createdAt), 'MMM d, yyyy h:mm a')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+              {/* QR Code */}
+              <div className="bg-gray-50 rounded-xl p-5">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <CheckCircle size={18} className="text-gold-600" />
+                  QR Code
+                </h3>
+                <div className="flex justify-center py-4">
+                  <QRCode value={selectedAppointment.appointment.qrCodeData} size={180} />
+                </div>
+                <p className="text-xs text-gray-500 text-center mt-3">
+                  Scan this QR code to verify the appointment
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <AlertCircle size={32} className="mx-auto mb-2 text-gray-300" />
+              <p>No appointment details available</p>
+            </div>
+          )}
         </div>
       </Modal>
     </div>

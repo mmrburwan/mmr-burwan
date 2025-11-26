@@ -9,7 +9,7 @@ import FileUpload from '../../components/ui/FileUpload';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
-import { Upload, FileText, AlertCircle } from 'lucide-react';
+import { Upload, FileText, AlertCircle, ArrowLeft } from 'lucide-react';
 
 const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -104,6 +104,16 @@ const DocumentsPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="mb-8">
+        <div className="flex items-center gap-4 mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/dashboard')}
+            className="flex-shrink-0"
+          >
+            <ArrowLeft size={18} className="mr-2" />
+            Back
+          </Button>
+        </div>
         <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Upload Documents</h1>
         <p className="text-gray-600">Upload all required documents for your marriage registration</p>
       </div>

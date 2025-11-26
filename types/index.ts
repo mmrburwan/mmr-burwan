@@ -95,7 +95,7 @@ export interface Message {
   senderName: string;
   content: string;
   attachments?: Array<{ name: string; url: string; type: string }>;
-  status: 'sent' | 'delivered' | 'read';
+  status: 'sent' | 'failed';
   timestamp: string;
 }
 

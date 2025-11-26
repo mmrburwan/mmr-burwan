@@ -19,7 +19,8 @@ import {
   MessageSquare, 
   Award,
   ArrowRight,
-  User
+  User,
+  CheckCircle
 } from 'lucide-react';
 import { safeFormatDate, safeFormatDateObject } from '../../utils/dateUtils';
 import { downloadCertificate } from '../../utils/certificateGenerator';
@@ -148,15 +149,27 @@ const DashboardPage: React.FC = () => {
           ) : (
             <p className="text-sm text-gray-500 mb-4">Start your application</p>
           )}
-          <Button
-            variant="primary"
-            size="sm"
-            className="w-full"
-            onClick={() => navigate(application ? '/application' : '/application')}
-          >
-            {application ? 'Continue Application' : 'Start Application'}
-            <ArrowRight size={16} className="ml-2" />
-          </Button>
+          {application?.status === 'submitted' || application?.status === 'under_review' || application?.status === 'approved' ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              disabled
+            >
+              Application Submitted
+              <CheckCircle size={16} className="ml-2" />
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-full"
+              onClick={() => navigate('/application')}
+            >
+              {application ? 'Continue Application' : 'Start Application'}
+              <ArrowRight size={16} className="ml-2" />
+            </Button>
+          )}
         </Card>
 
         {/* Messages */}
@@ -413,7 +426,7 @@ const DashboardPage: React.FC = () => {
           <Button
             variant="outline"
             className="flex flex-col items-center gap-2 h-auto py-4"
-            onClick={() => navigate('/help')}
+            onClick={() => navigate('/help-center')}
           >
             <FileText size={24} className="text-gold-600" />
             <span className="text-sm">Help Center</span>

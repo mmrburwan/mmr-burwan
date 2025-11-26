@@ -156,4 +156,57 @@ export const adminService = {
 
     return applicationService.mapApplication(data);
   },
+
+  async updateApplication(
+    applicationId: string,
+    updates: {
+      userDetails?: any;
+      partnerForm?: any;
+      userAddress?: any;
+      userCurrentAddress?: any;
+      partnerAddress?: any;
+      partnerCurrentAddress?: any;
+      declarations?: Record<string, boolean>;
+    },
+    actorId: string,
+    actorName: string
+  ): Promise<Application> {
+    const updatedData: any = {};
+    
+    if (updates.userDetails) updatedData.user_details = updates.userDetails;
+    if (updates.partnerForm) updatedData.partner_form = updates.partnerForm;
+    if (updates.userAddress) updatedData.user_address = updates.userAddress;
+    if (updates.userCurrentAddress) updatedData.user_current_address = updates.userCurrentAddress;
+    if (updates.partnerAddress) updatedData.partner_address = updates.partnerAddress;
+    if (updates.partnerCurrentAddress) updatedData.partner_current_address = updates.partnerCurrentAddress;
+    if (updates.declarations) updatedData.declarations = updates.declarations;
+
+    updatedData.last_updated = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('applications')
+      .update(updatedData)
+      .eq('id', applicationId)
+      .select(`
+        *,
+        documents (*)
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await auditService.createLog({
+      actorId,
+      actorName,
+      actorRole: 'admin',
+      action: 'application_updated',
+      resourceType: 'application',
+      resourceId: applicationId,
+      details: { updatedFields: Object.keys(updatedData) },
+    });
+
+    return applicationService.mapApplication(data);
+  },
 };

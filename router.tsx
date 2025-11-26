@@ -18,6 +18,7 @@ const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 const ApplicationPage = lazy(() => import('./pages/application/ApplicationPage'));
 const DocumentsPage = lazy(() => import('./pages/documents/DocumentsPage'));
 const ChatPage = lazy(() => import('./pages/chat/ChatPage'));
+const AdminChatPage = lazy(() => import('./pages/admin/AdminChatPage'));
 const AppointmentsPage = lazy(() => import('./pages/appointments/AppointmentsPage'));
 const BookAppointmentPage = lazy(() => import('./pages/appointments/BookAppointmentPage'));
 const PassPage = lazy(() => import('./pages/pass/PassPage'));
@@ -31,6 +32,7 @@ const CertificatesPage = lazy(() => import('./pages/admin/CertificatesPage'));
 const VerifyPage = lazy(() => import('./pages/verify/VerifyPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const HelpPage = lazy(() => import('./pages/help/HelpPage'));
+const HelpCenterPage = lazy(() => import('./pages/help/HelpCenterPage'));
 const PrivacyPage = lazy(() => import('./pages/privacy/PrivacyPage'));
 
 const router = createBrowserRouter(
@@ -140,6 +142,14 @@ const router = createBrowserRouter(
     ),
   },
   {
+    path: '/help-center',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <HelpCenterPage />
+      </Suspense>
+    ),
+  },
+  {
     path: '/application',
     element: (
       <Suspense fallback={<LoadingSpinner />}>
@@ -239,7 +249,7 @@ const router = createBrowserRouter(
         path: 'chat',
         element: (
           <Suspense fallback={<LoadingSpinner />}>
-            <ChatPage />
+            <AdminChatPage />
           </Suspense>
         ),
       },

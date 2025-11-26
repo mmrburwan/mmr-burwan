@@ -16,7 +16,7 @@ SET raw_user_meta_data = jsonb_set(
   '{role}',
   '"admin"'
 )
-WHERE email = 'admin@example.com'; -- REPLACE WITH ACTUAL ADMIN EMAIL
+WHERE email = 'tariqmir1278@gmail.com'; -- REPLACE WITH ACTUAL ADMIN EMAIL
 
 -- Verify the update
 SELECT 
@@ -31,4 +31,5 @@ WHERE email = 'admin@example.com'; -- REPLACE WITH ACTUAL ADMIN EMAIL
 -- Alternative: Use the function we created
 -- ============================================
 -- SELECT set_user_admin_role('admin@example.com');
+
 

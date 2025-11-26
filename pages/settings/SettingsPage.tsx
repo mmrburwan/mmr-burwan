@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { profileService } from '../../services/profile';
@@ -11,9 +12,10 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import PhoneInput from '../../components/ui/PhoneInput';
-import { User, Mail, Phone, LogOut, Download, Key } from 'lucide-react';
+import { User, Mail, Phone, LogOut, Download, Key, ArrowLeft } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user, logout, updateUser } = useAuth();
   const { showToast } = useNotification();
   const [isSaving, setIsSaving] = useState(false);
@@ -193,6 +195,16 @@ const SettingsPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="mb-8">
+        <div className="flex items-center gap-4 mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate(user?.role === 'admin' ? '/admin' : '/dashboard')}
+            className="flex-shrink-0"
+          >
+            <ArrowLeft size={18} className="mr-2" />
+            Back
+          </Button>
+        </div>
         <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Settings</h1>
         <p className="text-gray-600">Manage your account settings</p>
       </div>

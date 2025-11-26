@@ -29,7 +29,7 @@ const RegisterPage: React.FC = () => {
   const { register: registerUser } = useAuth();
   const { showToast } = useNotification();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState<string>('');
   const [registeredPassword, setRegisteredPassword] = useState<string>('');
 
@@ -46,154 +46,165 @@ const RegisterPage: React.FC = () => {
     },
   });
 
-  const onSubmit = async (data: RegisterFormData) => {
-    setIsLoading(true);
-    try {
-      const result = await registerUser(data.email, data.password, data.name, data.phone);
-      
-      // Check if email confirmation is needed
-      if (result && 'needsConfirmation' in result && result.needsConfirmation) {
-        setIsSubmitted(true);
-        setRegisteredEmail(result.email);
-        setRegisteredPassword(data.password); // Store password for pre-filling
-        showToast('Confirmation email sent! Please check your inbox.', 'success');
-      } else {
-        // User is logged in (no email confirmation required)
-        showToast('Account created successfully!', 'success');
-        navigate('/onboarding');
-      }
-    } catch (error: any) {
-      showToast(error.message || 'Registration failed. Please try again.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
+  const onSubmit = (data: RegisterFormData) => {
+    // CRITICAL: Show confirmation screen FIRST, before any async operations
+    // This must happen synchronously to prevent component unmounting
+    setRegisteredEmail(data.email);
+    setRegisteredPassword(data.password);
+    setShowConfirmation(true);
+    
+    // Now handle registration in the background
+    // Don't set isLoading here - it causes AuthLayout to unmount this component
+    registerUser(data.email, data.password, data.name, data.phone)
+      .then(() => {
+        // No toast needed - confirmation screen already shows the message
+      })
+      .catch((error: any) => {
+        // If registration fails, go back to form
+        setShowConfirmation(false);
+        showToast(error.message || 'Registration failed. Please try again.', 'error');
+      });
   };
 
-  if (isSubmitted) {
-    return (
-      <Card className="p-8 shadow-xl">
-        <div className="mb-6">
-          <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle size={32} className="text-gold-600" />
-          </div>
-          <h1 className="font-serif text-2xl font-bold text-gray-900 mb-2 text-center">Check Your Email</h1>
-          <p className="text-gray-600 text-center mb-2">
-            We've sent a confirmation email to <strong>{registeredEmail}</strong>
-          </p>
-          <p className="text-sm text-gray-500 text-center">
-            Please click the confirmation link in the email to activate your account. Once confirmed, you can sign in.
-          </p>
-        </div>
-        <div className="space-y-3">
-          <Button
-            variant="primary"
-            className="w-full"
-            onClick={() => {
-              // Store email and password in sessionStorage for pre-filling
-              sessionStorage.setItem('pendingLoginEmail', registeredEmail);
-              sessionStorage.setItem('pendingLoginPassword', registeredPassword);
-              navigate('/auth/login');
-            }}
-          >
-            Go to Sign In
-            <ArrowRight size={18} className="ml-2" />
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full"
-            onClick={() => {
-              setIsSubmitted(false);
-              setRegisteredEmail('');
-            }}
-          >
-            Back to Registration
-          </Button>
-        </div>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="p-8 shadow-xl">
-      <div className="mb-8">
-        <h1 className="font-serif text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-        <p className="text-gray-600">Get started with your marriage registration</p>
+    <>
+      {/* Confirmation Screen */}
+      <div className={showConfirmation ? 'block' : 'hidden'}>
+        <Card className="p-8 shadow-xl">
+          <div className="mb-6">
+            <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle size={32} className="text-gold-600" />
+            </div>
+            <h1 className="font-serif text-2xl font-bold text-gray-900 mb-2 text-center">Check Your Email</h1>
+            <p className="text-gray-600 text-center mb-2">
+              We've sent a confirmation email to <strong>{registeredEmail}</strong>
+            </p>
+            <p className="text-sm text-gray-500 text-center">
+              Please click the confirmation link in the email to activate your account. Once confirmed, you can sign in.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={() => {
+                sessionStorage.setItem('pendingLoginEmail', registeredEmail);
+                sessionStorage.setItem('pendingLoginPassword', registeredPassword);
+                navigate('/auth/login');
+              }}
+            >
+              Go to Sign In
+              <ArrowRight size={18} className="ml-2" />
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setShowConfirmation(false);
+                setRegisteredEmail('');
+              }}
+            >
+              Back to Registration
+            </Button>
+          </div>
+        </Card>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <Input
-          label="Full Name"
-          type="text"
-          placeholder="Ahmed Hassan"
-          leftIcon={<User size={20} />}
-          error={errors.name?.message}
-          {...register('name')}
-          required
-        />
+      {/* Registration Form */}
+      <div className={showConfirmation ? 'hidden' : 'block'}>
+        <Card className="p-8 shadow-xl">
+          <div className="mb-8">
+            <h1 className="font-serif text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
+            <p className="text-gray-600">Get started with your marriage registration</p>
+          </div>
 
-        <Input
-          label="Email Address"
-          type="email"
-          placeholder="you@example.com"
-          leftIcon={<Mail size={20} />}
-          error={errors.email?.message}
-          {...register('email')}
-          required
-        />
+          <form id="register-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6" autoComplete="on">
+            <Input
+              label="Full Name"
+              type="text"
+              placeholder="Ahmed Hassan"
+              leftIcon={<User size={20} />}
+              error={errors.name?.message}
+              autoComplete="name"
+              {...register('name')}
+              required
+            />
 
-        <PhoneInput
-          label="Phone Number (Optional)"
-          leftIcon={<Phone size={20} />}
-          error={errors.phone?.message}
-          value={(watch('phone') || '').replace(/^\+91/, '').trim()}
-          onChange={(value) => {
-            setValue('phone', value ? `+91${value}` : '', { shouldValidate: false });
-          }}
-        />
+            <Input
+              label="Email Address"
+              type="email"
+              placeholder="you@example.com"
+              leftIcon={<Mail size={20} />}
+              error={errors.email?.message}
+              {...register('email', {
+                required: true,
+              })}
+              autoComplete="username"
+              required
+            />
 
-        <Input
-          label="Password"
-          type="password"
-          placeholder="Create a strong password"
-          leftIcon={<Lock size={20} />}
-          error={errors.password?.message}
-          showPasswordToggle={true}
-          {...register('password')}
-          required
-        />
+            <PhoneInput
+              label="Phone Number (Optional)"
+              leftIcon={<Phone size={20} />}
+              error={errors.phone?.message}
+              autoComplete="tel"
+              value={(watch('phone') || '').replace(/^\+91/, '').trim()}
+              onChange={(value) => {
+                setValue('phone', value ? `+91${value}` : '', { shouldValidate: false });
+              }}
+            />
 
-        <Input
-          label="Confirm Password"
-          type="password"
-          placeholder="Confirm your password"
-          leftIcon={<Lock size={20} />}
-          error={errors.confirmPassword?.message}
-          showPasswordToggle={true}
-          {...register('confirmPassword')}
-          required
-        />
+            <Input
+              label="Password"
+              type="password"
+              placeholder="Create a strong password"
+              leftIcon={<Lock size={20} />}
+              error={errors.password?.message}
+              showPasswordToggle={true}
+              {...register('password', {
+                required: true,
+              })}
+              autoComplete="new-password"
+              required
+            />
 
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          isLoading={isLoading}
-          className="w-full"
-        >
-          Create Account
-          <ArrowRight size={18} className="ml-2" />
-        </Button>
-      </form>
+            <Input
+              label="Confirm Password"
+              type="password"
+              placeholder="Confirm your password"
+              leftIcon={<Lock size={20} />}
+              error={errors.confirmPassword?.message}
+              showPasswordToggle={true}
+              {...register('confirmPassword', {
+                required: true,
+              })}
+              autoComplete="new-password"
+              required
+            />
 
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
-          Already have an account?{' '}
-          <Link to="/auth/login" className="text-gold-600 hover:text-gold-700 font-medium">
-            Sign in
-          </Link>
-        </p>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              isLoading={isLoading}
+              className="w-full"
+            >
+              Create Account
+              <ArrowRight size={18} className="ml-2" />
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Already have an account?{' '}
+              <Link to="/auth/login" className="text-gold-600 hover:text-gold-700 font-medium">
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </Card>
       </div>
-    </Card>
+    </>
   );
 };
 

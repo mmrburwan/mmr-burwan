@@ -98,6 +98,17 @@ const ApplicationFormContent: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
   const [applicationDocuments, setApplicationDocuments] = useState<any[]>([]);
+  
+  // Redirect to dashboard if application is submitted and user tries to edit
+  useEffect(() => {
+    if (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review') {
+      // Only allow viewing review step, redirect if trying to edit
+      if (currentStep !== 4) {
+        setCurrentStep(4);
+        showToast('Application has been submitted and cannot be edited', 'info');
+      }
+    }
+  }, [application?.status, currentStep, showToast]);
 
   const detailsForm = useForm({
     resolver: zodResolver(detailsSchema),
@@ -386,12 +397,14 @@ const ApplicationFormContent: React.FC = () => {
                     {...detailsForm.register('firstName')}
                     error={detailsForm.formState.errors.firstName?.message}
                     required
+                    disabled={isSubmitted}
                   />
                   <Input
                     label="Last Name"
                     {...detailsForm.register('lastName')}
                     error={detailsForm.formState.errors.lastName?.message}
                     required
+                    disabled={isSubmitted}
                   />
                 </div>
                 <Input
@@ -399,6 +412,7 @@ const ApplicationFormContent: React.FC = () => {
                   {...detailsForm.register('fatherName')}
                   error={detailsForm.formState.errors.fatherName?.message}
                   required
+                  disabled={isSubmitted}
                 />
                 <Input
                   label="Date of Birth"
@@ -406,6 +420,7 @@ const ApplicationFormContent: React.FC = () => {
                   {...detailsForm.register('dateOfBirth')}
                   error={detailsForm.formState.errors.dateOfBirth?.message}
                   required
+                  disabled={isSubmitted}
                 />
                 <Input
                   label="Aadhaar Number"
@@ -419,15 +434,19 @@ const ApplicationFormContent: React.FC = () => {
                   error={detailsForm.formState.errors.aadhaarNumber?.message}
                   placeholder="Enter 12-digit Aadhaar number"
                   required
+                  disabled={isSubmitted}
                 />
                 <PhoneInput
                   label="Mobile Number"
                   value={detailsForm.watch('mobileNumber') || ''}
                   onChange={(value) => {
-                    detailsForm.setValue('mobileNumber', value, { shouldValidate: true });
+                    if (!isSubmitted) {
+                      detailsForm.setValue('mobileNumber', value, { shouldValidate: true });
+                    }
                   }}
                   error={detailsForm.formState.errors.mobileNumber?.message}
                   required
+                  disabled={isSubmitted}
                 />
               </div>
             </div>
@@ -441,12 +460,14 @@ const ApplicationFormContent: React.FC = () => {
                     {...detailsForm.register('partnerFirstName')}
                     error={detailsForm.formState.errors.partnerFirstName?.message}
                     required
+                    disabled={isSubmitted}
                   />
                   <Input
                     label="Last Name"
                     {...detailsForm.register('partnerLastName')}
                     error={detailsForm.formState.errors.partnerLastName?.message}
                     required
+                    disabled={isSubmitted}
                   />
                 </div>
                 <Input
@@ -454,6 +475,7 @@ const ApplicationFormContent: React.FC = () => {
                   {...detailsForm.register('partnerFatherName')}
                   error={detailsForm.formState.errors.partnerFatherName?.message}
                   required
+                  disabled={isSubmitted}
                 />
                 <Input
                   label="Date of Birth"
@@ -461,6 +483,7 @@ const ApplicationFormContent: React.FC = () => {
                   {...detailsForm.register('partnerDateOfBirth')}
                   error={detailsForm.formState.errors.partnerDateOfBirth?.message}
                   required
+                  disabled={isSubmitted}
                 />
                 <Input
                   label="Aadhaar Number"
@@ -474,15 +497,19 @@ const ApplicationFormContent: React.FC = () => {
                   error={detailsForm.formState.errors.partnerAadhaarNumber?.message}
                   placeholder="Enter 12-digit Aadhaar number"
                   required
+                  disabled={isSubmitted}
                 />
                 <PhoneInput
                   label="Mobile Number"
                   value={detailsForm.watch('partnerMobileNumber') || ''}
                   onChange={(value) => {
-                    detailsForm.setValue('partnerMobileNumber', value, { shouldValidate: true });
+                    if (!isSubmitted) {
+                      detailsForm.setValue('partnerMobileNumber', value, { shouldValidate: true });
+                    }
                   }}
                   error={detailsForm.formState.errors.partnerMobileNumber?.message}
                   required
+                  disabled={isSubmitted}
                 />
               </div>
             </div>
@@ -498,6 +525,7 @@ const ApplicationFormContent: React.FC = () => {
                 <Input
                   label="Street Address"
                   {...addressForm.register('userPermanentStreet')}
+                  disabled={isSubmitted}
                   error={addressForm.formState.errors.userPermanentStreet?.message}
                   required
                 />
@@ -505,12 +533,14 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="City"
                     {...addressForm.register('userPermanentCity')}
+                  disabled={isSubmitted}
                     error={addressForm.formState.errors.userPermanentCity?.message}
                     required
                   />
                   <Input
                     label="State"
                     {...addressForm.register('userPermanentState')}
+                  disabled={isSubmitted}
                     error={addressForm.formState.errors.userPermanentState?.message}
                     required
                   />
@@ -519,12 +549,14 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="ZIP Code"
                     {...addressForm.register('userPermanentZipCode')}
+                  disabled={isSubmitted}
                     error={addressForm.formState.errors.userPermanentZipCode?.message}
                     required
                   />
                   <Input
                     label="Country"
                     {...addressForm.register('userPermanentCountry')}
+                  disabled={isSubmitted}
                     error={addressForm.formState.errors.userPermanentCountry?.message}
                     defaultValue="India"
                     required
@@ -545,6 +577,7 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="Street Address"
                     {...addressForm.register('userCurrentStreet')}
+                  disabled={isSubmitted}
                     error={addressForm.formState.errors.userCurrentStreet?.message}
                     required
                     disabled={userSameAsPermanent}
@@ -553,6 +586,7 @@ const ApplicationFormContent: React.FC = () => {
                     <Input
                       label="City"
                       {...addressForm.register('userCurrentCity')}
+                  disabled={isSubmitted}
                       error={addressForm.formState.errors.userCurrentCity?.message}
                       required
                       disabled={userSameAsPermanent}
@@ -560,6 +594,7 @@ const ApplicationFormContent: React.FC = () => {
                     <Input
                       label="State"
                       {...addressForm.register('userCurrentState')}
+                  disabled={isSubmitted}
                       error={addressForm.formState.errors.userCurrentState?.message}
                       required
                       disabled={userSameAsPermanent}
@@ -569,6 +604,7 @@ const ApplicationFormContent: React.FC = () => {
                     <Input
                       label="ZIP Code"
                       {...addressForm.register('userCurrentZipCode')}
+                  disabled={isSubmitted}
                       error={addressForm.formState.errors.userCurrentZipCode?.message}
                       required
                       disabled={userSameAsPermanent}
@@ -576,6 +612,7 @@ const ApplicationFormContent: React.FC = () => {
                     <Input
                       label="Country"
                       {...addressForm.register('userCurrentCountry')}
+                  disabled={isSubmitted}
                       error={addressForm.formState.errors.userCurrentCountry?.message}
                       defaultValue="India"
                       required
@@ -593,6 +630,7 @@ const ApplicationFormContent: React.FC = () => {
                 <Input
                   label="Street Address"
                   {...addressForm.register('partnerPermanentStreet')}
+                  disabled={isSubmitted}
                   error={addressForm.formState.errors.partnerPermanentStreet?.message}
                   required
                 />
@@ -600,12 +638,14 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="City"
                     {...addressForm.register('partnerPermanentCity')}
+                  disabled={isSubmitted}
                     error={addressForm.formState.errors.partnerPermanentCity?.message}
                     required
                   />
                   <Input
                     label="State"
                     {...addressForm.register('partnerPermanentState')}
+                  disabled={isSubmitted}
                     error={addressForm.formState.errors.partnerPermanentState?.message}
                     required
                   />
@@ -614,12 +654,14 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="ZIP Code"
                     {...addressForm.register('partnerPermanentZipCode')}
+                  disabled={isSubmitted}
                     error={addressForm.formState.errors.partnerPermanentZipCode?.message}
                     required
                   />
                   <Input
                     label="Country"
                     {...addressForm.register('partnerPermanentCountry')}
+                  disabled={isSubmitted}
                     error={addressForm.formState.errors.partnerPermanentCountry?.message}
                     defaultValue="India"
                     required
@@ -640,6 +682,7 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="Street Address"
                     {...addressForm.register('partnerCurrentStreet')}
+                  disabled={isSubmitted}
                     error={addressForm.formState.errors.partnerCurrentStreet?.message}
                     required
                     disabled={partnerSameAsPermanent}
@@ -648,6 +691,7 @@ const ApplicationFormContent: React.FC = () => {
                     <Input
                       label="City"
                       {...addressForm.register('partnerCurrentCity')}
+                  disabled={isSubmitted}
                       error={addressForm.formState.errors.partnerCurrentCity?.message}
                       required
                       disabled={partnerSameAsPermanent}
@@ -655,6 +699,7 @@ const ApplicationFormContent: React.FC = () => {
                     <Input
                       label="State"
                       {...addressForm.register('partnerCurrentState')}
+                  disabled={isSubmitted}
                       error={addressForm.formState.errors.partnerCurrentState?.message}
                       required
                       disabled={partnerSameAsPermanent}
@@ -664,6 +709,7 @@ const ApplicationFormContent: React.FC = () => {
                     <Input
                       label="ZIP Code"
                       {...addressForm.register('partnerCurrentZipCode')}
+                  disabled={isSubmitted}
                       error={addressForm.formState.errors.partnerCurrentZipCode?.message}
                       required
                       disabled={partnerSameAsPermanent}
@@ -671,6 +717,7 @@ const ApplicationFormContent: React.FC = () => {
                     <Input
                       label="Country"
                       {...addressForm.register('partnerCurrentCountry')}
+                  disabled={isSubmitted}
                       error={addressForm.formState.errors.partnerCurrentCountry?.message}
                       defaultValue="India"
                       required
@@ -1258,7 +1305,12 @@ const ApplicationFormContent: React.FC = () => {
           <div className="flex gap-3">
             <Button
               variant="ghost"
+              disabled={isSubmitted}
               onClick={async () => {
+                if (isSubmitted) {
+                  showToast('Application has been submitted and cannot be edited', 'info');
+                  return;
+                }
                 try {
                   if (currentStep === 0) {
                     const isValid = await detailsForm.trigger();

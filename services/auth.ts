@@ -37,6 +37,8 @@ export const authService = {
       password: credentials.password,
     });
 
+    // Supabase signInWithPassword will return an error if user doesn't exist
+    // This prevents creating users through login
     if (error) {
       throw new Error(error.message);
     }
@@ -44,6 +46,16 @@ export const authService = {
     if (!data.user || !data.session) {
       throw new Error('Login failed');
     }
+
+    // Verify that user email is confirmed before allowing login
+    // This ensures only verified users can log in
+    if (!data.user.email_confirmed_at) {
+      throw new Error('Please verify your email address before logging in. Check your inbox for the confirmation link.');
+    }
+
+    // Ensure profile exists (backup in case trigger didn't fire)
+    // This will only create profile if email is confirmed
+    await this.ensureProfileExists(data.user);
 
     const user = mapSupabaseUser(data.user, data.user.user_metadata?.role || 'client');
 
@@ -63,6 +75,7 @@ export const authService = {
           phone: data.phone,
           role: data.email.includes('admin') ? 'admin' : 'client',
         },
+        emailRedirectTo: `${window.location.origin}/auth/magic-link`,
       },
     });
 
@@ -74,19 +87,13 @@ export const authService = {
       throw new Error('Registration failed');
     }
 
-    // If email confirmation is required, session will be null
-    if (!authData.session) {
-      return {
-        needsConfirmation: true,
-        email: data.email,
-      };
-    }
-
-    const user = mapSupabaseUser(authData.user, authData.user.user_metadata?.role || 'client');
-
+    // ALWAYS return needsConfirmation for new registrations
+    // This ensures the confirmation screen always shows
+    // Even if Supabase has email confirmation disabled, we still want to show the screen
+    console.log('Registration successful - always showing confirmation screen');
     return {
-      user,
-      token: authData.session.access_token,
+      needsConfirmation: true,
+      email: data.email,
     };
   },
 
@@ -116,6 +123,16 @@ export const authService = {
     if (!data.user || !data.session) {
       throw new Error('Magic link verification failed');
     }
+
+    // Verify that user email is confirmed
+    // This ensures only verified users can use magic links
+    if (!data.user.email_confirmed_at) {
+      throw new Error('Email not confirmed. Please verify your email address.');
+    }
+
+    // Ensure profile exists after email confirmation
+    // This will only create profile if email is confirmed
+    await this.ensureProfileExists(data.user);
 
     const user = mapSupabaseUser(data.user, data.user.user_metadata?.role || 'client');
 
@@ -157,21 +174,77 @@ export const authService = {
   },
 
   async getCurrentUser(): Promise<User | null> {
-    // First check for an existing session (this will use persisted session if available)
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session?.user) {
-      return mapSupabaseUser(session.user, session.user.user_metadata?.role || 'client');
-    }
+    try {
+      // First check for an existing session (this will use persisted session if available)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error getting session:', sessionError);
+        return null;
+      }
+      
+      if (session?.user) {
+        // Ensure profile exists
+        await this.ensureProfileExists(session.user);
+        return mapSupabaseUser(session.user, session.user.user_metadata?.role || 'client');
+      }
 
-    // If no session, try to get user (this will trigger refresh if token is expired)
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
-    if (error || !user) {
+      // If no session, try to get user (this will trigger refresh if token is expired)
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error || !user) {
+        return null;
+      }
+
+      // Ensure profile exists
+      await this.ensureProfileExists(user);
+      return mapSupabaseUser(user, user.user_metadata?.role || 'client');
+    } catch (error) {
+      console.error('Error in getCurrentUser:', error);
       return null;
     }
+  },
 
-    return mapSupabaseUser(user, user.user_metadata?.role || 'client');
+  // Helper function to ensure profile exists for a user
+  // Only creates profile if user email is confirmed
+  async ensureProfileExists(user: any): Promise<void> {
+    try {
+      // Only create profile for verified users
+      if (!user.email_confirmed_at) {
+        console.log('User email not confirmed, skipping profile creation');
+        return;
+      }
+
+      // Check if profile exists
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // If profile doesn't exist, create it (only for verified users)
+      if (!existingProfile && !checkError) {
+        const nameParts = (user.user_metadata?.name || user.email?.split('@')[0] || 'User').split(' ');
+        const firstName = nameParts[0] || 'User';
+        const lastName = nameParts.slice(1).join(' ') || null;
+
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            first_name: firstName,
+            last_name: lastName,
+            completion_percentage: 0,
+          });
+
+        if (insertError) {
+          console.error('Failed to create profile:', insertError);
+        }
+      }
+    } catch (error) {
+      console.error('Error ensuring profile exists:', error);
+      // Don't throw - this is a best-effort operation
+    }
   },
 
   async getSession() {
@@ -199,6 +272,7 @@ export const authService = {
   // Listen to auth state changes
   onAuthStateChange(callback: (user: User | null) => void) {
     const response = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Handle all auth events including INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED
       if (session?.user) {
         const user = mapSupabaseUser(session.user, session.user.user_metadata?.role || 'client');
         callback(user);
@@ -207,6 +281,14 @@ export const authService = {
       }
     });
     // Supabase returns { data: { subscription } }
-    return response.data.subscription;
+    // Return a subscription object with unsubscribe method
+    const subscription = response.data.subscription;
+    return {
+      unsubscribe: () => {
+        if (subscription) {
+          subscription.unsubscribe();
+        }
+      }
+    };
   },
 };

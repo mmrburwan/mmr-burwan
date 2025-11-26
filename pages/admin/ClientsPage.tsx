@@ -10,7 +10,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
-import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle } from 'lucide-react';
+import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 
 interface ClientWithApplication {
@@ -112,6 +112,16 @@ const ClientsPage: React.FC = () => {
   return (
     <div>
       <div className="mb-8">
+        <div className="flex items-center gap-4 mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/admin')}
+            className="flex-shrink-0"
+          >
+            <ArrowLeft size={18} className="mr-2" />
+            Back
+          </Button>
+        </div>
         <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Clients</h1>
         <p className="text-gray-600">Manage and view all registered clients</p>
       </div>

@@ -81,6 +81,7 @@ const LoginPage: React.FC = () => {
           placeholder="you@example.com"
           leftIcon={<Mail size={20} />}
           error={errors.email?.message}
+          autoComplete="email"
           {...register('email')}
           required
         />
@@ -93,6 +94,7 @@ const LoginPage: React.FC = () => {
             leftIcon={<Lock size={20} />}
             error={errors.password?.message}
             showPasswordToggle={true}
+            autoComplete="current-password"
             {...register('password')}
             required
           />

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { auditService } from '../../services/audit';
@@ -6,9 +7,10 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Badge from '../../components/ui/Badge';
-import { QrCode, CheckCircle, XCircle, Scan } from 'lucide-react';
+import { QrCode, CheckCircle, XCircle, Scan, ArrowLeft } from 'lucide-react';
 
 const ScannerPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useNotification();
   const [qrCode, setQrCode] = useState('');
@@ -82,6 +84,16 @@ const ScannerPage: React.FC = () => {
   return (
     <div>
       <div className="mb-8">
+        <div className="flex items-center gap-4 mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/admin')}
+            className="flex-shrink-0"
+          >
+            <ArrowLeft size={18} className="mr-2" />
+            Back
+          </Button>
+        </div>
         <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">QR Code Scanner</h1>
         <p className="text-gray-600">Scan or enter QR code to check in appointments</p>
       </div>

@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (email: string, password: string, name: string, phone?: string) => Promise<void>;
+  register: (email: string, password: string, name: string, phone?: string) => Promise<{ needsConfirmation: true; email: string } | { user: User; token: string }>;
   logout: () => Promise<void>;
   updateUser: (userData: User) => void;
   isAuthenticated: boolean;
@@ -30,34 +30,43 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    const stateRef = { hasReceivedInitialState: false };
 
-    // Check for existing session immediately
+    // Set up auth state listener first - this will handle INITIAL_SESSION event
+    // which fires when Supabase restores a session from localStorage
+    const subscription = authService.onAuthStateChange(async (user) => {
+      if (mounted) {
+        setUser(user);
+        stateRef.hasReceivedInitialState = true;
+        setIsLoading(false);
+      }
+    });
+
+    // Also check for existing session as a fallback after a brief moment
+    // This ensures we have the user even if the listener hasn't fired yet
     const checkSession = async () => {
-      try {
-        const currentUser = await authService.getCurrentUser();
-        if (mounted) {
-          setUser(currentUser);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('Failed to get current user:', error);
-        if (mounted) {
-          setUser(null);
-          setIsLoading(false);
+      // Wait a bit for Supabase to initialize and fire INITIAL_SESSION
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Only check if we haven't received an initial state from the listener
+      if (!stateRef.hasReceivedInitialState && mounted) {
+        try {
+          const currentUser = await authService.getCurrentUser();
+          if (mounted) {
+            setUser(currentUser);
+            setIsLoading(false);
+          }
+        } catch (error) {
+          console.error('Failed to get current user:', error);
+          if (mounted) {
+            setUser(null);
+            setIsLoading(false);
+          }
         }
       }
     };
 
-    // Check session first
     checkSession();
-
-    // Listen to auth state changes (this will also trigger on initial load if session exists)
-    const subscription = authService.onAuthStateChange(async (user) => {
-      if (mounted) {
-        setUser(user);
-        setIsLoading(false);
-      }
-    });
 
     return () => {
       mounted = false;
@@ -80,24 +89,19 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(async (email: string, password: string, name: string, phone?: string) => {
-    setIsLoading(true);
+    // Don't set isLoading during registration - it causes AuthLayout to show loading spinner
+    // and unmount the RegisterPage, preventing the confirmation screen from showing
     try {
+      // Register will always return needsConfirmation: true
       const result = await authService.register({ email, password, name, phone });
-      // Check if email confirmation is needed
-      if ('needsConfirmation' in result && result.needsConfirmation) {
-        // Return the result so the page can handle the confirmation message
-        return result;
-      }
-      // If session exists, user is logged in
-      if ('user' in result) {
-        setUser(result.user);
-      }
+      console.log('AuthContext register result:', result);
+      
+      // Always return the result (which should have needsConfirmation: true)
+      // The RegisterPage will handle showing the confirmation screen
       return result;
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 

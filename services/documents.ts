@@ -39,6 +39,7 @@ export const documentService = {
         type: type,
         name: file.name,
         url: documentUrl,
+        file_path: filePath, // Store file path for easier retrieval
         status: 'pending',
         size: file.size,
         mime_type: file.type,
@@ -180,5 +181,91 @@ export const documentService = {
       mimeType: data.mime_type,
       belongsTo: data.belongs_to,
     };
+  },
+
+  async getSignedUrl(documentId: string): Promise<string> {
+    const { data: document, error } = await supabase
+      .from('documents')
+      .select('url, file_path')
+      .eq('id', documentId)
+      .single();
+
+    if (error) {
+      throw new Error('Document not found');
+    }
+
+    // First try to use stored file_path if available
+    if ((document as any).file_path) {
+      try {
+        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+          .from('documents')
+          .createSignedUrl((document as any).file_path, 3600);
+
+        if (!signedUrlError && signedUrlData) {
+          return signedUrlData.signedUrl;
+        }
+      } catch (e) {
+        console.error('Failed to create signed URL with stored file_path:', e);
+      }
+    }
+
+    // Fallback: Try to extract file path from URL
+    try {
+      const url = new URL(document.url);
+      // Extract path after /storage/v1/object/public/documents/ or /documents/
+      let filePath = url.pathname;
+      
+      // Handle different URL formats
+      if (filePath.includes('/documents/')) {
+        filePath = filePath.split('/documents/')[1];
+      } else if (filePath.includes('/storage/v1/object/public/documents/')) {
+        filePath = filePath.split('/storage/v1/object/public/documents/')[1];
+      } else if (filePath.startsWith('/')) {
+        filePath = filePath.substring(1);
+      }
+
+      // Remove query parameters if any
+      filePath = filePath.split('?')[0];
+
+      if (filePath) {
+        // Get signed URL (valid for 1 hour)
+        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+          .from('documents')
+          .createSignedUrl(filePath, 3600);
+
+        if (!signedUrlError && signedUrlData) {
+          return signedUrlData.signedUrl;
+        }
+      }
+    } catch (urlError) {
+      // If URL parsing fails, try to extract path from the stored URL string directly
+      console.error('Error parsing document URL:', urlError);
+      
+      const urlString = document.url;
+      let filePath = urlString;
+      
+      if (urlString.includes('/documents/')) {
+        filePath = urlString.split('/documents/')[1].split('?')[0];
+      } else if (urlString.includes('documents/')) {
+        filePath = urlString.split('documents/')[1].split('?')[0];
+      }
+
+      if (filePath && filePath !== urlString) {
+        try {
+          const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+            .from('documents')
+            .createSignedUrl(filePath, 3600);
+
+          if (!signedUrlError && signedUrlData) {
+            return signedUrlData.signedUrl;
+          }
+        } catch (e) {
+          console.error('Failed to create signed URL with extracted path:', e);
+        }
+      }
+    }
+
+    // Final fallback: return original URL
+    return document.url;
   },
 };
