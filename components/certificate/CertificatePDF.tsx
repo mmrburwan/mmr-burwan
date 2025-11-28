@@ -46,6 +46,12 @@ Font.register({
   src: '/fonts/OLDENGL.TTF',
 });
 
+// Register Script MT Bold font
+Font.register({
+  family: 'ScriptMTBold',
+  src: '/fonts/SCRIPTBL.TTF',
+});
+
 // Format Aadhaar number with spaces
 const formatAadhaar = (aadhaar: string | undefined): string => {
   if (!aadhaar || aadhaar === 'N/A') return 'N/A';
@@ -132,33 +138,33 @@ const styles = StyleSheet.create({
   content: {
     position: 'relative',
     zIndex: 1,
-    padding: '50 45 45 45',
+    padding: '40 45 35 45',
   },
   
   // ===== HEADER =====
   header: {
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   logosContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 15,
-    margin: '0 auto 2',
+    gap: 4,
+    margin: '-8 auto 2',
   },
   emblemContainer: {
-    width: 52,
-    height: 52,
+    width: 40,
+    height: 40,
   },
   emblem: {
-    width: 52,
-    height: 52,
+    width: 40,
+    height: 40,
     objectFit: 'contain',
   },
   westBengalLogo: {
-    width: 52,
-    height: 52,
+    width: 40,
+    height: 40,
     objectFit: 'contain',
   },
   govTitle: {
@@ -205,25 +211,25 @@ const styles = StyleSheet.create({
   // ===== CERTIFICATE TITLE =====
   titleSection: {
     textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 2,
+    marginBottom: 4,
   },
   certificateTitle: {
     fontFamily: 'OldEnglish',
-    fontSize: 36,
-    color: '#5C450D',
-    marginBottom: 8,
+    fontSize: 30,
+    color: '#3A1F03',
+    marginBottom: 4,
     textDecoration: 'underline',
   },
   introText: {
     fontFamily: 'Times',
-    fontSize: 11,
+    fontSize: 10,
     fontStyle: 'italic',
     color: '#874313',
-    lineHeight: 1.4,
+    lineHeight: 1.3,
     paddingHorizontal: 10,
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   
   // ===== CONSECUTIVE ROW =====
@@ -231,7 +237,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 5,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   consecutiveText: {
     fontFamily: 'Times',
@@ -246,29 +252,28 @@ const styles = StyleSheet.create({
   detailsRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   detailBox: {
     flex: 1,
     border: `1.5 solid ${GOLD}`,
   },
   detailBoxHeader: {
-    borderBottom: `1.5 solid ${GOLD}`,
-    padding: '4 8',
+    padding: '3 8',
   },
   detailBoxTitle: {
     fontFamily: 'Times',
     fontSize: 12,
     fontWeight: 'bold',
-    color: GOLD,
+    color: '#833C0B',
     textDecoration: 'underline',
   },
   detailBoxBody: {
-    padding: '6 8',
+    padding: '4 8',
   },
   fieldRow: {
     flexDirection: 'row',
-    marginBottom: 1,
+    marginBottom: 0.5,
   },
   fieldLabel: {
     fontFamily: 'Times',
@@ -284,7 +289,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   addressBlock: {
-    marginTop: 2,
+    marginTop: 1,
   },
   addressTitle: {
     fontFamily: 'Times',
@@ -292,30 +297,30 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: BLACK,
     textDecoration: 'underline',
-    marginBottom: 0.5,
+    marginBottom: 0.3,
   },
   addressValue: {
     fontFamily: 'Times',
     fontSize: 8.5,
     color: BLACK,
-    lineHeight: 1.2,
+    lineHeight: 1.1,
   },
   
   // ===== SECTION BOXES =====
   sectionBox: {
-    marginBottom: 4,
+    marginBottom: 2,
   },
   sectionTitle: {
     fontFamily: 'Times',
     fontSize: 11,
     fontWeight: 'bold',
-    color: GOLD,
+    color: '#833C0B',
     textDecoration: 'underline',
   },
   sectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 1,
+    marginTop: 0.5,
   },
   sectionLabel: {
     fontFamily: 'Times',
@@ -343,7 +348,7 @@ const styles = StyleSheet.create({
   // ===== WISH STATEMENT =====
   wishSection: {
     textAlign: 'center',
-    marginVertical: 6,
+    marginVertical: 3,
   },
   wishText: {
     fontFamily: 'Times',
@@ -355,20 +360,20 @@ const styles = StyleSheet.create({
   
   // ===== REGISTRAR BOX =====
   registrarBox: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
   registrarTitle: {
     fontFamily: 'Times',
     fontSize: 11,
     fontWeight: 'bold',
     fontStyle: 'italic',
-    color: GOLD,
+    color: '#833C0B',
     textDecoration: 'underline',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   registrarRow: {
     flexDirection: 'row',
-    marginBottom: 1,
+    marginBottom: 0.5,
   },
   registrarLabel: {
     fontFamily: 'Times',
@@ -384,12 +389,26 @@ const styles = StyleSheet.create({
   contactRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 1,
-    gap: 25,
+    marginTop: 0.5,
+    gap: 20,
   },
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  icon: {
+    width: 14,
+    height: 14,
+    marginRight: 6,
+    objectFit: 'contain',
+  },
+  iconContainer: {
+    width: 14,
+    height: 14,
+    marginRight: 6,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
   // ===== BOTTOM SECTION =====
@@ -397,7 +416,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginTop: 6,
+    marginTop: 3,
   },
   couplePhotoBox: {
     width: 150,
@@ -417,14 +436,17 @@ const styles = StyleSheet.create({
   
   // ===== SIGNATURE =====
   signatureSection: {
-    marginTop: 10,
+    marginTop: 30,
     alignItems: 'center',
   },
+  signatureLine: {
+    width: 200,
+    borderTop: `1 solid ${BLACK}`,
+    marginBottom: 4,
+  },
   signatureText: {
-    fontFamily: 'Times',
+    fontFamily: 'ScriptMTBold',
     fontSize: 11,
-    fontWeight: 'bold',
-    textDecoration: 'underline',
     color: BLACK,
   },
 });
@@ -489,13 +511,13 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
             </Text>
           </View>
 
-          {/* Consecutive Number Row */}
+          {/* Certificate Number Row */}
           <View style={styles.consecutiveRow}>
             <Text style={styles.consecutiveText}>
-              <Text style={styles.boldText}>Consecutive Number: </Text>{certificateData.consecutiveNumber}
+              <Text style={styles.boldText}>Certificate Number: </Text>{certificateData.consecutiveNumber}
             </Text>
             <Text style={styles.consecutiveText}>
-              <Text style={styles.boldText}>Registration Date: </Text>{safeFormatDate(certificateData.registrationDate, 'dd-MM-yyyy')}
+              <Text style={styles.boldText}>Registration Date: {safeFormatDate(certificateData.registrationDate, 'dd-MM-yyyy')}</Text>
             </Text>
           </View>
 
@@ -603,7 +625,7 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
               </View>
               <View style={styles.regItem}>
                 <Text style={styles.sectionLabel}>Serial No: </Text>
-                <Text style={styles.sectionValue}>{certificateData.serialNo},</Text>
+                <Text style={styles.sectionValue}>{certificateData.serialNo}</Text>
               </View>
               <View style={styles.regItem}>
                 <Text style={styles.sectionLabel}>Page: </Text>
@@ -633,12 +655,30 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
               <Text style={styles.registrarValue}>{certificateData.registrarOffice}</Text>
             </View>
             <View style={styles.contactRow}>
-              <View style={styles.contactItem}>
-                <Text style={styles.registrarLabel}>Contact: </Text>
-                <Text style={styles.registrarValue}>{certificateData.registrarPhone}</Text>
+              <Text style={styles.registrarLabel}>Contact: </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
+                <Image 
+                  src={getImageUrl("/icons/phone.png")} 
+                  style={styles.icon}
+                  cache={false}
+                />
+                <Text style={styles.registrarValue}> {certificateData.registrarPhone}</Text>
               </View>
-              <View style={styles.contactItem}>
-                <Text style={styles.registrarValue}>{certificateData.registrarEmail}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
+                <Image 
+                  src={getImageUrl("/icons/mail.png")} 
+                  style={styles.icon}
+                  cache={false}
+                />
+                <Text style={styles.registrarValue}> {certificateData.registrarEmail}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Image 
+                  src={getImageUrl("/icons/world.png")} 
+                  style={styles.icon}
+                  cache={false}
+                />
+                <Text style={styles.registrarValue}> mmrburwan.com</Text>
               </View>
             </View>
           </View>
@@ -653,6 +693,7 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
 
           {/* Signature */}
           <View style={styles.signatureSection}>
+            <View style={styles.signatureLine} />
             <Text style={styles.signatureText}>Signature of Registrar with Seal</Text>
           </View>
         </View>

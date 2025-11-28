@@ -63,7 +63,7 @@ export const generateCertificateData = (application: Application) => {
   const registrationDate = application.verifiedAt || application.submittedAt || new Date().toISOString();
   const marriageDate = application.submittedAt || new Date().toISOString();
   
-  const consecutiveNumber = `WB/MSD/BRW/I/1-C/${currentYear}/${Math.floor(Math.random() * 50) + 1}/${currentYear + 1}/${Math.floor(Math.random() * 30) + 1}`;
+  const consecutiveNumber = `WB-MSD-BRW-I-1-C-${currentYear}-${Math.floor(Math.random() * 50) + 1}-${currentYear + 1}-${Math.floor(Math.random() * 30) + 1}`;
   const verificationId = `MMR-BW-${currentYear}-${String(Date.now()).slice(-6)}`;
   
   return {
