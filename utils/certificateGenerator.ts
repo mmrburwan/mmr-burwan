@@ -61,44 +61,43 @@ const formatAddress = (address: any): string => {
   return parts.length > 0 ? parts.join(', ') : 'N/A';
 };
 
-// Parse certificate number: "WB-MSD-BRW-I-1-C-2024-16-2025-21"
+// Parse certificate number: "WB-MSD-BRW-I-1-C-2024-16-2025-21" or "WB-MSD-BRW-I-1-C--16--21" (with empty volumeYear/serialYear)
 const parseCertificateNumber = (certNumber: string | undefined) => {
   if (!certNumber) {
-    const currentYear = new Date().getFullYear();
     return {
       book: 'I',
       volumeNumber: '1',
       volumeLetter: 'C',
-      volumeYear: currentYear.toString(),
+      volumeYear: '', // Optional, default to empty
       serialNumber: '1',
-      serialYear: (currentYear + 1).toString(),
+      serialYear: '', // Optional, default to empty
       pageNumber: '1',
     };
   }
 
   // Format: WB-MSD-BRW-{book}-{volumeNumber}-{volumeLetter}-{volumeYear}-{serialNumber}-{serialYear}-{pageNumber}
+  // volumeYear and serialYear can be empty strings
   const parts = certNumber.split('-');
   if (parts.length >= 10 && parts[0] === 'WB' && parts[1] === 'MSD' && parts[2] === 'BRW') {
     return {
       book: parts[3] || 'I',
       volumeNumber: parts[4] || '1',
       volumeLetter: parts[5] || 'C',
-      volumeYear: parts[6] || new Date().getFullYear().toString(),
+      volumeYear: parts[6] || '', // Optional, can be empty
       serialNumber: parts[7] || '1',
-      serialYear: parts[8] || (new Date().getFullYear() + 1).toString(),
+      serialYear: parts[8] || '', // Optional, can be empty
       pageNumber: parts[9] || '1',
     };
   }
 
   // Fallback to defaults
-  const currentYear = new Date().getFullYear();
   return {
     book: 'I',
     volumeNumber: '1',
     volumeLetter: 'C',
-    volumeYear: currentYear.toString(),
+    volumeYear: '', // Optional
     serialNumber: '1',
-    serialYear: (currentYear + 1).toString(),
+    serialYear: '', // Optional
     pageNumber: '1',
   };
 };
@@ -123,11 +122,15 @@ export const generateCertificateData = (application: Application) => {
   // Parse certificate number to extract components
   const certParts = parseCertificateNumber(application.certificateNumber || consecutiveNumber);
   
-  // Format volume number: "1-C/2024"
-  const volNo = `${certParts.volumeNumber}-${certParts.volumeLetter}/${certParts.volumeYear}`;
+  // Format volume number: "1-C/2024" or "1-C" if volumeYear is empty
+  const volNo = certParts.volumeYear 
+    ? `${certParts.volumeNumber}-${certParts.volumeLetter}/${certParts.volumeYear}`
+    : `${certParts.volumeNumber}-${certParts.volumeLetter}`;
   
-  // Format serial number: "3/2026"
-  const serialNo = `${certParts.serialNumber}/${certParts.serialYear}`;
+  // Format serial number: "3/2026" or "3" if serialYear is empty
+  const serialNo = certParts.serialYear 
+    ? `${certParts.serialNumber}/${certParts.serialYear}`
+    : certParts.serialNumber;
   
   return {
     verificationId,

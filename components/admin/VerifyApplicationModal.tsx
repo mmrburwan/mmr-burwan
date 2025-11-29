@@ -37,30 +37,31 @@ const generateRomanNumerals = (): string[] => {
 
 const ROMAN_NUMERALS = generateRomanNumerals();
 
-// Parse certificate number: "WB-MSD-BRW-I-1-C-2024-16-2025-21"
+// Parse certificate number: "WB-MSD-BRW-I-1-C-2024-16-2025-21" or "WB-MSD-BRW-I-1-C--16--21" (with empty volumeYear/serialYear)
 const parseCertificateNumber = (certNumber: string | undefined) => {
   if (!certNumber) {
     return {
       bookNumber: 'I',
       volumeNumber: '',
       volumeLetter: 'C',
-      volumeYear: new Date().getFullYear().toString(),
+      volumeYear: '', // Optional, default to empty
       serialNumber: '',
-      serialYear: (new Date().getFullYear() + 1).toString(),
+      serialYear: '', // Optional, default to empty
       pageNumber: '',
     };
   }
 
-  // Format: WB-MSD-BRW-I-1-C-2024-16-2025-21
+  // Format: WB-MSD-BRW-{book}-{volumeNumber}-{volumeLetter}-{volumeYear}-{serialNumber}-{serialYear}-{pageNumber}
+  // volumeYear and serialYear can be empty strings
   const parts = certNumber.split('-');
-  if (parts.length >= 9 && parts[0] === 'WB' && parts[1] === 'MSD' && parts[2] === 'BRW') {
+  if (parts.length >= 10 && parts[0] === 'WB' && parts[1] === 'MSD' && parts[2] === 'BRW') {
     return {
       bookNumber: parts[3] || 'I',
       volumeNumber: parts[4] || '',
       volumeLetter: parts[5] || 'C',
-      volumeYear: parts[6] || new Date().getFullYear().toString(),
+      volumeYear: parts[6] || '', // Optional, can be empty
       serialNumber: parts[7] || '',
-      serialYear: parts[8] || (new Date().getFullYear() + 1).toString(),
+      serialYear: parts[8] || '', // Optional, can be empty
       pageNumber: parts[9] || '',
     };
   }
@@ -70,9 +71,9 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     bookNumber: 'I',
     volumeNumber: '',
     volumeLetter: 'C',
-    volumeYear: new Date().getFullYear().toString(),
+    volumeYear: '', // Optional
     serialNumber: '',
-    serialYear: (new Date().getFullYear() + 1).toString(),
+    serialYear: '', // Optional
     pageNumber: '',
   };
 };
@@ -81,9 +82,9 @@ const verifySchema = z.object({
   bookNumber: z.string().min(1, 'Book number is required'),
   volumeNumber: z.string().min(1, 'Volume number is required'),
   volumeLetter: z.string().min(1, 'Volume letter is required'),
-  volumeYear: z.string().regex(/^\d{4}$/, 'Volume year must be 4 digits'),
+  volumeYear: z.string().regex(/^$|^\d+$/, 'Volume number must be digits only or empty'),
   serialNumber: z.string().min(1, 'Serial number is required'),
-  serialYear: z.string().regex(/^\d{4}$/, 'Serial year must be 4 digits'),
+  serialYear: z.string().regex(/^$|^\d+$/, 'Serial number must be digits only or empty'),
   pageNumber: z.string().min(1, 'Page number is required'),
   registrationDate: z.string().min(1, 'Registration date is required'),
 });
@@ -181,8 +182,21 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
   const formValues = watch();
   const certificateNumberPreview = useMemo(() => {
     const { bookNumber, volumeNumber, volumeLetter, volumeYear, serialNumber, serialYear, pageNumber } = formValues;
-    if (bookNumber && volumeNumber && volumeLetter && volumeYear && serialNumber && serialYear && pageNumber) {
-      return `WB-MSD-BRW-${bookNumber}-${volumeNumber}-${volumeLetter}-${volumeYear}-${serialNumber}-${serialYear}-${pageNumber}`;
+    if (bookNumber && volumeNumber && volumeLetter && serialNumber && pageNumber) {
+      // Build certificate number, handling optional volumeYear and serialYear
+      const parts = [
+        'WB',
+        'MSD',
+        'BRW',
+        bookNumber,
+        volumeNumber,
+        volumeLetter,
+        volumeYear || '', // Optional
+        serialNumber,
+        serialYear || '', // Optional
+        pageNumber
+      ];
+      return parts.join('-');
     }
     return '';
   }, [formValues]);
@@ -212,8 +226,20 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Construct the full certificate number
-      const fullCertificateNumber = `WB-MSD-BRW-${data.bookNumber}-${data.volumeNumber}-${data.volumeLetter}-${data.volumeYear}-${data.serialNumber}-${data.serialYear}-${data.pageNumber}`;
+      // Construct the full certificate number, handling optional volumeYear and serialYear
+      const parts = [
+        'WB',
+        'MSD',
+        'BRW',
+        data.bookNumber,
+        data.volumeNumber,
+        data.volumeLetter,
+        data.volumeYear || '', // Optional
+        data.serialNumber,
+        data.serialYear || '', // Optional
+        data.pageNumber
+      ];
+      const fullCertificateNumber = parts.join('-');
       await onConfirm(fullCertificateNumber, data.registrationDate);
       reset();
       onClose();
@@ -341,24 +367,22 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
                 <input
                   {...register('volumeYear')}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    const value = e.target.value.replace(/\D/g, '');
                     setValue('volumeYear', value, { shouldValidate: true });
                   }}
                   value={formValues.volumeYear || ''}
-                  placeholder="2024"
-                  required
+                  placeholder="Optional"
                   disabled={isSubmitting}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
-                  maxLength={4}
                 />
                 {errors.volumeYear && (
                   <p className="text-xs text-rose-600 mt-1">{errors.volumeYear.message}</p>
                 )}
-                <p className="text-xs text-gray-500 mt-1 text-center">Year</p>
+                <p className="text-xs text-gray-500 mt-1 text-center">Number (Optional)</p>
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              Format: <span className="font-mono">1-C-2024</span> (dashes added automatically)
+              Format: <span className="font-mono">1-C</span> or <span className="font-mono">1-C-{'{number}'}</span> (dashes added automatically)
             </p>
           </div>
 
@@ -383,24 +407,22 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
                 <input
                   {...register('serialYear')}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    const value = e.target.value.replace(/\D/g, '');
                     setValue('serialYear', value, { shouldValidate: true });
                   }}
                   value={formValues.serialYear || ''}
-                  placeholder="2025"
-                  required
+                  placeholder="Optional"
                   disabled={isSubmitting}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
-                  maxLength={4}
                 />
                 {errors.serialYear && (
                   <p className="text-xs text-rose-600 mt-1">{errors.serialYear.message}</p>
                 )}
-                <p className="text-xs text-gray-500 mt-1 text-center">Year</p>
+                <p className="text-xs text-gray-500 mt-1 text-center">Number (Optional)</p>
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              Format: <span className="font-mono">16-2025</span> (dash added automatically)
+              Format: <span className="font-mono">16</span> or <span className="font-mono">16-{'{number}'}</span> (dash added automatically)
             </p>
           </div>
 
