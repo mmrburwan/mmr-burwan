@@ -38,7 +38,7 @@ const Services: React.FC = () => {
                  <ActionCard 
                    icon={<Search size={28} />}
                    title="Certificate Verification"
-                   subtitle="Check Validity • Download Copy"
+                   subtitle="Check Validity"
                    color="indigo"
                    onClick={() => navigate('/verify')}
                 />

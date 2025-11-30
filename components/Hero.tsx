@@ -138,7 +138,7 @@ const Hero: React.FC = () => {
                <ActionCard 
                    icon={<Search size={24} />}
                    title="Verify Certificate"
-                   subtitle="Check Validity • Download Copy"
+                   subtitle="Check Validity"
                    active={true}
                    color="indigo"
                    className="min-h-[140px]"

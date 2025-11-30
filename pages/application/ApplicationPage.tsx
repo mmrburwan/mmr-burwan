@@ -726,10 +726,20 @@ const ApplicationFormContent: React.FC = () => {
       setIsSaving(true);
       try {
         if (application) {
-          for (const doc of documents) {
-            await documentService.uploadDocument(application.id, doc.file, doc.type, doc.belongsTo);
+          // Only upload documents that haven't been saved yet
+          if (documents.length > 0) {
+            for (const doc of documents) {
+              await documentService.uploadDocument(application.id, doc.file, doc.type, doc.belongsTo);
+            }
+            showToast('Documents uploaded successfully!', 'success');
+            
+            // Clear local documents state after successful upload to prevent re-uploads
+            setDocuments([]);
+            
+            // Reload documents from database to ensure state is in sync
+            const updatedDocs = await documentService.getDocuments(application.id);
+            setApplicationDocuments(updatedDocs);
           }
-          showToast('Documents uploaded successfully!', 'success');
         }
         setCurrentStep(currentStep + 1);
       } catch (error: any) {

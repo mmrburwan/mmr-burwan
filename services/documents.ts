@@ -8,6 +8,91 @@ export const documentService = {
     type: Document['type'],
     belongsTo?: 'user' | 'partner' | 'joint'
   ): Promise<Document> {
+    // Check if document of same type and belongsTo already exists
+    const { data: existingDocs, error: checkError } = await supabase
+      .from('documents')
+      .select('id, file_path')
+      .eq('application_id', applicationId)
+      .eq('type', type)
+      .eq('belongs_to', belongsTo || 'user');
+
+    if (checkError) {
+      console.error('Error checking for existing document:', checkError);
+    }
+
+    // If document already exists, update it instead of creating a duplicate
+    if (existingDocs && existingDocs.length > 0) {
+      const existingDoc = existingDocs[0];
+      
+      // Delete old file from storage
+      if (existingDoc.file_path) {
+        try {
+          await supabase.storage.from('documents').remove([existingDoc.file_path]);
+        } catch (storageError) {
+          console.error('Failed to delete old file from storage:', storageError);
+        }
+      }
+
+      // Upload new file
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${applicationId}/${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+
+      const documentUrl = urlData.publicUrl;
+
+      // Update existing document record
+      const { data, error } = await supabase
+        .from('documents')
+        .update({
+          name: file.name,
+          url: documentUrl,
+          file_path: filePath,
+          size: file.size,
+          mime_type: file.type,
+          uploaded_at: new Date().toISOString(),
+        })
+        .eq('id', existingDoc.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Database update error:', error);
+        throw new Error(`Database update failed: ${error.message}`);
+      }
+
+      return {
+        id: data.id,
+        applicationId: data.application_id,
+        type: data.type,
+        name: data.name,
+        url: data.url,
+        status: data.status,
+        uploadedAt: data.uploaded_at,
+        size: data.size,
+        mimeType: data.mime_type,
+        belongsTo: data.belongs_to,
+        isReuploaded: false,
+      };
+    }
+
+    // No existing document, create new one
     // Upload file to Supabase Storage
     const fileExt = file.name.split('.').pop();
     const fileName = `${applicationId}/${Date.now()}.${fileExt}`;

@@ -168,12 +168,15 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
                   <h3 className="font-serif text-xl font-bold text-gray-900 mb-2">
                     Certificate Verified
                   </h3>
-                  <p className="text-sm text-gray-600 mb-2">
+                  <p className="text-sm text-gray-600 mb-4">
                     This certificate is valid and has been issued by the MMR Burwan office.
                   </p>
-                  <p className="text-xs font-mono text-gray-500">
-                    {certificateData.certificateNumber}
-                  </p>
+                  <div className="inline-block bg-gray-900 rounded-xl px-6 py-4 shadow-lg">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2 font-medium">Certificate Number</p>
+                    <p className="font-serif text-3xl font-black text-white tracking-wide">
+                      {certificateData.certificateNumber}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Certificate Details */}
