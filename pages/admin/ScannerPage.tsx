@@ -27,6 +27,7 @@ const ScannerPage: React.FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<number | null>(null);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
+  const lastScannedQrRef = useRef<string | null>(null);
 
   // Stop camera scanning (alternative jsQR method)
   const stopAlternativeCamera = () => {
@@ -45,6 +46,8 @@ const ScannerPage: React.FC = () => {
     }
     
     setIsCameraActive(false);
+    // Reset last scanned QR when stopping camera
+    lastScannedQrRef.current = null;
     showToast('Camera stopped', 'info');
   };
 
@@ -61,6 +64,8 @@ const ScannerPage: React.FC = () => {
         html5QrCodeRef.current.clear();
         html5QrCodeRef.current = null;
         setIsCameraActive(false);
+        // Reset last scanned QR when stopping camera
+        lastScannedQrRef.current = null;
         showToast('Camera stopped', 'info');
       }
     } catch (error) {
@@ -218,6 +223,11 @@ const ScannerPage: React.FC = () => {
 
   // Process scanned QR code data
   const processScannedData = async (qrData: string) => {
+    // Prevent processing the same QR code multiple times
+    if (lastScannedQrRef.current === qrData) {
+      return;
+    }
+
     setIsScanning(true);
     try {
       // Parse QR code data
@@ -225,6 +235,9 @@ const ScannerPage: React.FC = () => {
       
       // Validate appointment
       if (data.appointmentId && data.userId) {
+        // Mark this QR code as processed
+        lastScannedQrRef.current = qrData;
+
         setScannedData({
           ...data,
           valid: true,
@@ -246,10 +259,14 @@ const ScannerPage: React.FC = () => {
         
         // Don't stop camera - keep it running for next scan
       } else {
+        // Mark invalid QR codes too to prevent repeated error notifications
+        lastScannedQrRef.current = qrData;
         setScannedData({ valid: false });
         showToast('Invalid QR code', 'error');
       }
     } catch (error) {
+      // Mark invalid QR codes too to prevent repeated error notifications
+      lastScannedQrRef.current = qrData;
       setScannedData({ valid: false });
       showToast('Invalid QR code format', 'error');
     } finally {
@@ -456,6 +473,9 @@ const ScannerPage: React.FC = () => {
 
       setScannedData({ ...scannedData, checkedIn: true });
       showToast('Check-in successful', 'success');
+      
+      // Reset last scanned QR to allow scanning the same code again after check-in
+      lastScannedQrRef.current = null;
     } catch (error) {
       showToast('Failed to record check-in', 'error');
     }
