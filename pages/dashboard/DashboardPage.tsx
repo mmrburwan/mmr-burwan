@@ -21,7 +21,8 @@ import {
   ArrowRight,
   User,
   CheckCircle,
-  LogOut
+  LogOut,
+  Eye
 } from 'lucide-react';
 import NotificationIcon from '../../components/ui/NotificationIcon';
 import NotificationPanel from '../../components/ui/NotificationPanel';
@@ -253,15 +254,21 @@ const DashboardPage: React.FC = () => {
             <p className="text-xs sm:text-sm text-gray-500 mb-3">Start your application</p>
           )}
           {application?.status === 'submitted' || application?.status === 'under_review' || application?.status === 'approved' ? (
+            <div className="flex flex-col gap-2">
             <Button
-              variant="ghost"
+                variant="primary"
               size="sm"
               className="w-full !text-xs sm:!text-sm"
-              disabled
+                onClick={() => navigate('/application/view')}
             >
-              Application Submitted
-              <CheckCircle size={14} className="ml-1.5 sm:w-4 sm:h-4" />
+                <Eye size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                View Application
             </Button>
+              <p className="text-[10px] sm:text-xs text-gray-500 text-center">
+                Application submitted
+                <CheckCircle size={12} className="inline ml-1 sm:w-3 sm:h-3" />
+              </p>
+            </div>
           ) : (
             <Button
               variant="primary"
@@ -390,29 +397,43 @@ const DashboardPage: React.FC = () => {
                   </p>
                 )}
               </div>
-              {certificate ? (
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="!text-xs sm:!text-sm flex-1"
-                    onClick={() => navigate(`/verify/${certificate.verificationId}`)}
-                  >
-                    <Award size={14} className="mr-1 sm:w-4 sm:h-4" />
-                    View
-                  </Button>
+                {certificate ? (
+                 <div className="flex flex-col sm:flex-row gap-2">
+                   <Button
+                     variant="primary"
+                     size="sm"
+                     className="!text-xs sm:!text-sm flex-1"
+                     onClick={() => {
+                       const certNumber = certificate.certificateNumber || application?.certificateNumber;
+                       if (certNumber) {
+                         navigate(`/verify/${certNumber}`);
+                       } else {
+                         showToast('Certificate number not available', 'error');
+                       }
+                     }}
+                   >
+                     <Award size={14} className="mr-1 sm:w-4 sm:h-4" />
+                     View
+                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     className="!text-xs sm:!text-sm flex-1"
                     onClick={async () => {
-                      if (application) {
+                      if (application && certificate) {
                         try {
+                          // Verify certificate still exists before downloading
+                          const { certificateService } = await import('../../services/certificates');
+                          const certCheck = await certificateService.getCertificateByApplicationId(application.id);
+                          if (!certCheck) {
+                            showToast('Certificate is not available. Please contact administrator.', 'error');
+                            return;
+                          }
                           await downloadCertificate(application);
                           showToast('Certificate downloaded successfully', 'success');
-                        } catch (error) {
+                        } catch (error: any) {
                           console.error('Failed to download certificate:', error);
-                          showToast('Failed to download certificate', 'error');
+                          showToast(error.message || 'Failed to download certificate', 'error');
                         }
                       }
                     }}
@@ -421,25 +442,11 @@ const DashboardPage: React.FC = () => {
                   </Button>
                 </div>
               ) : (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="w-full !text-xs sm:!text-sm"
-                  onClick={async () => {
-                    if (application) {
-                      try {
-                        await downloadCertificate(application);
-                        showToast('Certificate downloaded successfully', 'success');
-                      } catch (error) {
-                        console.error('Failed to download certificate:', error);
-                        showToast('Failed to download certificate', 'error');
-                      }
-                    }
-                  }}
-                >
-                  <Award size={14} className="mr-1 sm:w-4 sm:h-4" />
-                  Download Certificate
-                </Button>
+                <div className="p-2 sm:p-3 bg-gold-50 border border-gold-200 rounded-lg">
+                  <p className="text-[10px] sm:text-xs text-gold-800 text-center">
+                    Your certificate is being prepared. You will receive a notification when it's ready for download.
+                  </p>
+                </div>
               )}
             </div>
           ) : (

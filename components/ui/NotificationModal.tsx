@@ -43,6 +43,8 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
         return <XCircle size={18} className="sm:w-6 sm:h-6 text-rose-600" />;
       case 'application_verified':
         return <Award size={18} className="sm:w-6 sm:h-6 text-gold-600" />;
+      case 'certificate_ready':
+        return <Award size={18} className="sm:w-6 sm:h-6 text-gold-600" />;
       default:
         return <Info size={18} className="sm:w-6 sm:h-6 text-blue-600" />;
     }
@@ -128,7 +130,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
               Upload Doc
             </Button>
           )}
-          {notification.type === 'application_verified' && user && (
+          {notification.type === 'certificate_ready' && user && (
             <Button
               variant="primary"
               size="sm"
@@ -141,6 +143,14 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
                   const application = await applicationService.getApplication(user.id);
                   if (!application) throw new Error('Application not found');
                   if (!application.verified) throw new Error('Application is not yet verified');
+                  
+                  // Check if certificate exists
+                  const { certificateService } = await import('../../services/certificates');
+                  const certificate = await certificateService.getCertificateByApplicationId(application.id);
+                  if (!certificate) {
+                    throw new Error('Certificate is not yet available. Please wait for the administrator to generate it.');
+                  }
+                  
                   await downloadCertificate(application);
                   onClose();
                   if (onNavigate) onNavigate();

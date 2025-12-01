@@ -5,13 +5,14 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { adminService } from '../../services/admin';
 import { applicationService } from '../../services/application';
 import { profileService } from '../../services/profile';
+import { certificateService } from '../../services/certificates';
 import { Application, Profile } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
 import VerifyApplicationModal from '../../components/admin/VerifyApplicationModal';
-import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 
 interface ClientWithApplication {
@@ -30,6 +31,8 @@ const ClientsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [certificatesMap, setCertificatesMap] = useState<Record<string, boolean>>({});
+  const [generatingCert, setGeneratingCert] = useState<string | null>(null);
   const [verifyModalState, setVerifyModalState] = useState<{
     isOpen: boolean;
     applicationId: string;
@@ -72,6 +75,20 @@ const ClientsPage: React.FC = () => {
         
         setClients(clientsData);
         setFilteredClients(clientsData);
+
+        // Check which applications have certificates
+        const certMap: Record<string, boolean> = {};
+        await Promise.all(
+          clientsData
+            .filter(client => client.application?.verified && client.application?.id)
+            .map(async (client) => {
+              if (client.application?.id) {
+                const cert = await certificateService.getCertificateByApplicationId(client.application.id);
+                certMap[client.application.id] = !!cert;
+              }
+            })
+        );
+        setCertificatesMap(certMap);
       } catch (error) {
         console.error('Failed to load clients:', error);
       } finally {
@@ -117,6 +134,20 @@ const ClientsPage: React.FC = () => {
       );
       setClients(clientsData);
       setFilteredClients(clientsData);
+
+      // Reload certificate map
+      const certMap: Record<string, boolean> = {};
+      await Promise.all(
+        clientsData
+          .filter(client => client.application?.verified && client.application?.id)
+          .map(async (client) => {
+            if (client.application?.id) {
+              const cert = await certificateService.getCertificateByApplicationId(client.application.id);
+              certMap[client.application.id] = !!cert;
+            }
+          })
+      );
+      setCertificatesMap(certMap);
       
       setVerifyModalState({ isOpen: false, applicationId: '' });
     } catch (error: any) {
@@ -297,40 +328,74 @@ const ClientsPage: React.FC = () => {
                     {client.application && client.application.status === 'submitted' && (
                       <>
                         {client.application.verified ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="!text-[10px] !px-2 !py-1"
-                            onClick={async () => {
-                              try {
-                                await adminService.unverifyApplication(
-                                  client.application!.id,
-                                  user?.id || 'admin-1',
-                                  user?.name || 'Admin User'
-                                );
-                                showToast('Application unverified', 'success');
-                                const applications = await adminService.getAllApplications();
-                                const userIds = [...new Set(applications.map(app => app.userId))];
-                                const clientsData = await Promise.all(
-                                  userIds.map(async (userId) => {
-                                    const [profile, application] = await Promise.all([
-                                      profileService.getProfile(userId),
-                                      applicationService.getApplication(userId),
-                                    ]);
-                                    return { userId, profile, application };
-                                  })
-                                );
-                                setClients(clientsData);
-                                setFilteredClients(clientsData);
-                              } catch (error) {
-                                showToast('Failed to unverify application', 'error');
-                                console.error('Failed to unverify:', error);
-                              }
-                            }}
-                          >
-                            <XCircle size={12} className="mr-0.5" />
-                            Unverify
-                          </Button>
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="!text-[10px] !px-2 !py-1"
+                              onClick={async () => {
+                                try {
+                                  await adminService.unverifyApplication(
+                                    client.application!.id,
+                                    user?.id || 'admin-1',
+                                    user?.name || 'Admin User'
+                                  );
+                                  showToast('Application unverified', 'success');
+                                  const applications = await adminService.getAllApplications();
+                                  const userIds = [...new Set(applications.map(app => app.userId))];
+                                  const clientsData = await Promise.all(
+                                    userIds.map(async (userId) => {
+                                      const [profile, application] = await Promise.all([
+                                        profileService.getProfile(userId),
+                                        applicationService.getApplication(userId),
+                                      ]);
+                                      return { userId, profile, application };
+                                    })
+                                  );
+                                  setClients(clientsData);
+                                  setFilteredClients(clientsData);
+                                } catch (error) {
+                                  showToast('Failed to unverify application', 'error');
+                                  console.error('Failed to unverify:', error);
+                                }
+                              }}
+                            >
+                              <XCircle size={12} className="mr-0.5" />
+                              Unverify
+                            </Button>
+                            {!certificatesMap[client.application.id] && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!text-[10px] !px-2 !py-1"
+                                disabled={generatingCert === client.application.id}
+                                onClick={async () => {
+                                  if (!user) return;
+                                  setGeneratingCert(client.application!.id);
+                                  try {
+                                    await adminService.generateCertificate(
+                                      client.application!.id,
+                                      user.id,
+                                      user.name || user.email
+                                    );
+                                    showToast('Certificate generated successfully', 'success');
+                                    // Update certificate map
+                                    setCertificatesMap(prev => ({
+                                      ...prev,
+                                      [client.application!.id]: true,
+                                    }));
+                                  } catch (error: any) {
+                                    showToast(error.message || 'Failed to generate certificate', 'error');
+                                  } finally {
+                                    setGeneratingCert(null);
+                                  }
+                                }}
+                              >
+                                <FileText size={12} className="mr-0.5" />
+                                {generatingCert === client.application.id ? 'Generating...' : 'Generate Cert'}
+                              </Button>
+                            )}
+                          </>
                         ) : (
                           <Button
                             variant="ghost"
@@ -453,40 +518,76 @@ const ClientsPage: React.FC = () => {
                         {client.application && client.application.status === 'submitted' && (
                           <>
                             {client.application.verified ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
-                                onClick={async () => {
-                                  try {
-                                    await adminService.unverifyApplication(
-                                      client.application!.id,
-                                      user?.id || 'admin-1',
-                                      user?.name || 'Admin User'
-                                    );
-                                    showToast('Application unverified', 'success');
-                                    const applications = await adminService.getAllApplications();
-                                    const userIds = [...new Set(applications.map(app => app.userId))];
-                                    const clientsData = await Promise.all(
-                                      userIds.map(async (userId) => {
-                                        const [profile, application] = await Promise.all([
-                                          profileService.getProfile(userId),
-                                          applicationService.getApplication(userId),
-                                        ]);
-                                        return { userId, profile, application };
-                                      })
-                                    );
-                                    setClients(clientsData);
-                                    setFilteredClients(clientsData);
-                                  } catch (error) {
-                                    showToast('Failed to unverify application', 'error');
-                                    console.error('Failed to unverify:', error);
-                                  }
-                                }}
-                              >
-                                <XCircle size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
-                                <span className="hidden sm:inline">Unverify</span>
-                              </Button>
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
+                                  onClick={async () => {
+                                    try {
+                                      await adminService.unverifyApplication(
+                                        client.application!.id,
+                                        user?.id || 'admin-1',
+                                        user?.name || 'Admin User'
+                                      );
+                                      showToast('Application unverified', 'success');
+                                      const applications = await adminService.getAllApplications();
+                                      const userIds = [...new Set(applications.map(app => app.userId))];
+                                      const clientsData = await Promise.all(
+                                        userIds.map(async (userId) => {
+                                          const [profile, application] = await Promise.all([
+                                            profileService.getProfile(userId),
+                                            applicationService.getApplication(userId),
+                                          ]);
+                                          return { userId, profile, application };
+                                        })
+                                      );
+                                      setClients(clientsData);
+                                      setFilteredClients(clientsData);
+                                    } catch (error) {
+                                      showToast('Failed to unverify application', 'error');
+                                      console.error('Failed to unverify:', error);
+                                    }
+                                  }}
+                                >
+                                  <XCircle size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                  <span className="hidden sm:inline">Unverify</span>
+                                </Button>
+                                {!certificatesMap[client.application.id] && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
+                                    disabled={generatingCert === client.application.id}
+                                    onClick={async () => {
+                                      if (!user) return;
+                                      setGeneratingCert(client.application!.id);
+                                      try {
+                                        await adminService.generateCertificate(
+                                          client.application!.id,
+                                          user.id,
+                                          user.name || user.email
+                                        );
+                                        showToast('Certificate generated successfully', 'success');
+                                        // Update certificate map
+                                        setCertificatesMap(prev => ({
+                                          ...prev,
+                                          [client.application!.id]: true,
+                                        }));
+                                      } catch (error: any) {
+                                        showToast(error.message || 'Failed to generate certificate', 'error');
+                                      } finally {
+                                        setGeneratingCert(null);
+                                      }
+                                    }}
+                                  >
+                                    <FileText size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                    <span className="hidden sm:inline">
+                                      {generatingCert === client.application.id ? 'Generating...' : 'Generate Cert'}
+                                    </span>
+                                  </Button>
+                                )}
+                              </>
                             ) : (
                               <Button
                                 variant="ghost"

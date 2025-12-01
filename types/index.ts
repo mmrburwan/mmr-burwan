@@ -139,13 +139,17 @@ export interface Appointment {
 export interface Certificate {
   id: string;
   userId: string;
-  applicationId: string;
+  applicationId?: string; // Made optional since certificates can exist without applications
   verificationId: string;
   name: string;
   issuedOn: string;
   pdfUrl: string;
   verified: boolean;
   expiresAt?: string;
+  certificateNumber?: string;
+  registrationDate?: string;
+  groomName?: string;
+  brideName?: string;
 }
 
 export interface AuditLog {
@@ -165,7 +169,7 @@ export interface Notification {
   userId: string;
   applicationId?: string;
   documentId?: string;
-  type: 'document_rejected' | 'document_approved' | 'application_approved' | 'application_rejected' | 'application_verified' | 'other';
+  type: 'document_rejected' | 'document_approved' | 'application_approved' | 'application_rejected' | 'application_verified' | 'certificate_ready' | 'other';
   title: string;
   message: string;
   read: boolean;

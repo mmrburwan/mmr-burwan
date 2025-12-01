@@ -27,8 +27,9 @@ const formatAddressDisplay = (address: any): string => {
   const district = address.district || address.city || '';
   if (district) parts.push(`DIST- ${district.toUpperCase()}`);
   
-  // State - always use WEST BENGAL as this website operates only in West Bengal
-  parts.push('WEST BENGAL');
+  // State - use actual state from address
+  const state = address.state || '';
+  if (state) parts.push(state.toUpperCase());
   
   // PIN code
   if (address.zipCode) parts.push(`PIN- ${address.zipCode}`);

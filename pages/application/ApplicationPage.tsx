@@ -16,6 +16,8 @@ import Checkbox from '../../components/ui/Checkbox';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
+import ApplicationSuccessModal from '../../components/ApplicationSuccessModal';
+import StateDistrictSelector from '../../components/StateDistrictSelector';
 import { ArrowRight, ArrowLeft, Save, Upload, X, FileText, Edit, CheckCircle, Eye, Download, LogOut } from 'lucide-react';
 
 const applicationSteps = [
@@ -108,6 +110,7 @@ const ApplicationFormContent: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   // Redirect to dashboard if application is submitted and user tries to edit
   useEffect(() => {
@@ -793,7 +796,7 @@ const ApplicationFormContent: React.FC = () => {
     try {
       await submitApplication();
       showToast('Application submitted successfully!', 'success');
-      navigate('/dashboard');
+      setShowSuccessModal(true);
     } catch (error) {
       showToast('Failed to submit application. Please try again.', 'error');
     } finally {
@@ -1038,18 +1041,17 @@ const ApplicationFormContent: React.FC = () => {
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
-                  <Input
-                    label="District"
-                    {...groomForm.register('permanentDistrict')}
+                  <StateDistrictSelector
+                    stateValue={groomForm.watch('permanentState') || ''}
+                    districtValue={groomForm.watch('permanentDistrict') || ''}
+                    stateRegister={groomForm.register('permanentState')}
+                    districtRegister={groomForm.register('permanentDistrict')}
+                    setValue={groomForm.setValue}
+                    stateError={groomForm.formState.errors.permanentState?.message}
+                    districtError={groomForm.formState.errors.permanentDistrict?.message}
                     disabled={isSubmitted}
-                    error={groomForm.formState.errors.permanentDistrict?.message}
-                    required
-                  />
-                  <Input
-                    label="State"
-                    {...groomForm.register('permanentState')}
-                    disabled={isSubmitted}
-                    error={groomForm.formState.errors.permanentState?.message}
+                    stateLabel="State"
+                    districtLabel="District"
                     required
                   />
                 </div>
@@ -1111,18 +1113,17 @@ const ApplicationFormContent: React.FC = () => {
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
-                    <Input
-                      label="District"
-                      {...groomForm.register('currentDistrict')}
+                    <StateDistrictSelector
+                      stateValue={groomForm.watch('currentState') || ''}
+                      districtValue={groomForm.watch('currentDistrict') || ''}
+                      stateRegister={groomForm.register('currentState')}
+                      districtRegister={groomForm.register('currentDistrict')}
+                      setValue={groomForm.setValue}
+                      stateError={groomForm.formState.errors.currentState?.message}
+                      districtError={groomForm.formState.errors.currentDistrict?.message}
                       disabled={isSubmitted || groomSameAsPermanent}
-                      error={groomForm.formState.errors.currentDistrict?.message}
-                      required
-                    />
-                    <Input
-                      label="State"
-                      {...groomForm.register('currentState')}
-                      disabled={isSubmitted || groomSameAsPermanent}
-                      error={groomForm.formState.errors.currentState?.message}
+                      stateLabel="State"
+                      districtLabel="District"
                       required
                     />
                   </div>
@@ -1260,18 +1261,17 @@ const ApplicationFormContent: React.FC = () => {
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
-                  <Input
-                    label="District"
-                    {...brideForm.register('permanentDistrict')}
+                  <StateDistrictSelector
+                    stateValue={brideForm.watch('permanentState') || ''}
+                    districtValue={brideForm.watch('permanentDistrict') || ''}
+                    stateRegister={brideForm.register('permanentState')}
+                    districtRegister={brideForm.register('permanentDistrict')}
+                    setValue={brideForm.setValue}
+                    stateError={brideForm.formState.errors.permanentState?.message}
+                    districtError={brideForm.formState.errors.permanentDistrict?.message}
                     disabled={isSubmitted}
-                    error={brideForm.formState.errors.permanentDistrict?.message}
-                    required
-                  />
-                  <Input
-                    label="State"
-                    {...brideForm.register('permanentState')}
-                    disabled={isSubmitted}
-                    error={brideForm.formState.errors.permanentState?.message}
+                    stateLabel="State"
+                    districtLabel="District"
                     required
                   />
                 </div>
@@ -1333,18 +1333,17 @@ const ApplicationFormContent: React.FC = () => {
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
-                    <Input
-                      label="District"
-                      {...brideForm.register('currentDistrict')}
+                    <StateDistrictSelector
+                      stateValue={brideForm.watch('currentState') || ''}
+                      districtValue={brideForm.watch('currentDistrict') || ''}
+                      stateRegister={brideForm.register('currentState')}
+                      districtRegister={brideForm.register('currentDistrict')}
+                      setValue={brideForm.setValue}
+                      stateError={brideForm.formState.errors.currentState?.message}
+                      districtError={brideForm.formState.errors.currentDistrict?.message}
                       disabled={isSubmitted || brideSameAsPermanent}
-                      error={brideForm.formState.errors.currentDistrict?.message}
-                      required
-                    />
-                    <Input
-                      label="State"
-                      {...brideForm.register('currentState')}
-                      disabled={isSubmitted || brideSameAsPermanent}
-                      error={brideForm.formState.errors.currentState?.message}
+                      stateLabel="State"
+                      districtLabel="District"
                       required
                     />
                   </div>
@@ -2858,6 +2857,12 @@ const ApplicationFormContent: React.FC = () => {
         </div>
       </Card>
       </div>
+
+      {/* Application Success Modal */}
+      <ApplicationSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+      />
     </>
   );
 };

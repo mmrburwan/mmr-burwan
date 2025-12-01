@@ -52,8 +52,9 @@ const formatAddress = (address: any): string => {
   const district = address.district || address.city || '';
   if (district) parts.push(`DIST- ${district.toUpperCase()}`);
   
-  // State - always use WEST BENGAL as this website operates only in West Bengal
-  parts.push('WEST BENGAL');
+  // State - use actual state from address
+  const state = address.state || '';
+  if (state) parts.push(state.toUpperCase());
   
   // PIN code
   if (address.zipCode) parts.push(`PIN- ${address.zipCode}`);
@@ -263,7 +264,8 @@ const imageUrlToDataUrl = async (imageUrl: string): Promise<string | null> => {
   }
 };
 
-export const downloadCertificate = async (application: Application) => {
+// Generate certificate PDF blob (used for both download and upload)
+const generateCertificatePDFBlob = async (application: Application): Promise<{ blob: Blob; certificateData: any }> => {
   const certificateData = generateCertificateData(application);
   
   // Find joint photograph and convert to data URL if it exists
@@ -315,6 +317,12 @@ export const downloadCertificate = async (application: Application) => {
   });
   const blob = await pdf(doc).toBlob();
   
+  return { blob, certificateData };
+};
+
+export const downloadCertificate = async (application: Application) => {
+  const { blob, certificateData } = await generateCertificatePDFBlob(application);
+  
   // Create download link
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -327,4 +335,40 @@ export const downloadCertificate = async (application: Application) => {
   URL.revokeObjectURL(url);
   
   return certificateData;
+};
+
+// Generate and upload certificate PDF to storage (for server-side use)
+export const generateAndUploadCertificate = async (
+  application: Application,
+  supabaseClient: any
+): Promise<{ pdfUrl: string; certificateData: any }> => {
+  const { blob, certificateData } = await generateCertificatePDFBlob(application);
+  
+  // Convert blob to File for upload
+  const fileName = `Marriage-Certificate-${certificateData.verificationId}.pdf`;
+  const file = new File([blob], fileName, { type: 'application/pdf' });
+  
+  // Upload to Supabase storage
+  const filePath = `${application.id || 'certificates'}/${Date.now()}-${fileName}`;
+  
+  const { error: uploadError } = await supabaseClient.storage
+    .from('certificates')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false,
+    });
+  
+  if (uploadError) {
+    throw new Error(`Failed to upload certificate PDF: ${uploadError.message}`);
+  }
+  
+  // Get public URL
+  const { data: urlData } = supabaseClient.storage
+    .from('certificates')
+    .getPublicUrl(filePath);
+  
+  return {
+    pdfUrl: urlData.publicUrl,
+    certificateData,
+  };
 };

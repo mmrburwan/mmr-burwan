@@ -15,6 +15,8 @@
     "@react-pdf/renderer": "^4.3.1",
     "@supabase/supabase-js": "^2.39.0",
     "date-fns": "^3.6.0",
+    "html5-qrcode": "^2.3.8",
+    "jsqr": "^1.4.0",
     "lottie-react": "2.4.0",
     "lucide-react": "^0.554.0",
     "qrcode": "^1.5.4",

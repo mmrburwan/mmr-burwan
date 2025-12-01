@@ -30,6 +30,10 @@ export const certificateService = {
       pdfUrl: data.pdf_url,
       verified: data.verified || true,
       expiresAt: data.expires_at,
+      certificateNumber: data.certificate_number,
+      registrationDate: data.registration_date,
+      groomName: data.groom_name,
+      brideName: data.bride_name,
     };
   },
 
@@ -59,6 +63,10 @@ export const certificateService = {
       pdfUrl: data.pdf_url,
       verified: data.verified || true,
       expiresAt: data.expires_at,
+      certificateNumber: data.certificate_number,
+      registrationDate: data.registration_date,
+      groomName: data.groom_name,
+      brideName: data.bride_name,
     };
   },
 
@@ -96,8 +104,12 @@ export const certificateService = {
 
   async issueCertificate(
     userId: string,
-    applicationId: string,
-    pdfUrl: string
+    applicationId: string | undefined,
+    pdfUrl: string,
+    certificateNumber?: string,
+    registrationDate?: string,
+    groomName?: string,
+    brideName?: string
   ): Promise<Certificate> {
     const verificationId = `MMR-BW-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
@@ -105,12 +117,16 @@ export const certificateService = {
       .from('certificates')
       .insert({
         user_id: userId,
-        application_id: applicationId,
+        application_id: applicationId || null,
         verification_id: verificationId,
         name: 'Marriage Registration Certificate',
         pdf_url: pdfUrl,
         issued_on: new Date().toISOString(),
         verified: true,
+        certificate_number: certificateNumber || null,
+        registration_date: registrationDate || null,
+        groom_name: groomName || null,
+        bride_name: brideName || null,
       })
       .select()
       .single();
@@ -129,6 +145,10 @@ export const certificateService = {
       pdfUrl: data.pdf_url,
       verified: data.verified || true,
       expiresAt: data.expires_at,
+      certificateNumber: data.certificate_number,
+      registrationDate: data.registration_date,
+      groomName: data.groom_name,
+      brideName: data.bride_name,
     };
   },
 
@@ -136,6 +156,7 @@ export const certificateService = {
     const { data, error } = await supabase
       .from('certificates')
       .select('*')
+      .eq('verified', true) // Only get verified certificates
       .order('issued_on', { ascending: false });
 
     if (error) {
@@ -152,7 +173,44 @@ export const certificateService = {
       pdfUrl: cert.pdf_url,
       verified: cert.verified || true,
       expiresAt: cert.expires_at,
+      certificateNumber: cert.certificate_number,
+      registrationDate: cert.registration_date,
+      groomName: cert.groom_name,
+      brideName: cert.bride_name,
     }));
+  },
+
+  async getCertificateByApplicationId(applicationId: string): Promise<Certificate | null> {
+    const { data, error } = await supabase
+      .from('certificates')
+      .select('*')
+      .eq('application_id', applicationId)
+      .maybeSingle();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      throw new Error(error.message);
+    }
+
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      userId: data.user_id,
+      applicationId: data.application_id,
+      verificationId: data.verification_id,
+      name: data.name,
+      issuedOn: data.issued_on,
+      pdfUrl: data.pdf_url,
+      verified: data.verified || true,
+      expiresAt: data.expires_at,
+      certificateNumber: data.certificate_number,
+      registrationDate: data.registration_date,
+      groomName: data.groom_name,
+      brideName: data.bride_name,
+    };
   },
 
   async getSignedUrl(certificateId: string): Promise<string> {

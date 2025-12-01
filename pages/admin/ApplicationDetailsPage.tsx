@@ -344,9 +344,9 @@ const ApplicationDetailsPage: React.FC = () => {
       </div>
 
       <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-        {/* User Aadhaar Details */}
+        {/* Groom Personal Details */}
         <Card className="p-3 sm:p-4 lg:p-6">
-          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">User's Aadhaar Details</h3>
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom Personal Details</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4 text-xs sm:text-sm">
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Full Name</p>
@@ -425,9 +425,9 @@ const ApplicationDetailsPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Partner Aadhaar Details */}
+        {/* Bride Personal Details */}
         <Card className="p-3 sm:p-4 lg:p-6">
-          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Partner's Aadhaar Details</h3>
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Personal Details</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4 text-xs sm:text-sm">
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Full Name</p>
@@ -506,12 +506,12 @@ const ApplicationDetailsPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* User Addresses */}
+        {/* Groom Addresses */}
         <Card className="p-3 sm:p-4 lg:p-6">
-          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">User's Addresses</h3>
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom Addresses</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Permanent Address</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Groom Permanent Address</p>
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
@@ -612,7 +612,7 @@ const ApplicationDetailsPage: React.FC = () => {
               )}
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Current Address</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Groom Current Address</p>
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
@@ -715,12 +715,12 @@ const ApplicationDetailsPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Partner Addresses */}
-        <Card className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Partner's Addresses</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Bride Addresses */}
+        <Card className="p-3 sm:p-4 lg:p-6">
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Addresses</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Permanent Address</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Bride Permanent Address</p>
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
@@ -821,7 +821,7 @@ const ApplicationDetailsPage: React.FC = () => {
               )}
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Current Address</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Bride Current Address</p>
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
@@ -929,7 +929,7 @@ const ApplicationDetailsPage: React.FC = () => {
           <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Uploaded Documents</h3>
           <div className="space-y-3 sm:space-y-4">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">User's Documents</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Groom's Documents</p>
               <div className="space-y-1.5 sm:space-y-2">
                 {documents.filter(d => d.belongsTo === 'user').map(doc => {
                   const reuploaded = isReuploaded(doc);
@@ -1015,7 +1015,7 @@ const ApplicationDetailsPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Partner's Documents</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Bride's Documents</p>
               <div className="space-y-1.5 sm:space-y-2">
                 {documents.filter(d => d.belongsTo === 'partner').map(doc => {
                   const reuploaded = isReuploaded(doc);

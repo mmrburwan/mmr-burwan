@@ -3,8 +3,10 @@ import { documentService } from './documents';
 import { auditService } from './audit';
 import { notificationService } from './notifications';
 import { emailService } from './email';
+import { certificateService } from './certificates';
 import { supabase } from '../lib/supabase';
 import { Application } from '../types';
+import { generateAndUploadCertificate } from '../utils/certificateGenerator';
 
 export const adminService = {
   async getAllApplications(): Promise<Application[]> {
@@ -285,13 +287,14 @@ export const adminService = {
       : 'Applicant';
 
     // Create notification for the user that their application is verified
+    // Note: This notification does NOT include download option - certificate must be generated separately
     try {
       await notificationService.createNotification({
         userId: data.user_id,
         applicationId: applicationId,
         type: 'application_verified',
         title: '🎉 Congratulations! Your Application is Verified',
-        message: `Dear ${userName}, your marriage registration application has been verified successfully! Certificate Number: ${certificateNumber}. You can now download your Marriage Certificate from your dashboard.`,
+        message: `Dear ${userName}, your marriage registration application has been verified successfully! Certificate Number: ${certificateNumber}. You will receive another notification when your certificate is ready for download.`,
       });
     } catch (notificationError: any) {
       // Log error but don't fail the verification - notification is not critical
@@ -309,6 +312,106 @@ export const adminService = {
     });
 
     return applicationService.mapApplication(data);
+  },
+
+  async generateCertificate(
+    applicationId: string,
+    actorId: string,
+    actorName: string
+  ): Promise<void> {
+    // First, get the application to ensure it's verified
+    const { data: appData, error: appError } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        documents (*)
+      `)
+      .eq('id', applicationId)
+      .single();
+
+    if (appError) {
+      throw new Error(`Failed to fetch application: ${appError.message}`);
+    }
+
+    if (!appData.verified) {
+      throw new Error('Cannot generate certificate. Application must be verified first.');
+    }
+
+    if (!appData.certificate_number || !appData.registration_date) {
+      throw new Error('Cannot generate certificate. Certificate number and registration date must be set during verification.');
+    }
+
+    // Check if certificate already exists
+    const { data: existingCert, error: certCheckError } = await supabase
+      .from('certificates')
+      .select('id')
+      .eq('application_id', applicationId)
+      .maybeSingle();
+
+    if (certCheckError && certCheckError.code !== 'PGRST116') {
+      throw new Error(`Failed to check existing certificate: ${certCheckError.message}`);
+    }
+
+    if (existingCert) {
+      throw new Error('Certificate already exists for this application.');
+    }
+
+    // Generate and upload certificate PDF
+    const mappedApplication = applicationService.mapApplication(appData);
+    const { pdfUrl, certificateData } = await generateAndUploadCertificate(mappedApplication, supabase);
+    
+    // Extract user names from application data
+    const userDetails = appData.user_details as any;
+    const partnerDetails = (appData.partner_form || appData.partner_details) as any;
+    
+    const groomName = userDetails?.firstName && userDetails?.lastName
+      ? `${userDetails.firstName} ${userDetails.lastName}`.trim()
+      : userDetails?.firstName || 'N/A';
+    
+    const brideName = partnerDetails?.firstName && partnerDetails?.lastName
+      ? `${partnerDetails.firstName} ${partnerDetails.lastName}`.trim()
+      : partnerDetails?.firstName || 'N/A';
+    
+    // Create certificate record in database
+    await certificateService.issueCertificate(
+      appData.user_id,
+      applicationId,
+      pdfUrl,
+      appData.certificate_number,
+      appData.registration_date,
+      groomName,
+      brideName
+    );
+
+    // Get user details for personalized notification
+    const userName = userDetails?.firstName 
+      ? `${userDetails.firstName} ${userDetails.lastName || ''}`.trim()
+      : 'Applicant';
+
+    // Create notification for the user that their certificate is ready
+    try {
+      await notificationService.createNotification({
+        userId: appData.user_id,
+        applicationId: applicationId,
+        type: 'certificate_ready',
+        title: '🎉 Your Certificate is Ready!',
+        message: `Dear ${userName}, your marriage certificate has been generated and is now available for download! Certificate Number: ${appData.certificate_number}. You can download it from your dashboard.`,
+      });
+    } catch (notificationError: any) {
+      // Log error but don't fail the generation - notification is not critical
+      console.error('Failed to create certificate notification:', notificationError);
+    }
+
+    // Create audit log
+    await auditService.createLog({
+      actorId,
+      actorName,
+      actorRole: 'admin',
+      action: 'certificate_generated',
+      resourceType: 'application',
+      resourceId: applicationId,
+      details: { certificateNumber: appData.certificate_number },
+    });
   },
 
   async unverifyApplication(applicationId: string, actorId: string, actorName: string): Promise<Application> {

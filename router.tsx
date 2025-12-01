@@ -16,6 +16,7 @@ const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
 const OnboardingPage = lazy(() => import('./pages/onboarding/OnboardingPage'));
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 const ApplicationPage = lazy(() => import('./pages/application/ApplicationPage'));
+const ViewApplicationPage = lazy(() => import('./pages/application/ViewApplicationPage'));
 const DocumentsPage = lazy(() => import('./pages/documents/DocumentsPage'));
 const ChatPage = lazy(() => import('./pages/chat/ChatPage'));
 const AdminChatPage = lazy(() => import('./pages/admin/AdminChatPage'));
@@ -154,6 +155,14 @@ const router = createBrowserRouter(
     element: (
       <Suspense fallback={<LoadingSpinner />}>
         <ApplicationPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/application/view',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ViewApplicationPage />
       </Suspense>
     ),
   },
