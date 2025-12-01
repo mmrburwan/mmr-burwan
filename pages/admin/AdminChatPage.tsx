@@ -312,43 +312,44 @@ const AdminChatPage: React.FC = () => {
   const currentConversation = conversations.find((c) => c.id === selectedConversation);
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+      <div className="mb-4 sm:mb-6 lg:mb-8">
+        <div className="flex items-center gap-2 sm:gap-4 mb-2 sm:mb-3 lg:mb-4">
           <Button
             variant="ghost"
             onClick={() => navigate('/admin')}
-            className="flex-shrink-0"
+            className="flex-shrink-0 !text-xs sm:!text-sm !px-2 sm:!px-3"
+            size="sm"
           >
-            <ArrowLeft size={18} className="mr-2" />
+            <ArrowLeft size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             Back
           </Button>
         </div>
-        <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Messages</h1>
-        <p className="text-gray-600">Chat with users and manage conversations</p>
+        <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Messages</h1>
+        <p className="text-xs sm:text-sm text-gray-600">Chat with users and manage conversations</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)]">
         {/* Conversations List */}
         <Card className="p-0 overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gold-50 to-rose-50">
-            <h3 className="font-semibold text-gray-900 mb-3">All Conversations</h3>
+          <div className="p-2.5 sm:p-3 lg:p-4 border-b border-gray-200 bg-gradient-to-r from-gold-50 to-rose-50">
+            <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3">All Conversations</h3>
             <div className="relative">
-              <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Search size={14} className="sm:w-4 sm:h-5 absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <Input
                 type="text"
                 placeholder="Search conversations..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-8 sm:pl-10 !text-xs sm:!text-sm"
               />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
             {isLoading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gold-500 mx-auto mb-4"></div>
-                <p className="text-sm text-gray-500">Loading conversations...</p>
+              <div className="p-4 sm:p-6 lg:p-8 text-center">
+                <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-t-2 border-b-2 border-gold-500 mx-auto mb-2 sm:mb-3 lg:mb-4"></div>
+                <p className="text-xs sm:text-sm text-gray-500">Loading conversations...</p>
               </div>
             ) : filteredConversations.length > 0 ? (
               filteredConversations.map((conv) => (
@@ -359,49 +360,49 @@ const AdminChatPage: React.FC = () => {
                     navigate(`/admin/chat?userId=${conv.userId}`, { replace: true });
                   }}
                   className={`
-                    w-full p-4 text-left hover:bg-gray-50 transition-all duration-200
+                    w-full p-2.5 sm:p-3 lg:p-4 text-left hover:bg-gray-50 transition-all duration-200
                     ${selectedConversation === conv.id ? 'bg-gold-50 border-l-4 border-gold-500' : ''}
                   `}
                 >
-                  <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-start justify-between mb-1 sm:mb-2">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="w-8 h-8 rounded-full bg-gold-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                          {conv.userName?.charAt(0).toUpperCase() || <User size={16} />}
+                      <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gold-500 flex items-center justify-center text-white font-semibold text-[10px] sm:text-xs flex-shrink-0">
+                          {conv.userName?.charAt(0).toUpperCase() || <User size={12} className="sm:w-4 sm:h-4" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">
+                          <p className="font-semibold text-xs sm:text-sm text-gray-900 truncate">
                             {conv.userName || 'User'}
                           </p>
-                          <p className="text-xs text-gray-500 truncate">{conv.userEmail}</p>
+                          <p className="text-[10px] sm:text-xs text-gray-500 truncate">{conv.userEmail}</p>
                         </div>
                         {conv.unreadCount > 0 && (
-                          <Badge variant="info" className="flex-shrink-0">
+                          <Badge variant="info" className="flex-shrink-0 !text-[10px] sm:!text-xs">
                             {conv.unreadCount}
                           </Badge>
                         )}
                       </div>
                       {conv.lastMessage && (
-                        <p className="text-sm text-gray-600 truncate mb-1 ml-10">
+                        <p className="text-[10px] sm:text-xs lg:text-sm text-gray-600 truncate mb-0.5 sm:mb-1 ml-8 sm:ml-10">
                           {conv.lastMessage.content}
                         </p>
                       )}
                       {conv.lastMessage && (
-                        <p className="text-xs text-gray-400 ml-10">
+                        <p className="text-[10px] sm:text-xs text-gray-400 ml-8 sm:ml-10">
                           {formatTime(conv.lastMessage.timestamp)}
                         </p>
                       )}
                       {!conv.lastMessage && (
-                        <p className="text-sm text-gray-400 italic ml-10">No messages yet</p>
+                        <p className="text-[10px] sm:text-xs text-gray-400 italic ml-8 sm:ml-10">No messages yet</p>
                       )}
                     </div>
                   </div>
                 </button>
               ))
             ) : (
-              <div className="p-8 text-center">
-                <MessageSquare size={48} className="text-gray-300 mx-auto mb-4" />
-                <p className="text-sm text-gray-500">No conversations found</p>
+              <div className="p-4 sm:p-6 lg:p-8 text-center">
+                <MessageSquare size={32} className="sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3 lg:mb-4" />
+                <p className="text-xs sm:text-sm text-gray-500">No conversations found</p>
               </div>
             )}
           </div>
@@ -412,21 +413,22 @@ const AdminChatPage: React.FC = () => {
           <Card className="p-0 flex flex-col h-full">
             {selectedConversation && currentConversation ? (
               <>
-                <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gold-50 to-rose-50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gold-500 flex items-center justify-center text-white font-semibold">
-                      {currentConversation.userName?.charAt(0).toUpperCase() || <User size={20} />}
+                <div className="p-2.5 sm:p-3 lg:p-4 border-b border-gray-200 bg-gradient-to-r from-gold-50 to-rose-50">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-gold-500 flex items-center justify-center text-white font-semibold text-xs sm:text-sm flex-shrink-0">
+                      {currentConversation.userName?.charAt(0).toUpperCase() || <User size={14} className="sm:w-5 sm:h-5" />}
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 truncate">
                         {currentConversation.userName || 'User'}
                       </h3>
-                      <p className="text-xs text-gray-500">{currentConversation.userEmail}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-500 truncate">{currentConversation.userEmail}</p>
                     </div>
-                    <div className="ml-auto">
+                    <div className="ml-auto flex-shrink-0">
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
                         onClick={async () => {
                           try {
                             // Find the user's application
@@ -448,12 +450,13 @@ const AdminChatPage: React.FC = () => {
                           }
                         }}
                       >
-                        View Application
+                        <span className="hidden sm:inline">View Application</span>
+                        <span className="sm:hidden">View</span>
                       </Button>
                     </div>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+                <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4 xl:p-6 space-y-2 sm:space-y-3 lg:space-y-4 bg-gray-50">
                   {messages.length > 0 ? (
                     messages.map((msg, index) => {
                       const isOwn = msg.senderId === user?.id;
@@ -464,36 +467,36 @@ const AdminChatPage: React.FC = () => {
                       return (
                         <div
                           key={msg.id}
-                          className={`flex gap-3 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
+                          className={`flex gap-1.5 sm:gap-2 lg:gap-3 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
                         >
                           {showAvatar && !isOwn && (
-                            <div className="w-8 h-8 rounded-full bg-gold-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                            <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-gold-500 flex items-center justify-center text-white font-semibold text-[10px] sm:text-xs flex-shrink-0">
                               {msg.senderName.charAt(0).toUpperCase()}
                             </div>
                           )}
                           {showAvatar && isOwn && (
-                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                            <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-[10px] sm:text-xs flex-shrink-0">
                               A
                             </div>
                           )}
-                          {!showAvatar && <div className="w-8 flex-shrink-0" />}
-                          <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[70%]`}>
+                          {!showAvatar && <div className="w-6 sm:w-7 lg:w-8 flex-shrink-0" />}
+                          <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[75%] sm:max-w-[70%]`}>
                             {showAvatar && (
-                              <p className="text-xs text-gray-500 mb-1 px-2">{msg.senderName}</p>
+                              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1 px-1 sm:px-2">{msg.senderName}</p>
                             )}
                             <div
                               className={`
-                                rounded-2xl px-4 py-2.5 shadow-sm
+                                rounded-xl sm:rounded-2xl px-2.5 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 shadow-sm
                                 ${isOwn
                                   ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
                                   : 'bg-white text-gray-900 border border-gray-200'
                                 }
                               `}
                             >
-                              <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                              <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                               {showTime && (
-                                <div className={`flex items-center gap-1 mt-1.5 ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                                  <span className={`text-xs ${isOwn ? 'text-blue-100' : 'text-gray-400'}`}>
+                                <div className={`flex items-center gap-1 mt-1 sm:mt-1.5 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                                  <span className={`text-[10px] sm:text-xs ${isOwn ? 'text-blue-100' : 'text-gray-400'}`}>
                                     {formatTime(msg.timestamp)}
                                   </span>
                                   {isOwn && getStatusIcon(msg.status)}
@@ -507,15 +510,15 @@ const AdminChatPage: React.FC = () => {
                   ) : (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center">
-                        <MessageSquare size={48} className="text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500">No messages yet. Start the conversation!</p>
+                        <MessageSquare size={32} className="sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3 lg:mb-4" />
+                        <p className="text-xs sm:text-sm text-gray-500">No messages yet. Start the conversation!</p>
                       </div>
                     </div>
                   )}
                   <div ref={messagesEndRef} />
                 </div>
-                <div className="p-4 border-t border-gray-200 bg-white">
-                  <div className="flex gap-2">
+                <div className="p-2 sm:p-3 lg:p-4 border-t border-gray-200 bg-white">
+                  <div className="flex gap-1.5 sm:gap-2">
                     <Input
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
@@ -526,7 +529,7 @@ const AdminChatPage: React.FC = () => {
                         }
                       }}
                       placeholder="Type your message..."
-                      className="flex-1"
+                      className="flex-1 !text-xs sm:!text-sm"
                       disabled={!user || isSending}
                     />
                     <Button 
@@ -534,9 +537,10 @@ const AdminChatPage: React.FC = () => {
                       onClick={handleSend}
                       disabled={!messageText.trim() || !user || isSending}
                       isLoading={isSending}
-                      className="px-6"
+                      className="!px-3 sm:!px-4 lg:!px-6 !text-xs sm:!text-sm"
+                      size="sm"
                     >
-                      <Send size={18} />
+                      <Send size={14} className="sm:w-4 sm:h-5" />
                     </Button>
                   </div>
                 </div>
@@ -544,9 +548,9 @@ const AdminChatPage: React.FC = () => {
             ) : (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <MessageSquare size={64} className="text-gray-300 mx-auto mb-4" />
-                  <h3 className="font-semibold text-gray-900 mb-2">Select a conversation</h3>
-                  <p className="text-gray-500">Choose a conversation from the list to start chatting</p>
+                  <MessageSquare size={40} className="sm:w-16 sm:h-16 text-gray-300 mx-auto mb-2 sm:mb-3 lg:mb-4" />
+                  <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-1 sm:mb-2">Select a conversation</h3>
+                  <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Choose a conversation from the list to start chatting</p>
                 </div>
               </div>
             )}

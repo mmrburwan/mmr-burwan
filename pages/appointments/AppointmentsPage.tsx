@@ -83,46 +83,49 @@ const AppointmentsPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => navigate('/dashboard')}
-            className="flex-shrink-0"
+            className="flex-shrink-0 !px-2 sm:!px-3"
           >
-            <ArrowLeft size={18} className="mr-2" />
-            Back
+            <ArrowLeft size={16} className="sm:w-[18px] sm:h-[18px] mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Back</span>
           </Button>
         </div>
-        <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Book Appointment</h1>
-        <p className="text-gray-600">Select an available time slot for your registration</p>
+        <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1">Book Appointment</h1>
+        <p className="text-xs sm:text-sm text-gray-600">Select an available time slot</p>
       </div>
 
       {userAppointment && (
-        <Card className="p-6 mb-8 bg-gold-50 border-gold-200">
-          <div className="flex items-center justify-between">
+        <Card className="p-3 sm:p-5 mb-4 sm:mb-6 bg-gold-50 border-gold-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <CheckCircle size={20} className="text-gold-600" />
-                {isRescheduling ? 'Rescheduling your appointment' : 'You have an appointment'}
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 flex items-center gap-2">
+                <CheckCircle size={16} className="sm:w-5 sm:h-5 text-gold-600" />
+                {isRescheduling ? 'Rescheduling' : 'Current Appointment'}
               </h3>
-              <p className="text-gray-700">
-                {safeFormatDate(userAppointment.date, 'MMMM d, yyyy', userAppointment.date)} at {userAppointment.time}
+              <p className="text-xs sm:text-sm text-gray-700">
+                {safeFormatDate(userAppointment.date, 'MMM d, yyyy', userAppointment.date)} at {userAppointment.time}
               </p>
               {isRescheduling && (
-                <p className="text-sm text-gold-700 mt-2">
-                  Select a new time slot below to reschedule
+                <p className="text-[10px] sm:text-xs text-gold-700 mt-1">
+                  Select a new slot below
                 </p>
               )}
             </div>
             <div className="flex gap-2">
-              <Button variant="primary" onClick={() => navigate('/pass')}>
+              <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => navigate('/pass')}>
                 View Pass
               </Button>
               {!isRescheduling && (
                 <Button 
-                  variant="outline" 
+                  variant="outline"
+                  size="sm"
+                  className="!text-xs sm:!text-sm"
                   onClick={() => setIsRescheduling(true)}
                 >
                   Reschedule
@@ -130,7 +133,9 @@ const AppointmentsPage: React.FC = () => {
               )}
               {isRescheduling && (
                 <Button 
-                  variant="ghost" 
+                  variant="ghost"
+                  size="sm"
+                  className="!text-xs sm:!text-sm"
                   onClick={() => setIsRescheduling(false)}
                 >
                   Cancel
@@ -141,17 +146,16 @@ const AppointmentsPage: React.FC = () => {
         </Card>
       )}
 
-      <div className="space-y-6">
+      <div className="space-y-3 sm:space-y-4">
         {Object.entries(groupedSlots).map(([date, dateSlots]) => (
-          <Card key={date} className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Calendar size={20} className="text-gold-600" />
-              {safeFormatDate(date, 'EEEE, MMMM d, yyyy', date)}
+          <Card key={date} className="p-3 sm:p-5">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+              <Calendar size={16} className="sm:w-5 sm:h-5 text-gold-600" />
+              {safeFormatDate(date, 'EEE, MMM d', date)}
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
               {dateSlots.map((slot) => {
                 const isAvailable = slot.booked < slot.capacity;
-                // Ensure proper ISO format: date should be YYYY-MM-DD and time HH:MM
                 const slotDateTime = slot.time.includes(':') 
                   ? `${slot.date}T${slot.time}:00` 
                   : `${slot.date}T${slot.time}`;
@@ -160,7 +164,6 @@ const AppointmentsPage: React.FC = () => {
                   const parsedDate = parseISO(slotDateTime);
                   isPast = isValid(parsedDate) ? isAfter(new Date(), parsedDate) : false;
                 } catch (error) {
-                  // If parsing fails, assume it's not in the past
                   isPast = false;
                 }
                 
@@ -170,19 +173,19 @@ const AppointmentsPage: React.FC = () => {
                     onClick={() => !isPast && isAvailable && handleBook(slot.id)}
                     disabled={isPast || !isAvailable || (!!userAppointment && !isRescheduling)}
                     className={`
-                      p-4 rounded-xl border-2 transition-all
+                      p-2 sm:p-3 rounded-lg sm:rounded-xl border-2 transition-all
                       ${isPast || !isAvailable || (!!userAppointment && !isRescheduling)
                         ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
                         : 'border-gold-200 hover:border-gold-400 hover:bg-gold-50 cursor-pointer'
                       }
                     `}
                   >
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock size={16} className="text-gray-500" />
-                      <span className="font-medium text-gray-900">{slot.time}</span>
+                    <div className="flex items-center justify-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                      <Clock size={12} className="sm:w-4 sm:h-4 text-gray-500" />
+                      <span className="font-medium text-xs sm:text-sm text-gray-900">{slot.time}</span>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      {slot.capacity - slot.booked} available
+                    <p className="text-[10px] sm:text-xs text-gray-500 text-center">
+                      {slot.capacity - slot.booked} left
                     </p>
                   </button>
                 );
@@ -193,10 +196,10 @@ const AppointmentsPage: React.FC = () => {
       </div>
 
       {slots.length === 0 && (
-        <Card className="p-12 text-center">
-          <Calendar size={48} className="text-gray-300 mx-auto mb-4" />
-          <h3 className="font-semibold text-gray-900 mb-2">No Available Slots</h3>
-          <p className="text-gray-500">Please check back later for new appointment slots.</p>
+        <Card className="p-8 sm:p-12 text-center">
+          <Calendar size={36} className="sm:w-12 sm:h-12 text-gray-300 mx-auto mb-3 sm:mb-4" />
+          <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">No Available Slots</h3>
+          <p className="text-xs sm:text-sm text-gray-500">Check back later for new slots.</p>
         </Card>
       )}
     </div>

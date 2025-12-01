@@ -85,16 +85,16 @@ const RejectDocumentModal: React.FC<RejectDocumentModalProps> = ({
       title="Reject Document"
       size="md"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="space-y-4">
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <XCircle size={20} className="text-rose-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-rose-900 mb-1">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4 lg:space-y-6">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="p-2.5 sm:p-3 lg:p-4 bg-rose-50 border border-rose-200 rounded-lg sm:rounded-xl">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <XCircle size={16} className="sm:w-5 sm:h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-rose-900 mb-0.5 sm:mb-1">
                   Rejecting: {getDocumentTypeLabel(documentType)}
                 </p>
-                <p className="text-xs text-rose-700">
+                <p className="text-[10px] sm:text-xs text-rose-700 truncate">
                   {documentName}
                 </p>
               </div>
@@ -102,14 +102,14 @@ const RejectDocumentModal: React.FC<RejectDocumentModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
               Reason for Rejection <span className="text-rose-600">*</span>
             </label>
             <textarea
               {...register('reason')}
-              rows={5}
+              rows={4}
               className={`
-                w-full px-4 py-3 rounded-xl border transition-all duration-200
+                w-full px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 text-xs sm:text-sm rounded-lg sm:rounded-xl border transition-all duration-200
                 ${errors.reason 
                   ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500' 
                   : 'border-gray-200 focus:border-gold-500 focus:ring-gold-500'
@@ -122,21 +122,21 @@ const RejectDocumentModal: React.FC<RejectDocumentModalProps> = ({
               disabled={isSubmitting}
             />
             {errors.reason && (
-              <p className="mt-1.5 text-sm text-rose-600">{errors.reason.message}</p>
+              <p className="mt-1 text-[10px] sm:text-xs text-rose-600">{errors.reason.message}</p>
             )}
-            <p className="mt-1.5 text-xs text-gray-500">
+            <p className="mt-1 text-[10px] sm:text-xs text-gray-500">
               Minimum 10 characters required. This reason will be visible to the user.
             </p>
           </div>
 
           {userEmail && (
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <div className="p-2.5 sm:p-3 lg:p-4 bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl">
               <Checkbox
                 {...register('sendEmail')}
                 label={
-                  <div className="flex items-center gap-2">
-                    <Mail size={16} className="text-blue-600" />
-                    <span className="text-sm text-gray-700">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <Mail size={14} className="sm:w-4 sm:h-4 text-blue-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-gray-700">
                       Send email notification to user
                     </span>
                   </div>
@@ -144,21 +144,22 @@ const RejectDocumentModal: React.FC<RejectDocumentModalProps> = ({
                 disabled={isSubmitting}
               />
               {sendEmail && (
-                <p className="mt-2 text-xs text-blue-700 ml-8">
-                  An email will be sent to <span className="font-medium">{userEmail}</span> with the rejection reason.
+                <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-blue-700 ml-6 sm:ml-8">
+                  An email will be sent to <span className="font-medium truncate">{userEmail}</span> with the rejection reason.
                 </p>
               )}
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-200">
           <Button
             type="button"
             variant="ghost"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="flex-1"
+            className="flex-1 !text-xs sm:!text-sm"
+            size="sm"
           >
             Cancel
           </Button>
@@ -167,10 +168,12 @@ const RejectDocumentModal: React.FC<RejectDocumentModalProps> = ({
             variant="primary"
             isLoading={isSubmitting}
             disabled={isSubmitting}
-            className="flex-1"
+            className="flex-1 !text-xs sm:!text-sm"
+            size="sm"
           >
-            <XCircle size={18} className="mr-2" />
-            Reject Document
+            <XCircle size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Reject Document</span>
+            <span className="sm:hidden">Reject</span>
           </Button>
         </div>
       </form>

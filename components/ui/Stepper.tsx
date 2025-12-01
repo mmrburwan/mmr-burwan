@@ -36,7 +36,7 @@ const Stepper: React.FC<StepperProps> = ({
                 {/* Step Circle */}
                 <div
                   className={`
-                    w-10 h-10 rounded-full flex items-center justify-center relative z-10
+                    w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center relative z-10
                     transition-all duration-300
                     ${completed
                       ? 'bg-gold-500 text-white shadow-md'
@@ -47,9 +47,9 @@ const Stepper: React.FC<StepperProps> = ({
                   `}
                 >
                   {completed ? (
-                    <Check size={20} />
+                    <Check size={14} className="sm:w-[18px] sm:h-[18px]" />
                   ) : (
-                    <span className="text-sm font-medium">{index + 1}</span>
+                    <span className="text-[11px] sm:text-sm font-medium">{index + 1}</span>
                   )}
                 </div>
                 
@@ -58,15 +58,15 @@ const Stepper: React.FC<StepperProps> = ({
                   <div 
                     className="absolute top-0 left-full z-0 flex items-center justify-center"
                     style={{ 
-                      width: '24px',
-                      height: '40px',
+                      width: '16px',
+                      height: '28px',
                       transform: 'translateX(-50%)'
                     }}
                   >
                     <ChevronRight
-                      size={20}
+                      size={14}
                       className={`
-                        transition-all duration-300
+                        sm:w-[18px] sm:h-[18px] transition-all duration-300
                         ${completed ? 'text-gold-500' : 'text-gray-300'}
                       `}
                     />
@@ -74,17 +74,17 @@ const Stepper: React.FC<StepperProps> = ({
                 )}
                 
                 {/* Step Label */}
-                <div className="mt-3 text-center max-w-[120px]">
+                <div className="mt-1.5 sm:mt-2 text-center max-w-[60px] sm:max-w-[100px]">
                   <p
                     className={`
-                      text-xs font-medium
+                      text-[9px] sm:text-xs font-medium leading-tight
                       ${current ? 'text-gold-700' : completed ? 'text-gray-700' : 'text-gray-400'}
                     `}
                   >
                     {step.label}
                   </p>
                   {step.description && (
-                    <p className="text-xs text-gray-500 mt-1 hidden sm:block">
+                    <p className="text-[10px] text-gray-500 mt-0.5 hidden sm:block">
                       {step.description}
                     </p>
                   )}

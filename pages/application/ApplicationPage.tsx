@@ -801,7 +801,31 @@ const ApplicationFormContent: React.FC = () => {
     }
   };
 
+  // Helper function to check if a document already exists (either unsaved or saved)
+  const documentExists = (type: 'aadhaar' | 'tenth_certificate' | 'voter_id' | 'photo', belongsTo: 'user' | 'partner' | 'joint') => {
+    // Check if document exists in unsaved documents
+    const existsInUnsaved = documents.some(d => d.belongsTo === belongsTo && d.type === type);
+    
+    // Check if document exists in saved documents
+    const existsInSaved = applicationDocuments.some(d => d.belongsTo === belongsTo && d.type === type);
+    
+    return existsInUnsaved || existsInSaved;
+  };
+
+  // Helper function to check if either tenth_certificate or voter_id exists (for second document)
+  const secondDocumentExists = (belongsTo: 'user' | 'partner') => {
+    const existsInUnsaved = documents.some(d => d.belongsTo === belongsTo && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
+    const existsInSaved = applicationDocuments.some(d => d.belongsTo === belongsTo && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
+    return existsInUnsaved || existsInSaved;
+  };
+
   const handleFileUpload = (file: File, type: 'aadhaar' | 'tenth_certificate' | 'voter_id' | 'photo', belongsTo: 'user' | 'partner' | 'joint') => {
+    // Check if document already exists
+    if (documentExists(type, belongsTo)) {
+      showToast(`A ${getDocumentTypeLabel(type)} has already been uploaded. Please remove the existing document first.`, 'error');
+      return;
+    }
+
     const newDoc: DocumentFile = {
       id: `doc-${Date.now()}-${Math.random()}`,
       file,
@@ -815,7 +839,25 @@ const ApplicationFormContent: React.FC = () => {
     setDocuments(documents.filter(d => d.id !== id));
   };
 
+  // Handle removing saved documents (from applicationDocuments)
+  const handleRemoveSavedDocument = async (type: 'aadhaar' | 'tenth_certificate' | 'voter_id' | 'photo', belongsTo: 'user' | 'partner' | 'joint') => {
+    if (!application) return;
+    
+    try {
+      const docToRemove = applicationDocuments.find(d => d.belongsTo === belongsTo && d.type === type);
+      if (docToRemove && docToRemove.id) {
+        await documentService.deleteDocument(docToRemove.id);
+        setApplicationDocuments(applicationDocuments.filter(d => !(d.belongsTo === belongsTo && d.type === type)));
+        showToast('Document removed successfully', 'success');
+      }
+    } catch (error) {
+      console.error('Failed to remove document:', error);
+      showToast('Failed to remove document. Please try again.', 'error');
+    }
+  };
+
   const handlePreviewDocument = async (doc: DocumentFile | any) => {
+    console.log('Preview clicked, document:', doc);
     setPreviewDocument(doc);
     setIsLoadingPreview(true);
     setPreviewUrl(null);
@@ -824,31 +866,41 @@ const ApplicationFormContent: React.FC = () => {
       if ('file' in doc && doc.file instanceof File) {
         // For local files (not yet uploaded)
         const url = URL.createObjectURL(doc.file);
+        console.log('Created blob URL for file:', url);
         setPreviewUrl(url);
+        setIsLoadingPreview(false);
       } else if ('url' in doc && doc.url) {
         // For already uploaded documents - try to get signed URL
         if (doc.id && application) {
           try {
             const signedUrl = await documentService.getSignedUrl(doc.id);
+            console.log('Got signed URL:', signedUrl);
             setPreviewUrl(signedUrl);
           } catch (error) {
+            console.error('Failed to get signed URL, using original:', error);
             // Fallback to original URL
             setPreviewUrl(doc.url);
           }
         } else {
+          console.log('Using original URL:', doc.url);
           setPreviewUrl(doc.url);
         }
+        setIsLoadingPreview(false);
       } else if (doc instanceof File) {
         // Direct file object
         const url = URL.createObjectURL(doc);
+        console.log('Created blob URL for direct file:', url);
         setPreviewUrl(url);
+        setIsLoadingPreview(false);
+      } else {
+        console.error('Unknown document type:', doc);
+        setIsLoadingPreview(false);
       }
     } catch (error) {
       console.error('Failed to load preview:', error);
       if ('url' in doc && doc.url) {
         setPreviewUrl(doc.url);
       }
-    } finally {
       setIsLoadingPreview(false);
     }
   };
@@ -895,11 +947,11 @@ const ApplicationFormContent: React.FC = () => {
     switch (currentStep) {
       case 0:
         return (
-          <div className="space-y-8">
+          <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-4">Groom Personal Details</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom Personal Details</h3>
+              <div className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <Input
                     label="First Name"
                     {...groomForm.register('firstName')}
@@ -959,9 +1011,9 @@ const ApplicationFormContent: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-4">Groom Permanent Address</h3>
-              <div className="space-y-4">
+            <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom Permanent Address</h3>
+              <div className="space-y-3 sm:space-y-4">
                 <Input
                   label="Village/Street"
                   {...groomForm.register('permanentVillageStreet')}
@@ -969,7 +1021,7 @@ const ApplicationFormContent: React.FC = () => {
                   error={groomForm.formState.errors.permanentVillageStreet?.message}
                   required
                 />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <Input
                     label="Post Office"
                     {...groomForm.register('permanentPostOffice')}
@@ -985,7 +1037,7 @@ const ApplicationFormContent: React.FC = () => {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <Input
                     label="District"
                     {...groomForm.register('permanentDistrict')}
@@ -1001,7 +1053,7 @@ const ApplicationFormContent: React.FC = () => {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <Input
                     label="ZIP Code"
                     maxLength={6}
@@ -1025,16 +1077,16 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-gray-200 mt-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Groom Current Address</h3>
-                <div className="mb-4">
+              <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200 mt-4 sm:mt-5 lg:mt-6">
+                <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom Current Address</h3>
+                <div className="mb-3 sm:mb-4">
                   <Checkbox
                     label="Same as permanent address"
                     checked={groomSameAsPermanent || false}
                     onChange={(e) => groomForm.setValue('sameAsPermanent', e.target.checked)}
                   />
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <Input
                     label="Village/Street"
                     {...groomForm.register('currentVillageStreet')}
@@ -1042,7 +1094,7 @@ const ApplicationFormContent: React.FC = () => {
                     error={groomForm.formState.errors.currentVillageStreet?.message}
                     required
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                     <Input
                       label="Post Office"
                       {...groomForm.register('currentPostOffice')}
@@ -1058,7 +1110,7 @@ const ApplicationFormContent: React.FC = () => {
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                     <Input
                       label="District"
                       {...groomForm.register('currentDistrict')}
@@ -1074,7 +1126,7 @@ const ApplicationFormContent: React.FC = () => {
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                     <Input
                       label="ZIP Code"
                       maxLength={6}
@@ -1100,9 +1152,9 @@ const ApplicationFormContent: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-4">Marriage Date</h3>
-              <div className="space-y-4">
+            <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Marriage Date</h3>
+              <div className="space-y-3 sm:space-y-4">
                 <Input
                   label="Marriage Date"
                   type="date"
@@ -1117,11 +1169,11 @@ const ApplicationFormContent: React.FC = () => {
         );
       case 1:
         return (
-          <div className="space-y-8">
+          <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-4">Bride Personal Details</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Personal Details</h3>
+              <div className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <Input
                     label="First Name"
                     {...brideForm.register('firstName')}
@@ -1181,9 +1233,9 @@ const ApplicationFormContent: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-4">Bride Permanent Address</h3>
-              <div className="space-y-4">
+            <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Permanent Address</h3>
+              <div className="space-y-3 sm:space-y-4">
                 <Input
                   label="Village/Street"
                   {...brideForm.register('permanentVillageStreet')}
@@ -1191,7 +1243,7 @@ const ApplicationFormContent: React.FC = () => {
                   error={brideForm.formState.errors.permanentVillageStreet?.message}
                   required
                 />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <Input
                     label="Post Office"
                     {...brideForm.register('permanentPostOffice')}
@@ -1207,7 +1259,7 @@ const ApplicationFormContent: React.FC = () => {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <Input
                     label="District"
                     {...brideForm.register('permanentDistrict')}
@@ -1223,7 +1275,7 @@ const ApplicationFormContent: React.FC = () => {
                     required
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <Input
                     label="ZIP Code"
                     maxLength={6}
@@ -1247,16 +1299,16 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-gray-200 mt-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Bride Current Address</h3>
-                <div className="mb-4">
+              <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200 mt-4 sm:mt-5 lg:mt-6">
+                <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Current Address</h3>
+                <div className="mb-3 sm:mb-4">
                   <Checkbox
                     label="Same as permanent address"
                     checked={brideSameAsPermanent || false}
                     onChange={(e) => brideForm.setValue('sameAsPermanent', e.target.checked)}
                   />
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <Input
                     label="Village/Street"
                     {...brideForm.register('currentVillageStreet')}
@@ -1264,7 +1316,7 @@ const ApplicationFormContent: React.FC = () => {
                     error={brideForm.formState.errors.currentVillageStreet?.message}
                     required
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                     <Input
                       label="Post Office"
                       {...brideForm.register('currentPostOffice')}
@@ -1280,7 +1332,7 @@ const ApplicationFormContent: React.FC = () => {
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                     <Input
                       label="District"
                       {...brideForm.register('currentDistrict')}
@@ -1296,7 +1348,7 @@ const ApplicationFormContent: React.FC = () => {
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                     <Input
                       label="ZIP Code"
                       maxLength={6}
@@ -1325,92 +1377,130 @@ const ApplicationFormContent: React.FC = () => {
         );
       case 2:
         return (
-          <div className="space-y-8">
+          <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Groom's Documents</h3>
-              <p className="text-sm text-gray-600 mb-6">Upload groom's Aadhaar card and either 10th class certificate or Voter ID</p>
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">Groom's Documents</h3>
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4 lg:mb-6">Upload Aadhaar card + 10th certificate or Voter ID</p>
               
               {isLoadingDocuments && (
-                <div className="flex items-center justify-center py-4 mb-4 bg-gray-50 rounded-lg">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-gold-500"></div>
-                  <span className="ml-2 text-sm text-gray-500">Loading saved documents...</span>
+                <div className="flex items-center justify-center py-3 sm:py-4 mb-3 sm:mb-4 bg-gray-50 rounded-lg">
+                  <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-t-2 border-b-2 border-gold-500"></div>
+                  <span className="ml-2 text-[10px] sm:text-xs text-gray-500">Loading...</span>
                 </div>
               )}
               
               {/* Show saved documents from database */}
               {!isLoadingDocuments && applicationDocuments.filter(d => d.belongsTo === 'user').length > 0 && (
-                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Previously Saved Documents:</p>
-                  <div className="space-y-2">
+                <div className="mb-3 sm:mb-4 p-2.5 sm:p-4 bg-gray-50 rounded-lg">
+                  <p className="text-[10px] sm:text-xs font-medium text-gray-700 mb-1.5 sm:mb-2">Previously Saved:</p>
+                  <div className="space-y-1.5 sm:space-y-2">
                     {applicationDocuments
                       .filter(d => d.belongsTo === 'user')
                       .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
-                            {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                            {doc.type === 'tenth_certificate' && '10th Certificate'}
+                        <div key={doc.id} className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-600">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
+                            {doc.type === 'aadhaar' && 'Aadhaar'}
+                            {doc.type === 'tenth_certificate' && '10th Cert'}
                             {doc.type === 'voter_id' && 'Voter ID'}
                             : {doc.name}
                           </span>
                           <button
-                            onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1 ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handlePreviewDocument(doc);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 p-0.5 sm:p-1 flex-shrink-0"
                             title="Preview"
+                            type="button"
                           >
-                            <Eye size={16} />
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
                           </button>
-                          <CheckCircle size={16} className="text-green-600" />
+                          <CheckCircle size={12} className="sm:w-4 sm:h-4 text-green-600 flex-shrink-0" />
                         </div>
                       ))}
                   </div>
                 </div>
               )}
               
-              <div className="space-y-4 mb-6">
+              <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                     Aadhaar Card <span className="text-rose-600">*</span>
                   </label>
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file, 'aadhaar', 'user');
-                      }}
-                      className="hidden"
-                      id="user-aadhaar"
-                    />
-                    <label
-                      htmlFor="user-aadhaar"
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
-                    >
-                      <Upload size={18} />
-                      <span>Choose File</span>
-                    </label>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
+                    {!documentExists('aadhaar', 'user') && (
+                      <>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(file, 'aadhaar', 'user');
+                            // Reset input to allow selecting the same file again if needed
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                          id="user-aadhaar"
+                        />
+                        <label
+                          htmlFor="user-aadhaar"
+                          className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 text-xs sm:text-sm"
+                        >
+                          <Upload size={14} className="sm:w-[18px] sm:h-[18px]" />
+                          <span>Choose</span>
+                        </label>
+                      </>
+                    )}
+                    {/* Show unsaved document */}
                     {documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar') && (() => {
                       const doc = documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar')!;
                       return (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
                             {doc.file.name}
                           </span>
                           <button
                             onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1"
+                            className="text-blue-600 hover:text-blue-700 p-0.5 flex-shrink-0"
                             title="Preview"
                           >
-                            <Eye size={16} />
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
                           </button>
                           <button
                             onClick={() => handleRemoveDocument(doc.id)}
-                            className="text-rose-600 hover:text-rose-700 p-1"
+                            className="text-rose-600 hover:text-rose-700 p-0.5 flex-shrink-0"
                             title="Remove"
                           >
-                            <X size={16} />
+                            <X size={12} className="sm:w-4 sm:h-4" />
+                          </button>
+                        </div>
+                      );
+                    })()}
+                    {/* Show saved document */}
+                    {applicationDocuments.find(d => d.belongsTo === 'user' && d.type === 'aadhaar') && (() => {
+                      const doc = applicationDocuments.find(d => d.belongsTo === 'user' && d.type === 'aadhaar')!;
+                      return (
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
+                            {doc.name || 'Aadhaar Card'}
+                          </span>
+                          <button
+                            onClick={() => handlePreviewDocument(doc)}
+                            className="text-blue-600 hover:text-blue-700 p-0.5 flex-shrink-0"
+                            title="Preview"
+                          >
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleRemoveSavedDocument('aadhaar', 'user')}
+                            className="text-rose-600 hover:text-rose-700 p-0.5 flex-shrink-0"
+                            title="Remove"
+                          >
+                            <X size={12} className="sm:w-4 sm:h-4" />
                           </button>
                         </div>
                       );
@@ -1419,52 +1509,85 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    10th Class Certificate or Voter ID <span className="text-rose-600">*</span>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                    10th Certificate / Voter ID <span className="text-rose-600">*</span>
                   </label>
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const fileName = file.name.toLowerCase();
-                          const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate';
-                          handleFileUpload(file, type, 'user');
-                        }
-                      }}
-                      className="hidden"
-                      id="user-second-doc"
-                    />
-                    <label
-                      htmlFor="user-second-doc"
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
-                    >
-                      <Upload size={18} />
-                      <span>Choose File</span>
-                    </label>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
+                    {!secondDocumentExists('user') && (
+                      <>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const fileName = file.name.toLowerCase();
+                              const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate';
+                              handleFileUpload(file, type, 'user');
+                            }
+                            // Reset input to allow selecting the same file again if needed
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                          id="user-second-doc"
+                        />
+                        <label
+                          htmlFor="user-second-doc"
+                          className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 text-xs sm:text-sm"
+                        >
+                          <Upload size={14} className="sm:w-[18px] sm:h-[18px]" />
+                          <span>Choose</span>
+                        </label>
+                      </>
+                    )}
+                    {/* Show unsaved document */}
                     {documents.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) && (() => {
                       const doc = documents.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id'))!;
                       return (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
                             {doc.file.name}
                           </span>
                           <button
                             onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1"
+                            className="text-blue-600 hover:text-blue-700 p-0.5 flex-shrink-0"
                             title="Preview"
                           >
-                            <Eye size={16} />
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
                           </button>
                           <button
                             onClick={() => handleRemoveDocument(doc.id)}
-                            className="text-rose-600 hover:text-rose-700 p-1"
+                            className="text-rose-600 hover:text-rose-700 p-0.5 flex-shrink-0"
                             title="Remove"
                           >
-                            <X size={16} />
+                            <X size={12} className="sm:w-4 sm:h-4" />
+                          </button>
+                        </div>
+                      );
+                    })()}
+                    {/* Show saved document */}
+                    {applicationDocuments.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) && (() => {
+                      const doc = applicationDocuments.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id'))!;
+                      return (
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
+                            {doc.name || (doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID')}
+                          </span>
+                          <button
+                            onClick={() => handlePreviewDocument(doc)}
+                            className="text-blue-600 hover:text-blue-700 p-0.5 flex-shrink-0"
+                            title="Preview"
+                          >
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleRemoveSavedDocument(doc.type as 'tenth_certificate' | 'voter_id', 'user')}
+                            className="text-rose-600 hover:text-rose-700 p-0.5 flex-shrink-0"
+                            title="Remove"
+                          >
+                            <X size={12} className="sm:w-4 sm:h-4" />
                           </button>
                         </div>
                       );
@@ -1474,91 +1597,129 @@ const ApplicationFormContent: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-2">Bride's Documents</h3>
-              <p className="text-sm text-gray-600 mb-6">Upload bride's Aadhaar card and either 10th class certificate or Voter ID</p>
+            <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">Bride's Documents</h3>
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4 lg:mb-6">Upload Aadhaar card + 10th certificate or Voter ID</p>
               
               {isLoadingDocuments && (
-                <div className="flex items-center justify-center py-4 mb-4 bg-gray-50 rounded-lg">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-gold-500"></div>
-                  <span className="ml-2 text-sm text-gray-500">Loading saved documents...</span>
+                <div className="flex items-center justify-center py-3 sm:py-4 mb-3 sm:mb-4 bg-gray-50 rounded-lg">
+                  <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-t-2 border-b-2 border-gold-500"></div>
+                  <span className="ml-2 text-[10px] sm:text-xs text-gray-500">Loading...</span>
                 </div>
               )}
               
               {/* Show saved documents from database */}
               {!isLoadingDocuments && applicationDocuments.filter(d => d.belongsTo === 'partner').length > 0 && (
-                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Previously Saved Documents:</p>
-                  <div className="space-y-2">
+                <div className="mb-3 sm:mb-4 p-2.5 sm:p-4 bg-gray-50 rounded-lg">
+                  <p className="text-[10px] sm:text-xs font-medium text-gray-700 mb-1.5 sm:mb-2">Previously Saved:</p>
+                  <div className="space-y-1.5 sm:space-y-2">
                     {applicationDocuments
                       .filter(d => d.belongsTo === 'partner')
                       .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
-                            {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                            {doc.type === 'tenth_certificate' && '10th Certificate'}
+                        <div key={doc.id} className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-600">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
+                            {doc.type === 'aadhaar' && 'Aadhaar'}
+                            {doc.type === 'tenth_certificate' && '10th Cert'}
                             {doc.type === 'voter_id' && 'Voter ID'}
                             : {doc.name}
                           </span>
                           <button
-                            onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1 ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handlePreviewDocument(doc);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 p-0.5 sm:p-1 flex-shrink-0"
                             title="Preview"
+                            type="button"
                           >
-                            <Eye size={16} />
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
                           </button>
-                          <CheckCircle size={16} className="text-green-600" />
+                          <CheckCircle size={12} className="sm:w-4 sm:h-4 text-green-600 flex-shrink-0" />
                         </div>
                       ))}
                   </div>
                 </div>
               )}
               
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                     Aadhaar Card <span className="text-rose-600">*</span>
                   </label>
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file, 'aadhaar', 'partner');
-                      }}
-                      className="hidden"
-                      id="partner-aadhaar"
-                    />
-                    <label
-                      htmlFor="partner-aadhaar"
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
-                    >
-                      <Upload size={18} />
-                      <span>Choose File</span>
-                    </label>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
+                    {!documentExists('aadhaar', 'partner') && (
+                      <>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(file, 'aadhaar', 'partner');
+                            // Reset input to allow selecting the same file again if needed
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                          id="partner-aadhaar"
+                        />
+                        <label
+                          htmlFor="partner-aadhaar"
+                          className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 text-xs sm:text-sm"
+                        >
+                          <Upload size={14} className="sm:w-[18px] sm:h-[18px]" />
+                          <span>Choose</span>
+                        </label>
+                      </>
+                    )}
+                    {/* Show unsaved document */}
                     {documents.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar') && (() => {
                       const doc = documents.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar')!;
                       return (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
                             {doc.file.name}
                           </span>
                           <button
                             onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1"
+                            className="text-blue-600 hover:text-blue-700 p-0.5 flex-shrink-0"
                             title="Preview"
                           >
-                            <Eye size={16} />
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
                           </button>
                           <button
                             onClick={() => handleRemoveDocument(doc.id)}
-                            className="text-rose-600 hover:text-rose-700 p-1"
+                            className="text-rose-600 hover:text-rose-700 p-0.5 flex-shrink-0"
                             title="Remove"
                           >
-                            <X size={16} />
+                            <X size={12} className="sm:w-4 sm:h-4" />
+                          </button>
+                        </div>
+                      );
+                    })()}
+                    {/* Show saved document */}
+                    {applicationDocuments.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar') && (() => {
+                      const doc = applicationDocuments.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar')!;
+                      return (
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
+                            {doc.name || 'Aadhaar Card'}
+                          </span>
+                          <button
+                            onClick={() => handlePreviewDocument(doc)}
+                            className="text-blue-600 hover:text-blue-700 p-0.5 flex-shrink-0"
+                            title="Preview"
+                          >
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleRemoveSavedDocument('aadhaar', 'partner')}
+                            className="text-rose-600 hover:text-rose-700 p-0.5 flex-shrink-0"
+                            title="Remove"
+                          >
+                            <X size={12} className="sm:w-4 sm:h-4" />
                           </button>
                         </div>
                       );
@@ -1567,52 +1728,85 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    10th Class Certificate or Voter ID <span className="text-rose-600">*</span>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                    10th Certificate / Voter ID <span className="text-rose-600">*</span>
                   </label>
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const fileName = file.name.toLowerCase();
-                          const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate';
-                          handleFileUpload(file, type, 'partner');
-                        }
-                      }}
-                      className="hidden"
-                      id="partner-second-doc"
-                    />
-                    <label
-                      htmlFor="partner-second-doc"
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
-                    >
-                      <Upload size={18} />
-                      <span>Choose File</span>
-                    </label>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
+                    {!secondDocumentExists('partner') && (
+                      <>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const fileName = file.name.toLowerCase();
+                              const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate';
+                              handleFileUpload(file, type, 'partner');
+                            }
+                            // Reset input to allow selecting the same file again if needed
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                          id="partner-second-doc"
+                        />
+                        <label
+                          htmlFor="partner-second-doc"
+                          className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 text-xs sm:text-sm"
+                        >
+                          <Upload size={14} className="sm:w-[18px] sm:h-[18px]" />
+                          <span>Choose</span>
+                        </label>
+                      </>
+                    )}
+                    {/* Show unsaved document */}
                     {documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) && (() => {
                       const doc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'))!;
                       return (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
                             {doc.file.name}
                           </span>
                           <button
                             onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1"
+                            className="text-blue-600 hover:text-blue-700 p-0.5 flex-shrink-0"
                             title="Preview"
                           >
-                            <Eye size={16} />
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
                           </button>
                           <button
                             onClick={() => handleRemoveDocument(doc.id)}
-                            className="text-rose-600 hover:text-rose-700 p-1"
+                            className="text-rose-600 hover:text-rose-700 p-0.5 flex-shrink-0"
                             title="Remove"
                           >
-                            <X size={16} />
+                            <X size={12} className="sm:w-4 sm:h-4" />
+                          </button>
+                        </div>
+                      );
+                    })()}
+                    {/* Show saved document */}
+                    {applicationDocuments.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) && (() => {
+                      const doc = applicationDocuments.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'))!;
+                      return (
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
+                            {doc.name || (doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID')}
+                          </span>
+                          <button
+                            onClick={() => handlePreviewDocument(doc)}
+                            className="text-blue-600 hover:text-blue-700 p-0.5 flex-shrink-0"
+                            title="Preview"
+                          >
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleRemoveSavedDocument(doc.type as 'tenth_certificate' | 'voter_id', 'partner')}
+                            className="text-rose-600 hover:text-rose-700 p-0.5 flex-shrink-0"
+                            title="Remove"
+                          >
+                            <X size={12} className="sm:w-4 sm:h-4" />
                           </button>
                         </div>
                       );
@@ -1622,88 +1816,126 @@ const ApplicationFormContent: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-2">Joint Photograph</h3>
-              <p className="text-sm text-gray-600 mb-6">Upload a joint photograph of the bride and groom</p>
+            <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">Joint Photograph</h3>
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4 lg:mb-6">Upload a joint photo of bride and groom</p>
               
               {isLoadingDocuments && (
-                <div className="flex items-center justify-center py-4 mb-4 bg-gray-50 rounded-lg">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-gold-500"></div>
-                  <span className="ml-2 text-sm text-gray-500">Loading saved documents...</span>
+                <div className="flex items-center justify-center py-3 sm:py-4 mb-3 sm:mb-4 bg-gray-50 rounded-lg">
+                  <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-t-2 border-b-2 border-gold-500"></div>
+                  <span className="ml-2 text-[10px] sm:text-xs text-gray-500">Loading...</span>
                 </div>
               )}
               
               {/* Show saved documents from database */}
               {!isLoadingDocuments && applicationDocuments.filter(d => d.belongsTo === 'joint' && d.type === 'photo').length > 0 && (
-                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Previously Saved Document:</p>
-                  <div className="space-y-2">
+                <div className="mb-3 sm:mb-4 p-2.5 sm:p-4 bg-gray-50 rounded-lg">
+                  <p className="text-[10px] sm:text-xs font-medium text-gray-700 mb-1.5 sm:mb-2">Previously Saved:</p>
+                  <div className="space-y-1.5 sm:space-y-2">
                     {applicationDocuments
                       .filter(d => d.belongsTo === 'joint' && d.type === 'photo')
                       .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
-                            Joint Photograph: {doc.name}
+                        <div key={doc.id} className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-600">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
+                            Joint Photo: {doc.name}
                           </span>
                           <button
-                            onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1 ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handlePreviewDocument(doc);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 p-0.5 sm:p-1 flex-shrink-0"
                             title="Preview"
+                            type="button"
                           >
-                            <Eye size={16} />
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
                           </button>
-                          <CheckCircle size={16} className="text-green-600" />
+                          <CheckCircle size={12} className="sm:w-4 sm:h-4 text-green-600 flex-shrink-0" />
                         </div>
                       ))}
                   </div>
                 </div>
               )}
               
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Joint Photograph <span className="text-rose-600">*</span>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                    Joint Photo <span className="text-rose-600">*</span>
                   </label>
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file, 'photo', 'joint');
-                      }}
-                      className="hidden"
-                      id="joint-photograph"
-                    />
-                    <label
-                      htmlFor="joint-photograph"
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
-                    >
-                      <Upload size={18} />
-                      <span>Choose File</span>
-                    </label>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
+                    {!documentExists('photo', 'joint') && (
+                      <>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(file, 'photo', 'joint');
+                            // Reset input to allow selecting the same file again if needed
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                          id="joint-photograph"
+                        />
+                        <label
+                          htmlFor="joint-photograph"
+                          className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 text-xs sm:text-sm"
+                        >
+                          <Upload size={14} className="sm:w-[18px] sm:h-[18px]" />
+                          <span>Choose</span>
+                        </label>
+                      </>
+                    )}
+                    {/* Show unsaved document */}
                     {documents.find(d => d.belongsTo === 'joint' && d.type === 'photo') && (() => {
                       const doc = documents.find(d => d.belongsTo === 'joint' && d.type === 'photo')!;
                       return (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
                             {doc.file.name}
                           </span>
                           <button
                             onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1"
+                            className="text-blue-600 hover:text-blue-700 p-0.5 flex-shrink-0"
                             title="Preview"
                           >
-                            <Eye size={16} />
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
                           </button>
                           <button
                             onClick={() => handleRemoveDocument(doc.id)}
-                            className="text-rose-600 hover:text-rose-700 p-1"
+                            className="text-rose-600 hover:text-rose-700 p-0.5 flex-shrink-0"
                             title="Remove"
                           >
-                            <X size={16} />
+                            <X size={12} className="sm:w-4 sm:h-4" />
+                          </button>
+                        </div>
+                      );
+                    })()}
+                    {/* Show saved document */}
+                    {applicationDocuments.find(d => d.belongsTo === 'joint' && d.type === 'photo') && (() => {
+                      const doc = applicationDocuments.find(d => d.belongsTo === 'joint' && d.type === 'photo')!;
+                      return (
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                          <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
+                            {doc.name || 'Joint Photo'}
+                          </span>
+                          <button
+                            onClick={() => handlePreviewDocument(doc)}
+                            className="text-blue-600 hover:text-blue-700 p-0.5 flex-shrink-0"
+                            title="Preview"
+                          >
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleRemoveSavedDocument('photo', 'joint')}
+                            className="text-rose-600 hover:text-rose-700 p-0.5 flex-shrink-0"
+                            title="Remove"
+                          >
+                            <X size={12} className="sm:w-4 sm:h-4" />
                           </button>
                         </div>
                       );
@@ -1716,10 +1948,10 @@ const ApplicationFormContent: React.FC = () => {
         );
       case 3:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-5 lg:space-y-6">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-4">Legal Declarations</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Legal Declarations</h3>
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-4 sm:mb-5 lg:mb-6">
                 Please read and confirm the following declarations:
               </p>
               <Checkbox
@@ -1765,18 +1997,18 @@ const ApplicationFormContent: React.FC = () => {
         }
         
         return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-semibold text-gray-900">Review Your Application</h3>
+          <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+            <div className="flex items-center justify-between mb-3 sm:mb-4 lg:mb-6 gap-2">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900">Review Application</h3>
               {!isSubmitted && (
-                <Badge variant="info">Draft - You can still edit</Badge>
+                <Badge variant="info" className="!text-[10px] sm:!text-xs">Draft</Badge>
               )}
             </div>
 
             {/* Marriage Information */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-gray-900">Marriage Information</h4>
+            <Card className="p-3 sm:p-4 lg:p-6">
+              <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4 gap-2">
+                <h4 className="font-semibold text-xs sm:text-sm text-gray-900">Marriage Info</h4>
                 {!isSubmitted && (
                   <Button
                     variant="ghost"
@@ -1804,9 +2036,9 @@ const ApplicationFormContent: React.FC = () => {
             </Card>
 
             {/* Groom Details */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-gray-900">Groom Details</h4>
+            <Card className="p-3 sm:p-4 lg:p-6">
+              <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4 gap-2">
+                <h4 className="font-semibold text-xs sm:text-sm text-gray-900">Groom Details</h4>
                 {!isSubmitted && (
                   <Button
                     variant="ghost"
@@ -1865,9 +2097,9 @@ const ApplicationFormContent: React.FC = () => {
             </Card>
 
             {/* Bride Details */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-gray-900">Bride Details</h4>
+            <Card className="p-3 sm:p-4 lg:p-6">
+              <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4 gap-2">
+                <h4 className="font-semibold text-xs sm:text-sm text-gray-900">Bride Details</h4>
                 {!isSubmitted && (
                   <Button
                     variant="ghost"
@@ -1929,9 +2161,9 @@ const ApplicationFormContent: React.FC = () => {
             </Card>
 
             {/* Documents */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-gray-900">Uploaded Documents</h4>
+            <Card className="p-3 sm:p-4 lg:p-6">
+              <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4 gap-2">
+                <h4 className="font-semibold text-xs sm:text-sm text-gray-900">Documents</h4>
                 {!isSubmitted && (
                   <Button
                     variant="ghost"
@@ -1961,22 +2193,27 @@ const ApplicationFormContent: React.FC = () => {
                         {applicationDocuments
                           .filter(d => d.belongsTo === 'user')
                           .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
+                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                          <FileText size={16} className="flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.name}`}>
                             {doc.type === 'aadhaar' && 'Aadhaar Card'}
                             {doc.type === 'tenth_certificate' && '10th Certificate'}
                             {doc.type === 'voter_id' && 'Voter ID'}
                             : {doc.name}
                           </span>
                           <button
-                            onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1 ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handlePreviewDocument(doc);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
                             title="Preview"
+                            type="button"
                           >
                             <Eye size={16} />
                           </button>
-                          <CheckCircle size={16} className="text-green-600" />
+                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
                         </div>
                       ))}
                     {/* Show unsaved documents from current session (only if not already in applicationDocuments) */}
@@ -1990,22 +2227,27 @@ const ApplicationFormContent: React.FC = () => {
                         return !isAlreadySaved;
                       })
                       .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
+                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                          <FileText size={16} className="flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.file.name}`}>
                             {doc.type === 'aadhaar' && 'Aadhaar Card'}
                             {doc.type === 'tenth_certificate' && '10th Certificate'}
                             {doc.type === 'voter_id' && 'Voter ID'}
                             : {doc.file.name}
                           </span>
                           <button
-                            onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1 ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handlePreviewDocument(doc);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
                             title="Preview"
+                            type="button"
                           >
                             <Eye size={16} />
                           </button>
-                          <CheckCircle size={16} className="text-green-600" />
+                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
                         </div>
                       ))}
                         {applicationDocuments.filter(d => d.belongsTo === 'user').length === 0 && 
@@ -2030,22 +2272,27 @@ const ApplicationFormContent: React.FC = () => {
                         {applicationDocuments
                           .filter(d => d.belongsTo === 'partner')
                           .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
+                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                          <FileText size={16} className="flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.name}`}>
                             {doc.type === 'aadhaar' && 'Aadhaar Card'}
                             {doc.type === 'tenth_certificate' && '10th Certificate'}
                             {doc.type === 'voter_id' && 'Voter ID'}
                             : {doc.name}
                           </span>
                           <button
-                            onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1 ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handlePreviewDocument(doc);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
                             title="Preview"
+                            type="button"
                           >
                             <Eye size={16} />
                           </button>
-                          <CheckCircle size={16} className="text-green-600" />
+                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
                         </div>
                       ))}
                     {/* Show unsaved documents from current session (only if not already in applicationDocuments) */}
@@ -2059,15 +2306,27 @@ const ApplicationFormContent: React.FC = () => {
                         return !isAlreadySaved;
                       })
                       .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                          <FileText size={16} />
-                          <span>
+                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                          <FileText size={16} className="flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.file.name}`}>
                             {doc.type === 'aadhaar' && 'Aadhaar Card'}
                             {doc.type === 'tenth_certificate' && '10th Certificate'}
                             {doc.type === 'voter_id' && 'Voter ID'}
                             : {doc.file.name}
                           </span>
-                          <CheckCircle size={16} className="text-green-600 ml-auto" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handlePreviewDocument(doc);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
+                            title="Preview"
+                            type="button"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
                         </div>
                       ))}
                         {applicationDocuments.filter(d => d.belongsTo === 'partner').length === 0 && 
@@ -2092,19 +2351,24 @@ const ApplicationFormContent: React.FC = () => {
                         {applicationDocuments
                           .filter(d => d.belongsTo === 'joint' && d.type === 'photo')
                           .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
+                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                          <FileText size={16} className="flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`Joint Photograph: ${doc.name}`}>
                             Joint Photograph: {doc.name}
                           </span>
                           <button
-                            onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1 ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handlePreviewDocument(doc);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
                             title="Preview"
+                            type="button"
                           >
                             <Eye size={16} />
                           </button>
-                          <CheckCircle size={16} className="text-green-600" />
+                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
                         </div>
                       ))}
                     {/* Show unsaved documents from current session */}
@@ -2117,19 +2381,24 @@ const ApplicationFormContent: React.FC = () => {
                         return !isAlreadySaved;
                       })
                       .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                          <FileText size={16} />
-                          <span className="cursor-pointer hover:text-gray-900" onClick={() => handlePreviewDocument(doc)}>
+                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                          <FileText size={16} className="flex-shrink-0" />
+                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`Joint Photograph: ${doc.file.name}`}>
                             Joint Photograph: {doc.file.name}
                           </span>
                           <button
-                            onClick={() => handlePreviewDocument(doc)}
-                            className="text-blue-600 hover:text-blue-700 p-1 ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handlePreviewDocument(doc);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
                             title="Preview"
+                            type="button"
                           >
                             <Eye size={16} />
                           </button>
-                          <CheckCircle size={16} className="text-green-600" />
+                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
                         </div>
                       ))}
                         {applicationDocuments.filter(d => d.belongsTo === 'joint' && d.type === 'photo').length === 0 && 
@@ -2144,9 +2413,9 @@ const ApplicationFormContent: React.FC = () => {
             </Card>
 
             {/* Declarations */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-gray-900">Declarations</h4>
+            <Card className="p-3 sm:p-4 lg:p-6">
+              <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4 gap-2">
+                <h4 className="font-semibold text-xs sm:text-sm text-gray-900">Declarations</h4>
                 {!isSubmitted && (
                   <Button
                     variant="ghost"
@@ -2402,20 +2671,20 @@ const ApplicationFormContent: React.FC = () => {
         </div>
       )}
       
-      <div className={`max-w-4xl mx-auto px-6 py-8 ${showExitConfirm ? 'pt-40' : ''}`}>
-        <div className="mb-8 flex items-start justify-between">
-        <div>
-          <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Marriage Registration Application</h1>
-          <p className="text-gray-600">Complete all steps to submit your application</p>
+      <div className={`max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 ${showExitConfirm ? 'pt-40' : ''}`}>
+        <div className="mb-4 sm:mb-6 flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <h1 className="font-serif text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-0.5 sm:mb-1">Marriage Registration</h1>
+          <p className="text-[10px] sm:text-xs text-gray-600">Complete all steps to submit</p>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleExit}
-          className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
+          className="flex items-center gap-1.5 text-gray-700 hover:text-gray-900 !px-2 sm:!px-3"
         >
-          <LogOut size={18} />
-          <span>Exit</span>
+          <LogOut size={14} className="sm:w-4 sm:h-4" />
+          <span className="text-xs sm:text-sm">Exit</span>
         </Button>
       </div>
 
@@ -2423,24 +2692,33 @@ const ApplicationFormContent: React.FC = () => {
         steps={applicationSteps}
         currentStep={currentStep}
         completedSteps={Array.from({ length: currentStep }, (_, i) => i)}
-        className="mb-8"
+        className="mb-4 sm:mb-6"
       />
 
-      <Card className="p-8">
+      <Card className="p-3 sm:p-5 lg:p-6">
         {renderStep()}
 
         {/* Document Preview Modal */}
         {previewDocument && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closePreview}>
-            <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-              <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10">
-                <h3 className="font-semibold text-gray-900">
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-2 sm:p-4" 
+            onClick={closePreview}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+          >
+            <div 
+              className="bg-white rounded-lg sm:rounded-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-auto" 
+              onClick={(e) => e.stopPropagation()}
+              style={{ zIndex: 101 }}
+            >
+              <div className="sticky top-0 bg-white border-b border-gray-200 p-2.5 sm:p-4 flex items-center justify-between z-10 gap-2">
+                <h3 className="font-semibold text-xs sm:text-sm text-gray-900 truncate flex-1">
                   {getDocumentTypeLabel(previewDocument.type)}: {previewDocument.file?.name || (previewDocument as any).name || 'Document'}
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="!px-2 sm:!px-3 !text-xs"
                     onClick={() => {
                       const urlToDownload = previewUrl || (previewDocument as any).url;
                       if (urlToDownload) {
@@ -2448,65 +2726,86 @@ const ApplicationFormContent: React.FC = () => {
                       }
                     }}
                   >
-                    <Download size={18} className="mr-2" />
-                    Download
+                    <Download size={14} className="sm:w-4 sm:h-4 mr-1" />
+                    <span className="hidden sm:inline">Download</span>
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={closePreview}>
-                    <X size={18} />
+                  <Button variant="ghost" size="sm" onClick={closePreview} className="!p-1.5 sm:!p-2">
+                    <X size={16} className="sm:w-[18px] sm:h-[18px]" />
                   </Button>
                 </div>
               </div>
-              <div className="p-6">
+              <div className="p-2 sm:p-3 lg:p-6 overflow-y-auto max-h-[calc(95vh-80px)] sm:max-h-[calc(90vh-100px)]">
                 {isLoadingPreview ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
+                  <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 border-t-2 border-b-2 border-gold-500"></div>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-3">Loading preview...</p>
                   </div>
                 ) : previewUrl ? (
                   <>
                     {isImage(previewDocument.file?.type || (previewDocument as any).mimeType) ? (
-                      <img
-                        src={previewUrl}
-                        alt={previewDocument.file?.name || (previewDocument as any).name || 'Document'}
-                        className="max-w-full h-auto rounded-lg shadow-lg mx-auto"
-                        onError={(e) => {
-                          console.error('Failed to load image:', e);
-                          const fallbackUrl = (previewDocument as any).url;
-                          if (fallbackUrl) {
-                            (e.target as HTMLImageElement).src = fallbackUrl;
-                          }
-                        }}
-                      />
+                      <div className="flex items-center justify-center min-h-[200px] sm:min-h-[300px] w-full">
+                        <img
+                          src={previewUrl}
+                          alt={previewDocument.file?.name || (previewDocument as any).name || 'Document'}
+                          className="max-w-full max-h-[calc(95vh-120px)] sm:max-h-[calc(90vh-140px)] w-auto h-auto rounded-lg shadow-lg mx-auto object-contain"
+                          onLoad={() => console.log('Image loaded successfully')}
+                          onError={(e) => {
+                            console.error('Failed to load image:', e);
+                            const fallbackUrl = (previewDocument as any).url;
+                            if (fallbackUrl) {
+                              console.log('Trying fallback URL:', fallbackUrl);
+                              (e.target as HTMLImageElement).src = fallbackUrl;
+                            } else {
+                              console.error('No fallback URL available');
+                            }
+                          }}
+                        />
+                      </div>
                     ) : isPDF(previewDocument.file?.type || (previewDocument as any).mimeType) || 
                          (previewDocument.file?.name || (previewDocument as any).name || '').toLowerCase().endsWith('.pdf') ? (
-                      <iframe
-                        src={previewUrl}
-                        className="w-full h-[70vh] rounded-lg border border-gray-200"
-                        title={previewDocument.file?.name || (previewDocument as any).name || 'Document'}
-                        onError={() => {
-                          console.error('Failed to load PDF');
-                        }}
-                      />
+                      <div className="w-full">
+                        <iframe
+                          src={previewUrl}
+                          className="w-full h-[calc(95vh-120px)] sm:h-[calc(90vh-140px)] lg:h-[70vh] rounded-lg border border-gray-200"
+                          title={previewDocument.file?.name || (previewDocument as any).name || 'Document'}
+                          onLoad={() => console.log('PDF iframe loaded')}
+                          onError={() => {
+                            console.error('Failed to load PDF');
+                          }}
+                        />
+                      </div>
                     ) : (
-                      <div className="text-center py-12">
-                        <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-600 mb-4">Preview not available for this file type</p>
-                        <Button variant="primary" onClick={() => window.open(previewUrl, '_blank')}>
-                          <Download size={18} className="mr-2" />
+                      <div className="text-center py-8 sm:py-12">
+                        <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                        <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Preview not available</p>
+                        <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => window.open(previewUrl, '_blank')}>
+                          <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
                           Download to View
                         </Button>
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="text-center py-12">
-                    <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 mb-4">Failed to load document preview</p>
-                    {(previewDocument as any).url && (
-                      <Button variant="primary" onClick={() => window.open((previewDocument as any).url, '_blank')}>
-                        <Download size={18} className="mr-2" />
-                        Download to View
-                      </Button>
-                    )}
+                  <div className="text-center py-8 sm:py-12">
+                    <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                    <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Failed to load preview</p>
+                    <div className="space-y-2">
+                      {(previewDocument as any).url && (
+                        <Button variant="primary" size="sm" className="!text-xs sm:!text-sm w-full sm:w-auto" onClick={() => window.open((previewDocument as any).url, '_blank')}>
+                          <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                          Open in New Tab
+                        </Button>
+                      )}
+                      {previewDocument.file && (
+                        <Button variant="outline" size="sm" className="!text-xs sm:!text-sm w-full sm:w-auto" onClick={() => {
+                          const url = URL.createObjectURL(previewDocument.file);
+                          window.open(url, '_blank');
+                        }}>
+                          <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                          Open File
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2514,41 +2813,46 @@ const ApplicationFormContent: React.FC = () => {
           </div>
         )}
 
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-gray-200">
           <Button
             variant="ghost"
+            size="sm"
             onClick={handleBack}
             disabled={currentStep === 0 || (currentStep === applicationSteps.length - 1 && (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review'))}
+            className="!text-xs sm:!text-sm order-2 sm:order-1"
           >
-            <ArrowLeft size={18} className="mr-2" />
+            <ArrowLeft size={14} className="sm:w-4 sm:h-4 mr-1.5" />
             Back
           </Button>
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3 order-1 sm:order-2">
             <Button
               variant="ghost"
+              size="sm"
               disabled={isSubmitted}
               onClick={saveDraftWithoutValidation}
               isLoading={isSaving}
+              className="!text-xs sm:!text-sm flex-1 sm:flex-initial"
             >
-              <Save size={18} className="mr-2" />
-              Save Draft
+              <Save size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+              <span className="hidden sm:inline">Save</span> Draft
             </Button>
             <Button
               variant="primary"
+              size="sm"
               onClick={handleNextClick}
               isLoading={isSaving}
               disabled={
                 (currentStep === applicationSteps.length - 1 && (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review')) ||
                 (!isCurrentStepValid && !isSubmitted)
               }
-              className={!isCurrentStepValid && !isSubmitted ? 'opacity-40 cursor-not-allowed bg-gray-400 hover:bg-gray-400' : ''}
+              className={`!text-xs sm:!text-sm flex-1 sm:flex-initial ${!isCurrentStepValid && !isSubmitted ? 'opacity-40 cursor-not-allowed bg-gray-400 hover:bg-gray-400' : ''}`}
             >
               {currentStep === applicationSteps.length - 1 
                 ? (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review')
-                  ? 'Already Submitted'
-                  : 'Submit Application'
+                  ? 'Submitted'
+                  : 'Submit'
                 : 'Next'}
-              {currentStep < applicationSteps.length - 1 && <ArrowRight size={18} className="ml-2" />}
+              {currentStep < applicationSteps.length - 1 && <ArrowRight size={14} className="sm:w-4 sm:h-4 ml-1.5" />}
             </Button>
           </div>
         </div>

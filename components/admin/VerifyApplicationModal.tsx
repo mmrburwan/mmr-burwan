@@ -342,21 +342,21 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
       title="Verify Application"
       size="md"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4 lg:space-y-6">
+        <div className="space-y-3 sm:space-y-4 lg:space-y-6">
           {/* Rejected Documents Warning */}
           {hasRejectedDocuments && (
-            <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-4">
-              <div className="flex items-start gap-3">
-                <XCircle size={24} className="text-rose-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-rose-900 mb-2">
+            <div className="bg-rose-50 border-2 border-rose-300 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <XCircle size={18} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-rose-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-rose-900 mb-1 sm:mb-2">
                     Cannot Verify Application
                   </h3>
-                  <p className="text-sm text-rose-800 mb-3">
+                  <p className="text-[10px] sm:text-xs lg:text-sm text-rose-800 mb-2 sm:mb-3">
                     The following document(s) have been rejected and the client has not re-uploaded them yet. Please wait for the client to re-upload these documents before verifying the application.
                   </p>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 sm:space-y-2">
                     {rejectedDocuments.map((doc) => {
                       const personLabel = getPersonLabel(doc.belongsTo);
                       const documentLabel = getDocumentTypeLabel(doc.type);
@@ -364,10 +364,10 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
                         ? `${personLabel} ${documentLabel}`
                         : documentLabel;
                       return (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-rose-700 bg-rose-100 rounded-lg px-3 py-2">
-                          <AlertTriangle size={16} className="flex-shrink-0" />
-                          <span className="font-medium">{documentTitle}</span>
-                          <span className="text-rose-600">({doc.name})</span>
+                        <div key={doc.id} className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs lg:text-sm text-rose-700 bg-rose-100 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2">
+                          <AlertTriangle size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="font-medium truncate">{documentTitle}</span>
+                          <span className="text-rose-600 truncate">({doc.name})</span>
                         </div>
                       );
                     })}
@@ -379,21 +379,21 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
 
           {/* Certificate Number Preview */}
           {certificateNumberPreview && (
-            <div className="bg-gold-50 border border-gold-200 rounded-lg p-3">
-              <p className="text-xs font-medium text-gray-600 mb-1">Certificate Number Preview:</p>
-              <p className="text-sm font-mono font-semibold text-gray-900">{certificateNumberPreview}</p>
+            <div className="bg-gold-50 border border-gold-200 rounded-lg p-2 sm:p-2.5 lg:p-3">
+              <p className="text-[10px] sm:text-xs font-medium text-gray-600 mb-0.5 sm:mb-1">Certificate Number Preview:</p>
+              <p className="text-xs sm:text-sm font-mono font-semibold text-gray-900 break-all">{certificateNumberPreview}</p>
             </div>
           )}
 
           {/* Book Number */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
               Book Number <span className="text-rose-600">*</span>
             </label>
             <select
               {...register('bookNumber')}
               disabled={isSubmitting}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               {ROMAN_NUMERALS.map((roman, index) => (
                 <option key={index} value={roman}>
@@ -402,16 +402,16 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
               ))}
             </select>
             {errors.bookNumber && (
-              <p className="text-xs text-rose-600 mt-1">{errors.bookNumber.message}</p>
+              <p className="text-[10px] sm:text-xs text-rose-600 mt-0.5 sm:mt-1">{errors.bookNumber.message}</p>
             )}
           </div>
 
           {/* Volume Number */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
               Volume Number <span className="text-rose-600">*</span>
             </label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div>
                 <Input
                   {...register('volumeNumber')}
@@ -421,7 +421,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
                   disabled={isSubmitting}
                   className="text-center"
                 />
-                <p className="text-xs text-gray-500 mt-1 text-center">Number</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 text-center">Number</p>
               </div>
               <div>
                 <input
@@ -434,12 +434,12 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
                   placeholder="C"
                   required
                   disabled={isSubmitting}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center uppercase"
+                  className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center uppercase"
                 />
                 {errors.volumeLetter && (
-                  <p className="text-xs text-rose-600 mt-1">{errors.volumeLetter.message}</p>
+                  <p className="text-[10px] sm:text-xs text-rose-600 mt-0.5 sm:mt-1">{errors.volumeLetter.message}</p>
                 )}
-                <p className="text-xs text-gray-500 mt-1 text-center">Letter</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 text-center">Letter</p>
               </div>
               <div>
                 <input
@@ -451,25 +451,25 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
                   value={formValues.volumeYear || ''}
                   placeholder="Optional"
                   disabled={isSubmitting}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
+                  className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
                 />
                 {errors.volumeYear && (
-                  <p className="text-xs text-rose-600 mt-1">{errors.volumeYear.message}</p>
+                  <p className="text-[10px] sm:text-xs text-rose-600 mt-0.5 sm:mt-1">{errors.volumeYear.message}</p>
                 )}
-                <p className="text-xs text-gray-500 mt-1 text-center">Number (Optional)</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 text-center">Number (Optional)</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-1 sm:mt-2">
               Format: <span className="font-mono">1-C</span> or <span className="font-mono">1-C-{'{number}'}</span> (dashes added automatically)
             </p>
           </div>
 
           {/* Serial Number */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
               Serial Number <span className="text-rose-600">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <div>
                 <Input
                   {...register('serialNumber')}
@@ -479,7 +479,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
                   disabled={isSubmitting}
                   className="text-center"
                 />
-                <p className="text-xs text-gray-500 mt-1 text-center">Number</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 text-center">Number</p>
               </div>
               <div>
                 <input
@@ -491,15 +491,15 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
                   value={formValues.serialYear || ''}
                   placeholder="Optional"
                   disabled={isSubmitting}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
+                  className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
                 />
                 {errors.serialYear && (
-                  <p className="text-xs text-rose-600 mt-1">{errors.serialYear.message}</p>
+                  <p className="text-[10px] sm:text-xs text-rose-600 mt-0.5 sm:mt-1">{errors.serialYear.message}</p>
                 )}
-                <p className="text-xs text-gray-500 mt-1 text-center">Number (Optional)</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 text-center">Number (Optional)</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-1 sm:mt-2">
               Format: <span className="font-mono">16</span> or <span className="font-mono">16-{'{number}'}</span> (dash added automatically)
             </p>
           </div>
@@ -515,7 +515,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
               disabled={isSubmitting}
               className="text-center"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
               Page number in the register
             </p>
           </div>
@@ -530,19 +530,20 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
               required
               disabled={isSubmitting}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
               This date will be displayed on the certificate PDF
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-200">
           <Button
             type="button"
             variant="ghost"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="flex-1"
+            className="flex-1 !text-xs sm:!text-sm"
+            size="sm"
           >
             Cancel
           </Button>
@@ -551,10 +552,12 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
             variant="primary"
             isLoading={isSubmitting}
             disabled={isSubmitting || hasRejectedDocuments}
-            className="flex-1"
+            className="flex-1 !text-xs sm:!text-sm"
+            size="sm"
           >
-            <CheckCircle size={18} className="mr-2" />
-            {hasRejectedDocuments ? 'Cannot Verify (Rejected Documents)' : 'Verify Application'}
+            <CheckCircle size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">{hasRejectedDocuments ? 'Cannot Verify (Rejected Documents)' : 'Verify Application'}</span>
+            <span className="sm:hidden">{hasRejectedDocuments ? 'Cannot Verify' : 'Verify'}</span>
           </Button>
         </div>
       </form>

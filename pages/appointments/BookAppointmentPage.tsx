@@ -89,48 +89,48 @@ const BookAppointmentPage: React.FC = () => {
 
   if (appointment) {
     return (
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <Card className="p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle size={32} className="text-green-600" />
+      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+        <Card className="p-4 sm:p-6 text-center">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <CheckCircle size={24} className="sm:w-7 sm:h-7 text-green-600" />
           </div>
-          <h1 className="font-serif text-3xl font-bold text-gray-900 mb-2">
-            {isRescheduling ? 'Appointment Rescheduled!' : 'Appointment Confirmed!'}
+          <h1 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
+            {isRescheduling ? 'Rescheduled!' : 'Confirmed!'}
           </h1>
-          <p className="text-gray-600 mb-8">
+          <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
             {isRescheduling 
-              ? 'Your appointment has been successfully rescheduled.'
-              : 'Your appointment has been successfully booked.'}
+              ? 'Your appointment has been rescheduled.'
+              : 'Your appointment is booked.'}
           </p>
 
-          <div className="bg-gray-50 rounded-xl p-6 mb-6">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Calendar size={20} className="text-gold-600" />
-              <span className="font-semibold text-gray-900">
-                {safeFormatDate(appointment.date, 'MMMM d, yyyy')}
+          <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+            <div className="flex items-center justify-center gap-2 mb-1 sm:mb-2">
+              <Calendar size={16} className="sm:w-5 sm:h-5 text-gold-600" />
+              <span className="font-semibold text-sm sm:text-base text-gray-900">
+                {safeFormatDate(appointment.date, 'MMM d, yyyy')}
               </span>
             </div>
             <div className="flex items-center justify-center gap-2">
-              <Clock size={20} className="text-gold-600" />
-              <span className="font-semibold text-gray-900">{appointment.time}</span>
+              <Clock size={16} className="sm:w-5 sm:h-5 text-gold-600" />
+              <span className="font-semibold text-sm sm:text-base text-gray-900">{appointment.time}</span>
             </div>
           </div>
 
-          <div className="mb-6 flex justify-center">
-            <QRCode value={appointment.qrCodeData} size={200} />
+          <div className="mb-4 sm:mb-6 flex justify-center">
+            <QRCode value={appointment.qrCodeData} size={160} />
           </div>
 
-          <p className="text-sm text-gray-500 mb-6">
-            Show this QR code at the registrar office on your appointment date.
+          <p className="text-[10px] sm:text-xs text-gray-500 mb-4 sm:mb-6">
+            Show this QR code at the registrar office.
           </p>
 
-          <div className="flex gap-3">
-            <Button variant="ghost" onClick={() => navigate('/appointments')}>
+          <div className="flex gap-2 sm:gap-3">
+            <Button variant="ghost" size="sm" className="flex-1 !text-xs sm:!text-sm" onClick={() => navigate('/appointments')}>
               Back
             </Button>
-            <Button variant="primary" onClick={() => navigate('/pass')}>
+            <Button variant="primary" size="sm" className="flex-1 !text-xs sm:!text-sm" onClick={() => navigate('/pass')}>
               View Pass
-              <ArrowRight size={18} className="ml-2" />
+              <ArrowRight size={14} className="ml-1 sm:w-4 sm:h-4" />
             </Button>
           </div>
         </Card>
@@ -139,52 +139,52 @@ const BookAppointmentPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">
-          {isRescheduling ? 'Reschedule Appointment' : 'Confirm Appointment'}
+    <div className="max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1">
+          {isRescheduling ? 'Reschedule' : 'Confirm Booking'}
         </h1>
-        <p className="text-gray-600">
-          {isRescheduling ? 'Review your new appointment details' : 'Review your appointment details'}
+        <p className="text-xs sm:text-sm text-gray-600">
+          {isRescheduling ? 'Review new details' : 'Review your appointment'}
         </p>
       </div>
 
-      <Card className="p-8">
-        <div className="mb-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Appointment Details</h3>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <Calendar size={20} className="text-gold-600" />
-              <span className="text-gray-700">
-                {safeFormatDate(slot.date, 'EEEE, MMMM d, yyyy')}
+      <Card className="p-4 sm:p-6">
+        <div className="mb-4 sm:mb-6">
+          <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-3 sm:mb-4">Details</h3>
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Calendar size={16} className="sm:w-5 sm:h-5 text-gold-600" />
+              <span className="text-xs sm:text-sm text-gray-700">
+                {safeFormatDate(slot.date, 'EEE, MMM d, yyyy')}
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <Clock size={20} className="text-gold-600" />
-              <span className="text-gray-700">{slot.time}</span>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Clock size={16} className="sm:w-5 sm:h-5 text-gold-600" />
+              <span className="text-xs sm:text-sm text-gray-700">{slot.time}</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 mb-6">
-          <p className="text-sm text-rose-800">
-            <strong>Important:</strong> Please arrive 15 minutes before your appointment time.
-            Bring all required documents and your ID.
+        <div className="bg-rose-50 border border-rose-200 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+          <p className="text-[10px] sm:text-xs text-rose-800">
+            <strong>Important:</strong> Arrive 15 mins early. Bring documents & ID.
           </p>
         </div>
 
-        <div className="flex gap-3">
-          <Button variant="ghost" onClick={() => navigate('/appointments')} className="flex-1">
+        <div className="flex gap-2 sm:gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/appointments')} className="flex-1 !text-xs sm:!text-sm">
             Cancel
           </Button>
           <Button
             variant="primary"
+            size="sm"
             onClick={handleBook}
             isLoading={isBooking}
-            className="flex-1"
+            className="flex-1 !text-xs sm:!text-sm"
           >
-            {isRescheduling ? 'Confirm Reschedule' : 'Confirm Booking'}
-            <ArrowRight size={18} className="ml-2" />
+            {isRescheduling ? 'Confirm' : 'Book'}
+            <ArrowRight size={14} className="ml-1 sm:w-4 sm:h-4" />
           </Button>
         </div>
       </Card>

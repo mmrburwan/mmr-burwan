@@ -91,41 +91,43 @@ const AppointmentsAdminPage: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
+      <div className="mb-4 sm:mb-6 lg:mb-8">
+        <div className="flex items-center gap-2 sm:gap-4 mb-2 sm:mb-3 lg:mb-4">
           <Button
             variant="ghost"
             onClick={() => navigate('/admin')}
-            className="flex-shrink-0"
+            className="flex-shrink-0 !text-xs sm:!text-sm !px-2 sm:!px-3"
+            size="sm"
           >
-            <ArrowLeft size={18} className="mr-2" />
+            <ArrowLeft size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             Back
           </Button>
         </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Appointment Management</h1>
-            <p className="text-gray-600">Create and manage appointment slots</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Appointment Management</h1>
+            <p className="text-xs sm:text-sm text-gray-600">Create and manage appointment slots</p>
           </div>
-          <Button variant="primary" onClick={() => setIsModalOpen(true)}>
-            <Plus size={18} className="mr-2" />
-            Create Slot
+          <Button variant="primary" onClick={() => setIsModalOpen(true)} size="sm" className="!text-xs sm:!text-sm !px-2 sm:!px-3">
+            <Plus size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Create Slot</span>
+            <span className="sm:hidden">Create</span>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Available Slots</h3>
-          <div className="space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
+        <Card className="p-3 sm:p-4 lg:p-6">
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Available Slots</h3>
+          <div className="space-y-2 sm:space-y-3">
             {slots.map((slot) => (
-              <div key={slot.id} className="p-4 bg-gray-50 rounded-xl">
+              <div key={slot.id} className="p-2.5 sm:p-3 lg:p-4 bg-gray-50 rounded-lg sm:rounded-xl">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-gray-900">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-xs sm:text-sm lg:text-base text-gray-900 truncate">
                       {safeFormatDate(slot.date, 'MMM d, yyyy')} at {slot.time}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">
                       {slot.capacity - slot.booked} of {slot.capacity} available
                     </p>
                   </div>
@@ -135,37 +137,37 @@ const AppointmentsAdminPage: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Booked Appointments</h3>
-          <div className="space-y-3">
+        <Card className="p-3 sm:p-4 lg:p-6">
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Booked Appointments</h3>
+          <div className="space-y-2 sm:space-y-3">
             {appointments.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar size={32} className="mx-auto mb-2 text-gray-300" />
-                <p>No appointments booked yet</p>
+              <div className="text-center py-6 sm:py-8 text-gray-500">
+                <Calendar size={24} className="sm:w-8 sm:h-8 mx-auto mb-2 text-gray-300" />
+                <p className="text-xs sm:text-sm">No appointments booked yet</p>
               </div>
             ) : (
               appointments.map((apt) => (
                 <div 
                   key={apt.id} 
-                  className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                  className="p-2.5 sm:p-3 lg:p-4 bg-gray-50 rounded-lg sm:rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
                   onClick={() => handleViewAppointmentDetails(apt.id)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Calendar size={16} className="text-gray-400" />
-                        <p className="font-medium text-gray-900">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                        <Calendar size={14} className="sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                        <p className="font-medium text-xs sm:text-sm lg:text-base text-gray-900 truncate">
                           {safeFormatDate(apt.date, 'MMM d, yyyy')} at {apt.time}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                         {getStatusBadge(apt.status)}
-                        <span className="text-xs text-gray-400">
+                        <span className="text-[10px] sm:text-xs text-gray-400 truncate">
                           ID: {apt.id.substring(0, 8)}...
                         </span>
                       </div>
                     </div>
-                    <Eye size={18} className="text-gray-400 ml-2" />
+                    <Eye size={16} className="sm:w-4 sm:h-5 text-gray-400 flex-shrink-0" />
                   </div>
                 </div>
               ))
@@ -225,62 +227,62 @@ const AppointmentsAdminPage: React.FC = () => {
           ) : selectedAppointment ? (
             <div className="space-y-6">
               {/* User Information */}
-              <div className="bg-gray-50 rounded-xl p-5">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <User size={18} className="text-gold-600" />
+              <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-5">
+                <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4 flex items-center gap-1.5 sm:gap-2">
+                  <User size={14} className="sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-gold-600" />
                   User Information
                 </h3>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
-                      <User size={20} className="text-gold-600" />
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
+                      <User size={14} className="sm:w-5 sm:h-5 text-gold-600" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-500 mb-1">Full Name</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500 mb-0.5 sm:mb-1">Full Name</p>
                       <p className="font-medium text-gray-900">{selectedAppointment.user.name}</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                      <Mail size={20} className="text-gray-600" />
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                      <Mail size={14} className="sm:w-5 sm:h-5 text-gray-600" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-500 mb-1">Email / User ID</p>
-                      <p className="font-medium text-gray-900 text-sm break-all">{selectedAppointment.user.email}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500 mb-0.5 sm:mb-1">Email / User ID</p>
+                      <p className="font-medium text-xs sm:text-sm text-gray-900 break-all">{selectedAppointment.user.email}</p>
                     </div>
                   </div>
                   {selectedAppointment.user.phone && (
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                        <Phone size={20} className="text-gray-600" />
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Phone size={14} className="sm:w-5 sm:h-5 text-gray-600" />
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-500 mb-1">Phone Number</p>
-                        <p className="font-medium text-gray-900">{selectedAppointment.user.phone}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500 mb-0.5 sm:mb-1">Phone Number</p>
+                        <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">{selectedAppointment.user.phone}</p>
                       </div>
                     </div>
                   )}
                   {selectedAppointment.user.dateOfBirth && (
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                        <CalendarDays size={20} className="text-gray-600" />
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <CalendarDays size={14} className="sm:w-5 sm:h-5 text-gray-600" />
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-500 mb-1">Date of Birth</p>
-                        <p className="font-medium text-gray-900">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
+                        <p className="font-medium text-xs sm:text-sm text-gray-900">
                           {safeFormatDate(selectedAppointment.user.dateOfBirth, 'MMMM d, yyyy')}
                         </p>
                       </div>
                     </div>
                   )}
                   {selectedAppointment.user.idNumber && (
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                        <IdCard size={20} className="text-gray-600" />
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <IdCard size={14} className="sm:w-5 sm:h-5 text-gray-600" />
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-500 mb-1">ID Number</p>
-                        <p className="font-medium text-gray-900">{selectedAppointment.user.idNumber}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500 mb-0.5 sm:mb-1">ID Number</p>
+                        <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">{selectedAppointment.user.idNumber}</p>
                       </div>
                     </div>
                   )}
@@ -288,33 +290,33 @@ const AppointmentsAdminPage: React.FC = () => {
               </div>
 
             {/* Appointment Information */}
-            <div className="bg-gray-50 rounded-xl p-5">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Calendar size={18} className="text-gold-600" />
+            <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-5">
+              <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4 flex items-center gap-1.5 sm:gap-2">
+                <Calendar size={14} className="sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-gold-600" />
                 Appointment Information
               </h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                  <span className="text-sm text-gray-600">Date</span>
-                  <span className="font-medium text-gray-900">
+              <div className="space-y-2 sm:space-y-3">
+                <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
+                  <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Date</span>
+                  <span className="font-medium text-xs sm:text-sm text-gray-900 truncate ml-2">
                     {safeFormatDate(selectedAppointment.appointment.date, 'MMMM d, yyyy')}
                   </span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                  <span className="text-sm text-gray-600">Time</span>
-                  <span className="font-medium text-gray-900">{selectedAppointment.appointment.time}</span>
+                <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
+                  <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Time</span>
+                  <span className="font-medium text-xs sm:text-sm text-gray-900">{selectedAppointment.appointment.time}</span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                  <span className="text-sm text-gray-600">Status</span>
+                <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
+                  <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Status</span>
                   {getStatusBadge(selectedAppointment.appointment.status)}
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                  <span className="text-sm text-gray-600">Appointment ID</span>
-                  <span className="font-mono text-xs text-gray-600">{selectedAppointment.appointment.id}</span>
+                <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
+                  <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Appointment ID</span>
+                  <span className="font-mono text-[10px] sm:text-xs text-gray-600 truncate ml-2">{selectedAppointment.appointment.id}</span>
                 </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm text-gray-600">Booked On</span>
-                  <span className="text-sm text-gray-900">
+                <div className="flex items-center justify-between py-1.5 sm:py-2">
+                  <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Booked On</span>
+                  <span className="text-[10px] sm:text-xs text-gray-900 truncate ml-2">
                     {safeFormatDateObject(new Date(selectedAppointment.appointment.createdAt), 'MMM d, yyyy h:mm a')}
                   </span>
                 </div>
@@ -322,15 +324,15 @@ const AppointmentsAdminPage: React.FC = () => {
             </div>
 
               {/* QR Code */}
-              <div className="bg-gray-50 rounded-xl p-5">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <CheckCircle size={18} className="text-gold-600" />
+              <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-5">
+                <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4 flex items-center gap-1.5 sm:gap-2">
+                  <CheckCircle size={14} className="sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-gold-600" />
                   QR Code
                 </h3>
-                <div className="flex justify-center py-4">
-                  <QRCode value={selectedAppointment.appointment.qrCodeData} size={180} />
+                <div className="flex justify-center py-2 sm:py-3 lg:py-4">
+                  <QRCode value={selectedAppointment.appointment.qrCodeData} size={120} className="sm:!w-[160px] sm:!h-[160px] lg:!w-[180px] lg:!h-[180px]" />
                 </div>
-                <p className="text-xs text-gray-500 text-center mt-3">
+                <p className="text-[10px] sm:text-xs text-gray-500 text-center mt-2 sm:mt-3">
                   Scan this QR code to verify the appointment
                 </p>
               </div>

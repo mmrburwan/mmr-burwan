@@ -328,14 +328,14 @@ const DocumentsPage: React.FC = () => {
 
   if (!applicationId) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <Card className="p-8 text-center">
-          <AlertCircle size={48} className="text-gray-400 mx-auto mb-4" />
-          <h2 className="font-serif text-2xl font-bold text-gray-900 mb-2">No Application Found</h2>
-          <p className="text-gray-600 mb-6">
-            Please start an application before uploading documents.
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+        <Card className="p-4 sm:p-6 text-center">
+          <AlertCircle size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+          <h2 className="font-serif text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">No Application Found</h2>
+          <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
+            Start an application before uploading documents.
           </p>
-          <Button variant="primary" onClick={() => navigate('/application')}>
+          <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => navigate('/application')}>
             Start Application
           </Button>
         </Card>
@@ -399,16 +399,19 @@ const DocumentsPage: React.FC = () => {
   };
 
   const handlePreviewDocument = async (doc: Document) => {
+    console.log('Preview clicked, document:', doc);
     setPreviewDocument(doc);
     setIsLoadingPreview(true);
     setPreviewUrl(null);
     try {
       // Try to get signed URL for better security
       const signedUrl = await documentService.getSignedUrl(doc.id);
+      console.log('Got signed URL:', signedUrl);
       setPreviewUrl(signedUrl);
     } catch (error: any) {
       console.error('Failed to get signed URL:', error);
       // Fallback to original URL
+      console.log('Using fallback URL:', doc.url);
       setPreviewUrl(doc.url);
     } finally {
       setIsLoadingPreview(false);
@@ -424,71 +427,75 @@ const DocumentsPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
+    <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => navigate('/dashboard')}
-            className="flex-shrink-0"
+            className="flex-shrink-0 !px-2 sm:!px-3"
           >
-            <ArrowLeft size={18} className="mr-2" />
-            Back
+            <ArrowLeft size={16} className="sm:w-[18px] sm:h-[18px] mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Back</span>
           </Button>
         </div>
-        <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Upload Documents</h1>
-        <p className="text-gray-600">Upload all required documents for your marriage registration</p>
+        <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1">Upload Documents</h1>
+        <p className="text-xs sm:text-sm text-gray-600">Upload required documents for registration</p>
       </div>
 
       {/* Rejection Instructions with Individual Upload */}
       {rejectedDocuments.length > 0 && (
-        <Card className="p-6 mb-6 bg-rose-50 border-rose-200">
-          <div className="flex items-start gap-3 mb-4">
-            <XCircle size={20} className="text-rose-600 flex-shrink-0 mt-0.5" />
+        <Card className="p-3 sm:p-5 mb-4 sm:mb-6 bg-rose-50 border-rose-200">
+          <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <XCircle size={16} className="sm:w-5 sm:h-5 text-rose-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h3 className="font-semibold text-rose-900 mb-2">
-                Documents Requiring Re-upload
+              <h3 className="font-semibold text-sm sm:text-base text-rose-900 mb-1 sm:mb-2">
+                Documents Need Re-upload
               </h3>
-              <p className="text-sm text-rose-800 mb-4">
-                The following documents have been rejected. Please review the reasons and select new files, then click "Submit Documents" to upload them.
+              <p className="text-[10px] sm:text-xs text-rose-800 mb-3 sm:mb-4">
+                Review reasons below and select new files.
               </p>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {rejectedDocuments.map((doc) => {
                   const rejectionReason = rejectionNotifications.get(doc.id);
                   const selectedFile = selectedReuploadFiles.get(doc.id);
                   return (
-                    <div key={doc.id} className="bg-white p-5 rounded-xl border border-rose-200">
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-semibold text-gray-900">
+                    <div key={doc.id} className="bg-white p-3 sm:p-4 rounded-lg sm:rounded-xl border border-rose-200">
+                      <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                            <p className="font-semibold text-xs sm:text-sm text-gray-900">
                               {getFullDocumentLabel(doc)}
                             </p>
                             <Badge variant="error" size="sm">Rejected</Badge>
                           </div>
-                          <p className="text-xs text-gray-600">{doc.name}</p>
+                          <p className="text-[10px] sm:text-xs text-gray-600 truncate">{doc.name}</p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handlePreviewDocument(doc)}
-                            title="Preview"
-                          >
-                            <Eye size={16} />
-                          </Button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handlePreviewDocument(doc);
+                          }}
+                          title="Preview"
+                          className="!p-1.5"
+                        >
+                          <Eye size={14} className="sm:w-4 sm:h-4" />
+                        </Button>
                       </div>
                       {rejectionReason && (
-                        <div className="mb-4 p-3 bg-rose-50 rounded-lg border border-rose-100">
-                          <p className="text-xs font-medium text-rose-900 mb-1">Rejection Reason:</p>
-                          <p className="text-xs text-rose-800 whitespace-pre-wrap line-clamp-3">
+                        <div className="mb-3 p-2 sm:p-3 bg-rose-50 rounded-lg border border-rose-100">
+                          <p className="text-[10px] sm:text-xs font-medium text-rose-900 mb-0.5">Reason:</p>
+                          <p className="text-[10px] sm:text-xs text-rose-800 whitespace-pre-wrap line-clamp-2">
                             {rejectionReason}
                           </p>
                         </div>
                       )}
-                      <div className="mt-4">
-                        <div className="flex items-center gap-4">
+                      <div className="mt-2 sm:mt-3">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                           <input
                             type="file"
                             accept="image/*,.pdf"
@@ -504,26 +511,25 @@ const DocumentsPage: React.FC = () => {
                           />
                           <label
                             htmlFor={`reupload-${doc.id}`}
-                            className={`flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer ${
+                            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer text-xs sm:text-sm ${
                               isReuploadingAll 
                                 ? 'opacity-50 cursor-not-allowed bg-gray-50' 
                                 : 'hover:bg-gray-50 bg-white'
                             }`}
                           >
-                            <Upload size={18} />
-                            <span className="text-sm">Choose File</span>
+                            <Upload size={14} className="sm:w-4 sm:h-4" />
+                            <span>Choose</span>
                           </label>
                           {selectedFile && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <FileText size={16} />
-                              <span>{selectedFile.name}</span>
+                            <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                              <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                              <span className="truncate max-w-[100px] sm:max-w-[150px]">{selectedFile.name}</span>
                               <button
                                 onClick={() => handleRemoveReuploadFile(doc.id)}
-                                className="text-rose-600 hover:text-rose-700 p-1"
-                                title="Remove"
+                                className="text-rose-600 hover:text-rose-700 p-0.5"
                                 disabled={isReuploadingAll}
                               >
-                                <X size={16} />
+                                <X size={12} className="sm:w-4 sm:h-4" />
                               </button>
                             </div>
                           )}
@@ -536,23 +542,23 @@ const DocumentsPage: React.FC = () => {
 
               {/* Submit Button for Re-uploads */}
               {selectedReuploadFiles.size > 0 && (
-                <div className="mt-6 pt-4 border-t border-rose-200 flex justify-center">
+                <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-rose-200 flex justify-center">
                   <Button
                     variant="primary"
-                    size="lg"
+                    size="sm"
                     onClick={handleSubmitReuploadFiles}
                     disabled={isReuploadingAll}
-                    className="min-w-[200px]"
+                    className="min-w-[140px] sm:min-w-[180px] !text-xs sm:!text-sm"
                   >
                     {isReuploadingAll ? (
                       <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-1.5"></div>
                         Uploading...
                       </>
                     ) : (
                       <>
-                        <Upload size={20} className="mr-2" />
-                        Submit Documents
+                        <Upload size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                        Submit
                       </>
                     )}
                   </Button>
@@ -565,54 +571,31 @@ const DocumentsPage: React.FC = () => {
 
       {/* Main Upload Section - Only show if no rejected documents */}
       {rejectedDocuments.length === 0 && isUploadEnabled && (
-        <Card className="p-6 mb-8">
-          <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-6">Upload Documents</h2>
+        <Card className="p-3 sm:p-5 mb-4 sm:mb-6">
+          <h2 className="font-serif text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-5">Upload Documents</h2>
           
           {/* Groom's Documents */}
-          <div className="mb-8">
-            <h3 className="font-semibold text-gray-900 mb-2">Groom's Documents</h3>
-            <p className="text-sm text-gray-600 mb-4">Upload groom's Aadhaar card and either 10th class certificate or Voter ID</p>
+          <div className="mb-5 sm:mb-6">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">Groom's Documents</h3>
+            <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">Aadhaar card + 10th certificate or Voter ID</p>
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Groom's Aadhaar */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                   Aadhaar Card <span className="text-rose-600">*</span>
                 </label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileSelection(file, documentTypes.userAadhaar, 'user', 'aadhaar');
-                    }}
-                    className="hidden"
-                    id="user-aadhaar"
-                    disabled={!isUploadEnabled}
-                  />
-                  <label
-                    htmlFor="user-aadhaar"
-                    className={`flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer ${
-                      !isUploadEnabled 
-                        ? 'opacity-50 cursor-not-allowed' 
-                        : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <Upload size={18} />
-                    <span>Choose File</span>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileSelection(file, documentTypes.userAadhaar, 'user', 'aadhaar'); }} className="hidden" id="user-aadhaar" disabled={!isUploadEnabled} />
+                  <label htmlFor="user-aadhaar" className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer text-xs sm:text-sm ${!isUploadEnabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}>
+                    <Upload size={14} className="sm:w-4 sm:h-4" />
+                    <span>Choose</span>
                   </label>
                   {selectedFiles.has(documentTypes.userAadhaar) && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <FileText size={16} />
-                      <span>{selectedFiles.get(documentTypes.userAadhaar)!.name}</span>
-                      <button
-                        onClick={() => handleRemoveSelectedFile(documentTypes.userAadhaar)}
-                        className="text-rose-600 hover:text-rose-700 p-1"
-                        title="Remove"
-                      >
-                        <X size={16} />
-                      </button>
+                    <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                      <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="truncate max-w-[120px] sm:max-w-[180px]">{selectedFiles.get(documentTypes.userAadhaar)!.name}</span>
+                      <button onClick={() => handleRemoveSelectedFile(documentTypes.userAadhaar)} className="text-rose-600 hover:text-rose-700 p-0.5"><X size={12} className="sm:w-4 sm:h-4" /></button>
                     </div>
                   )}
                 </div>
@@ -620,47 +603,20 @@ const DocumentsPage: React.FC = () => {
 
               {/* Groom's Second Document */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  10th Class Certificate or Voter ID <span className="text-rose-600">*</span>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                  10th Certificate / Voter ID <span className="text-rose-600">*</span>
                 </label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const fileName = file.name.toLowerCase();
-                        const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate';
-                        handleFileSelection(file, documentTypes.userSecondDoc, 'user', type);
-                      }
-                    }}
-                    className="hidden"
-                    id="user-second-doc"
-                    disabled={!isUploadEnabled}
-                  />
-                  <label
-                    htmlFor="user-second-doc"
-                    className={`flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer ${
-                      !isUploadEnabled 
-                        ? 'opacity-50 cursor-not-allowed' 
-                        : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <Upload size={18} />
-                    <span>Choose File</span>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const fileName = file.name.toLowerCase(); const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate'; handleFileSelection(file, documentTypes.userSecondDoc, 'user', type); }}} className="hidden" id="user-second-doc" disabled={!isUploadEnabled} />
+                  <label htmlFor="user-second-doc" className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer text-xs sm:text-sm ${!isUploadEnabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}>
+                    <Upload size={14} className="sm:w-4 sm:h-4" />
+                    <span>Choose</span>
                   </label>
                   {selectedFiles.has(documentTypes.userSecondDoc) && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <FileText size={16} />
-                      <span>{selectedFiles.get(documentTypes.userSecondDoc)!.name}</span>
-                      <button
-                        onClick={() => handleRemoveSelectedFile(documentTypes.userSecondDoc)}
-                        className="text-rose-600 hover:text-rose-700 p-1"
-                        title="Remove"
-                      >
-                        <X size={16} />
-                      </button>
+                    <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                      <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="truncate max-w-[120px] sm:max-w-[180px]">{selectedFiles.get(documentTypes.userSecondDoc)!.name}</span>
+                      <button onClick={() => handleRemoveSelectedFile(documentTypes.userSecondDoc)} className="text-rose-600 hover:text-rose-700 p-0.5"><X size={12} className="sm:w-4 sm:h-4" /></button>
                     </div>
                   )}
                 </div>
@@ -669,50 +625,27 @@ const DocumentsPage: React.FC = () => {
           </div>
 
           {/* Bride's Documents */}
-          <div className="mb-8 pt-6 border-t border-gray-200">
-            <h3 className="font-semibold text-gray-900 mb-2">Bride's Documents</h3>
-            <p className="text-sm text-gray-600 mb-4">Upload bride's Aadhaar card and either 10th class certificate or Voter ID</p>
+          <div className="mb-5 sm:mb-6 pt-4 sm:pt-5 border-t border-gray-200">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">Bride's Documents</h3>
+            <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">Aadhaar card + 10th certificate or Voter ID</p>
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Bride's Aadhaar */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                   Aadhaar Card <span className="text-rose-600">*</span>
                 </label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileSelection(file, documentTypes.partnerAadhaar, 'partner', 'aadhaar');
-                    }}
-                    className="hidden"
-                    id="partner-aadhaar"
-                    disabled={!isUploadEnabled}
-                  />
-                  <label
-                    htmlFor="partner-aadhaar"
-                    className={`flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer ${
-                      !isUploadEnabled 
-                        ? 'opacity-50 cursor-not-allowed' 
-                        : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <Upload size={18} />
-                    <span>Choose File</span>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileSelection(file, documentTypes.partnerAadhaar, 'partner', 'aadhaar'); }} className="hidden" id="partner-aadhaar" disabled={!isUploadEnabled} />
+                  <label htmlFor="partner-aadhaar" className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer text-xs sm:text-sm ${!isUploadEnabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}>
+                    <Upload size={14} className="sm:w-4 sm:h-4" />
+                    <span>Choose</span>
                   </label>
                   {selectedFiles.has(documentTypes.partnerAadhaar) && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <FileText size={16} />
-                      <span>{selectedFiles.get(documentTypes.partnerAadhaar)!.name}</span>
-                      <button
-                        onClick={() => handleRemoveSelectedFile(documentTypes.partnerAadhaar)}
-                        className="text-rose-600 hover:text-rose-700 p-1"
-                        title="Remove"
-                      >
-                        <X size={16} />
-                      </button>
+                    <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                      <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="truncate max-w-[120px] sm:max-w-[180px]">{selectedFiles.get(documentTypes.partnerAadhaar)!.name}</span>
+                      <button onClick={() => handleRemoveSelectedFile(documentTypes.partnerAadhaar)} className="text-rose-600 hover:text-rose-700 p-0.5"><X size={12} className="sm:w-4 sm:h-4" /></button>
                     </div>
                   )}
                 </div>
@@ -720,47 +653,20 @@ const DocumentsPage: React.FC = () => {
 
               {/* Bride's Second Document */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  10th Class Certificate or Voter ID <span className="text-rose-600">*</span>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                  10th Certificate / Voter ID <span className="text-rose-600">*</span>
                 </label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const fileName = file.name.toLowerCase();
-                        const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate';
-                        handleFileSelection(file, documentTypes.partnerSecondDoc, 'partner', type);
-                      }
-                    }}
-                    className="hidden"
-                    id="partner-second-doc"
-                    disabled={!isUploadEnabled}
-                  />
-                  <label
-                    htmlFor="partner-second-doc"
-                    className={`flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer ${
-                      !isUploadEnabled 
-                        ? 'opacity-50 cursor-not-allowed' 
-                        : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <Upload size={18} />
-                    <span>Choose File</span>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const fileName = file.name.toLowerCase(); const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate'; handleFileSelection(file, documentTypes.partnerSecondDoc, 'partner', type); }}} className="hidden" id="partner-second-doc" disabled={!isUploadEnabled} />
+                  <label htmlFor="partner-second-doc" className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer text-xs sm:text-sm ${!isUploadEnabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}>
+                    <Upload size={14} className="sm:w-4 sm:h-4" />
+                    <span>Choose</span>
                   </label>
                   {selectedFiles.has(documentTypes.partnerSecondDoc) && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <FileText size={16} />
-                      <span>{selectedFiles.get(documentTypes.partnerSecondDoc)!.name}</span>
-                      <button
-                        onClick={() => handleRemoveSelectedFile(documentTypes.partnerSecondDoc)}
-                        className="text-rose-600 hover:text-rose-700 p-1"
-                        title="Remove"
-                      >
-                        <X size={16} />
-                      </button>
+                    <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                      <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="truncate max-w-[120px] sm:max-w-[180px]">{selectedFiles.get(documentTypes.partnerSecondDoc)!.name}</span>
+                      <button onClick={() => handleRemoveSelectedFile(documentTypes.partnerSecondDoc)} className="text-rose-600 hover:text-rose-700 p-0.5"><X size={12} className="sm:w-4 sm:h-4" /></button>
                     </div>
                   )}
                 </div>
@@ -769,48 +675,25 @@ const DocumentsPage: React.FC = () => {
           </div>
 
           {/* Joint Photograph */}
-          <div className="pt-6 border-t border-gray-200">
-            <h3 className="font-semibold text-gray-900 mb-2">Joint Photograph</h3>
-            <p className="text-sm text-gray-600 mb-4">Upload a joint photograph of the bride and groom</p>
+          <div className="pt-4 sm:pt-5 border-t border-gray-200">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">Joint Photograph</h3>
+            <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">Photo of bride and groom together</p>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Joint Photograph <span className="text-rose-600">*</span>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                Joint Photo <span className="text-rose-600">*</span>
               </label>
-              <div className="flex items-center gap-4">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileSelection(file, documentTypes.jointPhoto, 'joint', 'photo');
-                  }}
-                  className="hidden"
-                  id="joint-photograph"
-                  disabled={!isUploadEnabled}
-                />
-                <label
-                  htmlFor="joint-photograph"
-                  className={`flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer ${
-                    !isUploadEnabled 
-                      ? 'opacity-50 cursor-not-allowed' 
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <Upload size={18} />
-                  <span>Choose File</span>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileSelection(file, documentTypes.jointPhoto, 'joint', 'photo'); }} className="hidden" id="joint-photograph" disabled={!isUploadEnabled} />
+                <label htmlFor="joint-photograph" className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer text-xs sm:text-sm ${!isUploadEnabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}>
+                  <Upload size={14} className="sm:w-4 sm:h-4" />
+                  <span>Choose</span>
                 </label>
                 {selectedFiles.has(documentTypes.jointPhoto) && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <FileText size={16} />
-                    <span>{selectedFiles.get(documentTypes.jointPhoto)!.name}</span>
-                    <button
-                      onClick={() => handleRemoveSelectedFile(documentTypes.jointPhoto)}
-                      className="text-rose-600 hover:text-rose-700 p-1"
-                      title="Remove"
-                    >
-                      <X size={16} />
-                    </button>
+                  <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
+                    <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
+                    <span className="truncate max-w-[120px] sm:max-w-[180px]">{selectedFiles.get(documentTypes.jointPhoto)!.name}</span>
+                    <button onClick={() => handleRemoveSelectedFile(documentTypes.jointPhoto)} className="text-rose-600 hover:text-rose-700 p-0.5"><X size={12} className="sm:w-4 sm:h-4" /></button>
                   </div>
                 )}
               </div>
@@ -820,53 +703,48 @@ const DocumentsPage: React.FC = () => {
       )}
 
       {!isUploadEnabled && rejectedDocuments.length === 0 && (
-        <Card className="p-6 mb-8">
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <Info size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-800">
-                <p className="font-medium mb-1">Application Submitted</p>
-                <p>
-                  Your documents have been submitted and are under review. You will be notified if any documents need to be re-uploaded.
-                </p>
+        <Card className="p-3 sm:p-5 mb-4 sm:mb-6">
+          <div className="p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <Info size={16} className="sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-[10px] sm:text-xs text-blue-800">
+                <p className="font-medium mb-0.5 sm:mb-1">Application Submitted</p>
+                <p>Documents under review. You'll be notified if re-upload is needed.</p>
               </div>
             </div>
           </div>
         </Card>
       )}
 
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-        <div className="flex items-start gap-3">
-          <AlertCircle size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">Security & Privacy</p>
-            <p>
-              All documents are encrypted and stored securely. Signed URLs expire after 24 hours.
-              Your personal information is protected according to government privacy standards.
-            </p>
+      <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <AlertCircle size={16} className="sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-[10px] sm:text-xs text-blue-800">
+            <p className="font-medium mb-0.5 sm:mb-1">Security & Privacy</p>
+            <p>Documents are encrypted. URLs expire in 24 hours.</p>
           </div>
         </div>
       </div>
 
       {/* Final Submit Button */}
       {isUploadEnabled && selectedFiles.size > 0 && (
-        <div className="mt-8 flex items-center justify-center">
+        <div className="mt-5 sm:mt-6 flex items-center justify-center">
           <Button
             variant="primary"
-            size="lg"
+            size="sm"
             onClick={handleSubmitDocuments}
             disabled={isUploading}
-            className="min-w-[200px]"
+            className="min-w-[140px] sm:min-w-[180px] !text-xs sm:!text-sm"
           >
             {isUploading ? (
               <>
-                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-1.5"></div>
                 Uploading...
               </>
             ) : (
               <>
-                <Upload size={20} className="mr-2" />
-                Submit Documents
+                <Upload size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                Submit
               </>
             )}
           </Button>
@@ -876,18 +754,20 @@ const DocumentsPage: React.FC = () => {
       {/* Document Preview Modal */}
       {previewDocument && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-2 sm:p-4"
           onClick={closePreview}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
         >
           <div
-            className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto"
+            className="bg-white rounded-lg sm:rounded-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
+            style={{ zIndex: 101 }}
           >
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10">
-              <h3 className="font-semibold text-gray-900">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-2.5 sm:p-4 flex items-center justify-between z-10 gap-2">
+              <h3 className="font-semibold text-xs sm:text-sm text-gray-900 truncate flex-1">
                 {getFullDocumentLabel(previewDocument)}: {previewDocument.name}
               </h3>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 <Badge
                   variant={
                     previewDocument.status === 'approved'
@@ -896,69 +776,79 @@ const DocumentsPage: React.FC = () => {
                       ? 'error'
                       : 'default'
                   }
+                  className="!text-[10px] sm:!text-xs"
                 >
                   {previewDocument.status}
                 </Badge>
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="!px-2 sm:!px-3 !text-xs"
                   onClick={() => {
                     const urlToDownload = previewUrl || previewDocument.url;
                     window.open(urlToDownload, '_blank');
                   }}
                 >
-                  <Download size={18} className="mr-2" />
-                  Download
+                  <Download size={14} className="sm:w-4 sm:h-4 mr-1" />
+                  <span className="hidden sm:inline">Download</span>
                 </Button>
-                <Button variant="ghost" size="sm" onClick={closePreview}>
-                  <X size={18} />
+                <Button variant="ghost" size="sm" onClick={closePreview} className="!p-1.5 sm:!p-2">
+                  <X size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </Button>
               </div>
             </div>
-            <div className="p-6">
+            <div className="p-2 sm:p-3 lg:p-6 overflow-y-auto max-h-[calc(95vh-80px)] sm:max-h-[calc(90vh-100px)]">
               {isLoadingPreview ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
+                <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 border-t-2 border-b-2 border-gold-500"></div>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-3">Loading preview...</p>
                 </div>
               ) : previewUrl ? (
                 <>
                   {isImage(previewDocument.mimeType) ? (
-                    <img
-                      src={previewUrl}
-                      alt={previewDocument.name}
-                      className="max-w-full h-auto rounded-lg shadow-lg mx-auto"
-                      onError={(e) => {
-                        console.error('Failed to load image:', e);
-                        (e.target as HTMLImageElement).src = previewDocument.url;
-                      }}
-                    />
+                    <div className="flex items-center justify-center min-h-[200px] sm:min-h-[300px] w-full">
+                      <img
+                        src={previewUrl}
+                        alt={previewDocument.name}
+                        className="max-w-full max-h-[calc(95vh-120px)] sm:max-h-[calc(90vh-140px)] w-auto h-auto rounded-lg shadow-lg mx-auto object-contain"
+                        onLoad={() => console.log('Image loaded successfully')}
+                        onError={(e) => {
+                          console.error('Failed to load image:', e);
+                          console.log('Trying fallback URL:', previewDocument.url);
+                          (e.target as HTMLImageElement).src = previewDocument.url;
+                        }}
+                      />
+                    </div>
                   ) : isPDF(previewDocument.mimeType) ? (
-                    <iframe
-                      src={previewUrl}
-                      className="w-full h-[70vh] rounded-lg border border-gray-200"
-                      title={previewDocument.name}
-                      onError={() => {
-                        console.error('Failed to load PDF');
-                      }}
-                    />
+                    <div className="w-full">
+                      <iframe
+                        src={previewUrl}
+                        className="w-full h-[calc(95vh-120px)] sm:h-[calc(90vh-140px)] lg:h-[70vh] rounded-lg border border-gray-200"
+                        title={previewDocument.name}
+                        onLoad={() => console.log('PDF iframe loaded')}
+                        onError={() => {
+                          console.error('Failed to load PDF');
+                        }}
+                      />
+                    </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-4">Preview not available for this file type</p>
-                      <Button variant="primary" onClick={() => window.open(previewUrl, '_blank')}>
-                        <Download size={18} className="mr-2" />
+                    <div className="text-center py-8 sm:py-12">
+                      <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                      <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Preview not available</p>
+                      <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => window.open(previewUrl, '_blank')}>
+                        <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
                         Download to View
                       </Button>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="text-center py-12">
-                  <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">Failed to load document preview</p>
-                  <Button variant="primary" onClick={() => window.open(previewDocument.url, '_blank')}>
-                    <Download size={18} className="mr-2" />
-                    Download to View
+                <div className="text-center py-8 sm:py-12">
+                  <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                  <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Failed to load preview</p>
+                  <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => window.open(previewDocument.url, '_blank')}>
+                    <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                    Open in New Tab
                   </Button>
                 </div>
               )}

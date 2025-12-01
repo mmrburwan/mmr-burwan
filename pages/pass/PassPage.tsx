@@ -50,13 +50,13 @@ const PassPage: React.FC = () => {
 
   if (!appointment) {
     return (
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <Card className="p-8 text-center">
-          <h2 className="font-serif text-2xl font-bold text-gray-900 mb-2">No Appointment Found</h2>
-          <p className="text-gray-600 mb-6">
-            You don't have an active appointment. Book one to get your pass.
+      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+        <Card className="p-4 sm:p-6 text-center">
+          <h2 className="font-serif text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">No Appointment Found</h2>
+          <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
+            Book an appointment to get your pass.
           </p>
-          <Button variant="primary" onClick={() => navigate('/appointments')}>
+          <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => navigate('/appointments')}>
             Book Appointment
           </Button>
         </Card>
@@ -65,190 +65,159 @@ const PassPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
+    <div className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => navigate('/dashboard')}
-            className="flex-shrink-0"
+            className="flex-shrink-0 !px-2 sm:!px-3"
           >
-            <ArrowLeft size={18} className="mr-2" />
-            Back
+            <ArrowLeft size={16} className="sm:w-[18px] sm:h-[18px] mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Back</span>
           </Button>
         </div>
-        <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Your Appointment Pass</h1>
-        <p className="text-gray-600">Official appointment pass for the registrar office</p>
+        <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-0.5 sm:mb-1">Appointment Pass</h1>
+        <p className="text-xs sm:text-sm text-gray-600">Official pass for registrar office</p>
       </div>
 
-      <Card className="p-8 shadow-xl">
+      <Card className="p-4 sm:p-6 shadow-xl">
         {/* Header Section */}
-        <div className="text-center mb-8 pb-6 border-b-2 border-gold-200">
-          <div className="mb-4">
+        <div className="text-center mb-4 sm:mb-6 pb-3 sm:pb-4 border-b-2 border-gold-200">
+          <div className="mb-2 sm:mb-3">
             <Badge variant={appointment.status === 'confirmed' ? 'success' : 'warning'}>
               {appointment.status.toUpperCase()}
             </Badge>
           </div>
-          <h2 className="font-serif text-3xl font-bold text-gray-900 mb-2">
+          <h2 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 mb-1">
             {user?.name}
           </h2>
-          <p className="text-gray-600 uppercase tracking-wide text-sm">Appointment Pass</p>
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <p className="text-xs text-gray-500 font-medium">
-              Office of the Muhammadan Marriage Registrar & Qaazi
+          <p className="text-gray-600 uppercase tracking-wide text-[10px] sm:text-xs">Appointment Pass</p>
+          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-200">
+            <p className="text-[9px] sm:text-xs text-gray-500 font-medium">
+              Muhammadan Marriage Registrar & Qaazi
             </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Vill. & P.O. Gramshalika, P.S. Burwan, Dist. Murshidabad, PIN - 742132
+            <p className="text-[9px] sm:text-xs text-gray-500 mt-0.5">
+              Gramshalika, Burwan, Murshidabad - 742132
             </p>
           </div>
         </div>
 
         {/* Details Section */}
-        <div className="bg-gradient-to-br from-gray-50 to-gold-50/30 rounded-xl p-6 mb-6 border border-gray-200">
-          <div className="space-y-4 mb-6">
-            <div className="flex items-center justify-between py-3 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gold-100 flex items-center justify-center">
-                  <Calendar size={20} className="text-gold-600" />
+        <div className="bg-gradient-to-br from-gray-50 to-gold-50/30 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-5 border border-gray-200">
+          <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-5">
+            <div className="flex items-center justify-between py-2 sm:py-2.5 border-b border-gray-200">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gold-100 flex items-center justify-center">
+                  <Calendar size={14} className="sm:w-4 sm:h-4 text-gold-600" />
                 </div>
-                <span className="text-gray-700 font-medium">Appointment Date</span>
+                <span className="text-xs sm:text-sm text-gray-700 font-medium">Date</span>
               </div>
-              <span className="font-bold text-gray-900 text-lg">
-                {safeFormatDate(appointment.date, 'EEEE, MMMM d, yyyy')}
+              <span className="font-bold text-xs sm:text-sm text-gray-900">
+                {safeFormatDate(appointment.date, 'EEE, MMM d, yyyy')}
               </span>
             </div>
-            <div className="flex items-center justify-between py-3 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gold-100 flex items-center justify-center">
-                  <Clock size={20} className="text-gold-600" />
+            <div className="flex items-center justify-between py-2 sm:py-2.5 border-b border-gray-200">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gold-100 flex items-center justify-center">
+                  <Clock size={14} className="sm:w-4 sm:h-4 text-gold-600" />
                 </div>
-                <span className="text-gray-700 font-medium">Appointment Time</span>
+                <span className="text-xs sm:text-sm text-gray-700 font-medium">Time</span>
               </div>
-              <span className="font-bold text-gray-900 text-lg">{appointment.time}</span>
+              <span className="font-bold text-xs sm:text-sm text-gray-900">{appointment.time}</span>
             </div>
             {user?.email && (
-              <div className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gold-100 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-gold-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center justify-between py-2 sm:py-2.5">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gold-100 flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gold-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <span className="text-gray-700 font-medium">Email</span>
+                  <span className="text-xs sm:text-sm text-gray-700 font-medium">Email</span>
                 </div>
-                <span className="font-semibold text-gray-900">{user.email}</span>
+                <span className="font-semibold text-[10px] sm:text-xs text-gray-900 truncate max-w-[120px] sm:max-w-[180px]">{user.email}</span>
               </div>
             )}
           </div>
 
           {/* QR Code Section */}
-          <div className="bg-white rounded-xl p-6 border-2 border-gold-200 shadow-sm">
-            <p className="text-center text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">
-              Scan QR Code at Registrar Office
+          <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border-2 border-gold-200 shadow-sm">
+            <p className="text-center text-[10px] sm:text-xs font-semibold text-gray-700 mb-2 sm:mb-3 uppercase tracking-wide">
+              Scan at Registrar Office
             </p>
-            <div className="flex justify-center mb-4">
-              <QRCode value={appointment.qrCodeData} size={250} />
+            <div className="flex justify-center mb-2 sm:mb-3">
+              <QRCode value={appointment.qrCodeData} size={180} />
             </div>
-            <p className="text-center text-xs text-gray-500 font-mono">
-              Verification ID: {appointment.id}
+            <p className="text-center text-[9px] sm:text-xs text-gray-500 font-mono truncate">
+              ID: {appointment.id}
             </p>
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <Button
             variant="outline"
-            className="flex-1"
+            size="sm"
+            className="flex-1 !text-xs sm:!text-sm"
             onClick={async () => {
               if (!appointment || !user) return;
-              
               setIsGeneratingPDF(true);
               try {
-                // Generate QR code as data URL using qrcode library
-                const qrCodeImage = await QRCodeLib.toDataURL(appointment.qrCodeData, {
-                  width: 300,
-                  margin: 2,
-                  color: {
-                    dark: '#2B230B',
-                    light: '#FFFFFF',
-                  },
-                });
-                
-                // Generate PDF
-                const pdfDoc = React.createElement(AppointmentPassPDF, {
-                  appointment,
-                  userName: user.name || user.email,
-                  userEmail: user.email,
-                  qrCodeImage,
-                });
-                
+                const qrCodeImage = await QRCodeLib.toDataURL(appointment.qrCodeData, { width: 300, margin: 2, color: { dark: '#2B230B', light: '#FFFFFF' } });
+                const pdfDoc = React.createElement(AppointmentPassPDF, { appointment, userName: user.name || user.email, userEmail: user.email, qrCodeImage });
                 const blob = await pdf(pdfDoc).toBlob();
                 const pdfUrl = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = pdfUrl;
-                link.download = `Appointment-Pass-${appointment.id}.pdf`;
+                link.download = `Pass-${appointment.id}.pdf`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(pdfUrl);
-              } catch (error) {
-                console.error('Failed to generate PDF:', error);
-                alert('Failed to generate PDF. Please try again.');
-              } finally {
-                setIsGeneratingPDF(false);
-              }
+              } catch (error) { console.error('Failed to generate PDF:', error); alert('Failed to generate PDF.'); } finally { setIsGeneratingPDF(false); }
             }}
             isLoading={isGeneratingPDF}
           >
-            <Download size={18} className="mr-2" />
-            Download PDF
+            <Download size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            Download
           </Button>
           <Button
             variant="outline"
-            className="flex-1"
-            onClick={() => {
-              // Mock share
-              if (navigator.share) {
-                navigator.share({
-                  title: 'My Appointment Pass',
-                  text: `Appointment on ${safeFormatDate(appointment.date, 'MMMM d, yyyy')} at ${appointment.time}`,
-                });
-              }
-            }}
+            size="sm"
+            className="flex-1 !text-xs sm:!text-sm"
+            onClick={() => { if (navigator.share) { navigator.share({ title: 'Appointment Pass', text: `Appointment on ${safeFormatDate(appointment.date, 'MMM d, yyyy')} at ${appointment.time}` }); } }}
           >
-            <Share2 size={18} className="mr-2" />
+            <Share2 size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             Share
           </Button>
         </div>
       </Card>
 
-      <Card className="p-6 mt-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200">
-        <h3 className="font-semibold text-blue-900 mb-3 text-lg">Important Instructions</h3>
-        <ul className="space-y-2 text-sm text-blue-800">
-          <li className="flex items-start gap-2">
-            <span className="text-blue-600 font-bold mt-0.5">•</span>
-            <span>Please arrive <strong>15 minutes before</strong> your scheduled appointment time</span>
+      <Card className="p-3 sm:p-4 mt-3 sm:mt-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200">
+        <h3 className="font-semibold text-sm sm:text-base text-blue-900 mb-2 sm:mb-3">Instructions</h3>
+        <ul className="space-y-1.5 sm:space-y-2 text-[10px] sm:text-xs text-blue-800">
+          <li className="flex items-start gap-1.5 sm:gap-2">
+            <span className="text-blue-600 font-bold">•</span>
+            <span>Arrive <strong>15 mins early</strong></span>
           </li>
-          <li className="flex items-start gap-2">
-            <span className="text-blue-600 font-bold mt-0.5">•</span>
-            <span>Bring this pass, a <strong>valid government-issued photo ID</strong>, and all required documents</span>
+          <li className="flex items-start gap-1.5 sm:gap-2">
+            <span className="text-blue-600 font-bold">•</span>
+            <span>Bring <strong>photo ID</strong> & documents</span>
           </li>
-          <li className="flex items-start gap-2">
-            <span className="text-blue-600 font-bold mt-0.5">•</span>
-            <span>Present this QR code at the reception desk for verification</span>
+          <li className="flex items-start gap-1.5 sm:gap-2">
+            <span className="text-blue-600 font-bold">•</span>
+            <span>Show QR at reception</span>
           </li>
-          <li className="flex items-start gap-2">
-            <span className="text-blue-600 font-bold mt-0.5">•</span>
-            <span>Late arrivals may result in rescheduling of your appointment</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-blue-600 font-bold mt-0.5">•</span>
-            <span>For any queries or changes, contact the office in advance</span>
+          <li className="flex items-start gap-1.5 sm:gap-2">
+            <span className="text-blue-600 font-bold">•</span>
+            <span>Late arrivals may be rescheduled</span>
           </li>
         </ul>
-        <div className="mt-4 pt-4 border-t border-blue-200">
-          <p className="text-xs text-blue-700">
-            <strong>Office Hours:</strong> Monday - Saturday, 10:00 AM - 5:00 PM
+        <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-blue-200">
+          <p className="text-[9px] sm:text-xs text-blue-700">
+            <strong>Hours:</strong> Mon-Sat, 10AM-5PM
           </p>
         </div>
       </Card>

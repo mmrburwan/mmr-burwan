@@ -273,73 +273,74 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
+    <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => navigate(user?.role === 'admin' ? '/admin' : '/dashboard')}
-            className="flex-shrink-0"
+            className="flex-shrink-0 !px-2 sm:!px-3"
           >
-            <ArrowLeft size={18} className="mr-2" />
-            Back
+            <ArrowLeft size={16} className="sm:w-[18px] sm:h-[18px] mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Back</span>
           </Button>
         </div>
-        <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Settings</h1>
-        <p className="text-gray-600">Manage your account settings</p>
+        <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1">Settings</h1>
+        <p className="text-xs sm:text-sm text-gray-600">Manage your account settings</p>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
+        <div className="flex items-center justify-center min-h-[300px] sm:min-h-[400px]">
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-t-2 border-b-2 border-gold-500"></div>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-3 sm:space-y-4">
           {/* Basic Information */}
-          <Card className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-6 flex items-center gap-2">
-              <User size={20} className="text-gold-600" />
+          <Card className="p-3 sm:p-5">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+              <User size={16} className="sm:w-5 sm:h-5 text-gold-600" />
               Basic Information
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <Input
                 label="Full Name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                leftIcon={<User size={20} />}
+                leftIcon={<User size={16} className="sm:w-5 sm:h-5" />}
               />
               <Input
                 label="Email"
                 type="email"
                 value={user?.email || ''}
-                leftIcon={<Mail size={20} />}
+                leftIcon={<Mail size={16} className="sm:w-5 sm:h-5" />}
                 disabled
               />
               <PhoneInput
                 label="Phone Number"
                 value={formData.phone?.replace('+91', '').trim() || ''}
                 onChange={(value) => setFormData({ ...formData, phone: value ? `+91${value}` : '' })}
-                leftIcon={<Phone size={20} />}
+                leftIcon={<Phone size={16} className="sm:w-5 sm:h-5" />}
               />
             </div>
           </Card>
 
           {/* Personal Details */}
-          <Card className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-6 flex items-center gap-2">
-              <Calendar size={20} className="text-gold-600" />
+          <Card className="p-3 sm:p-5">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+              <Calendar size={16} className="sm:w-5 sm:h-5 text-gold-600" />
               Personal Details
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <Input
                 label="Date of Birth"
                 type="date"
                 value={formData.dateOfBirth}
                 onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                leftIcon={<Calendar size={20} />}
+                leftIcon={<Calendar size={16} className="sm:w-5 sm:h-5" />}
               />
               <Input
-                label="Aadhaar Number (ID Number)"
+                label="Aadhaar Number"
                 type="text"
                 maxLength={12}
                 value={formData.idNumber}
@@ -347,96 +348,96 @@ const SettingsPage: React.FC = () => {
                   const value = e.target.value.replace(/\D/g, '').slice(0, 12);
                   setFormData({ ...formData, idNumber: value });
                 }}
-                leftIcon={<Hash size={20} />}
-                placeholder="Enter 12-digit Aadhaar number"
+                leftIcon={<Hash size={16} className="sm:w-5 sm:h-5" />}
+                placeholder="12-digit Aadhaar"
               />
             </div>
           </Card>
 
           {/* Address Information */}
-          <Card className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-6 flex items-center gap-2">
-              <MapPin size={20} className="text-gold-600" />
-              Address Information
+          <Card className="p-3 sm:p-5">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+              <MapPin size={16} className="sm:w-5 sm:h-5 text-gold-600" />
+              Address
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <Input
                 label="Street Address"
                 value={formData.addressStreet}
                 onChange={(e) => setFormData({ ...formData, addressStreet: e.target.value })}
-                leftIcon={<MapPin size={20} />}
-                placeholder="Enter your street address"
+                leftIcon={<MapPin size={16} className="sm:w-5 sm:h-5" />}
+                placeholder="Street address"
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
                 <Input
                   label="City"
                   value={formData.addressCity}
                   onChange={(e) => setFormData({ ...formData, addressCity: e.target.value })}
-                  placeholder="Enter city"
+                  placeholder="City"
                 />
                 <Input
                   label="State"
                   value={formData.addressState}
                   onChange={(e) => setFormData({ ...formData, addressState: e.target.value })}
-                  placeholder="Enter state"
+                  placeholder="State"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
                 <Input
                   label="ZIP Code"
                   value={formData.addressZipCode}
                   onChange={(e) => setFormData({ ...formData, addressZipCode: e.target.value })}
-                  placeholder="Enter ZIP code"
+                  placeholder="ZIP"
                 />
                 <Input
                   label="Country"
                   value={formData.addressCountry}
                   onChange={(e) => setFormData({ ...formData, addressCountry: e.target.value })}
-                  placeholder="Enter country"
+                  placeholder="Country"
                 />
               </div>
             </div>
           </Card>
 
           {/* Partner Details */}
-          <Card className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-6 flex items-center gap-2">
-              <Heart size={20} className="text-gold-600" />
+          <Card className="p-3 sm:p-5">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+              <Heart size={16} className="sm:w-5 sm:h-5 text-gold-600" />
               Partner Details
             </h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Partner First Name"
-                  value={formData.partnerFirstName}
-                  onChange={(e) => setFormData({ ...formData, partnerFirstName: e.target.value })}
-                  placeholder="Enter partner's first name"
-                />
-                <Input
-                  label="Partner Last Name"
-                  value={formData.partnerLastName}
-                  onChange={(e) => setFormData({ ...formData, partnerLastName: e.target.value })}
-                  placeholder="Enter partner's last name"
-                />
-              </div>
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
+              <Input
+                label="First Name"
+                value={formData.partnerFirstName}
+                onChange={(e) => setFormData({ ...formData, partnerFirstName: e.target.value })}
+                placeholder="First name"
+              />
+              <Input
+                label="Last Name"
+                value={formData.partnerLastName}
+                onChange={(e) => setFormData({ ...formData, partnerLastName: e.target.value })}
+                placeholder="Last name"
+              />
             </div>
           </Card>
 
           {/* Save Button */}
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
+          <Card className="p-3 sm:p-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <p className="text-sm text-gray-600">
-                  Profile Completion: <span className="font-semibold text-gray-900">{profile?.completionPercentage || 0}%</span>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  Profile: <span className="font-semibold text-gray-900">{profile?.completionPercentage || 0}%</span>
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Complete all sections to reach 100%
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                  Complete all sections for 100%
                 </p>
               </div>
               <Button 
-                variant="primary" 
+                variant="primary"
+                size="sm"
                 onClick={handleSaveChanges}
                 isLoading={isSaving}
+                className="w-full sm:w-auto !text-xs sm:!text-sm"
               >
                 Save Changes
               </Button>
@@ -444,24 +445,26 @@ const SettingsPage: React.FC = () => {
           </Card>
 
           {/* Account Actions */}
-          <Card className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-6">Account Actions</h3>
-            <div className="space-y-4">
+          <Card className="p-3 sm:p-5">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-3 sm:mb-4">Account Actions</h3>
+            <div className="space-y-2 sm:space-y-3">
               <Button 
-                variant="outline" 
-                className="w-full justify-start"
+                variant="outline"
+                size="sm"
+                className="w-full justify-start !text-xs sm:!text-sm"
                 onClick={handleChangePassword}
               >
-                <Key size={18} className="mr-2" />
+                <Key size={14} className="sm:w-[18px] sm:h-[18px] mr-2" />
                 Change Password
               </Button>
               <Button 
-                variant="outline" 
-                className="w-full justify-start"
+                variant="outline"
+                size="sm"
+                className="w-full justify-start !text-xs sm:!text-sm"
                 onClick={handleDownloadData}
                 isLoading={isDownloading}
               >
-                <Download size={18} className="mr-2" />
+                <Download size={14} className="sm:w-[18px] sm:h-[18px] mr-2" />
                 Download My Data
               </Button>
             </div>

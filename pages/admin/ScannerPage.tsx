@@ -83,26 +83,27 @@ const ScannerPage: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
+      <div className="mb-4 sm:mb-6 lg:mb-8">
+        <div className="flex items-center gap-2 sm:gap-4 mb-2 sm:mb-3 lg:mb-4">
           <Button
             variant="ghost"
             onClick={() => navigate('/admin')}
-            className="flex-shrink-0"
+            className="flex-shrink-0 !text-xs sm:!text-sm !px-2 sm:!px-3"
+            size="sm"
           >
-            <ArrowLeft size={18} className="mr-2" />
+            <ArrowLeft size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             Back
           </Button>
         </div>
-        <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">QR Code Scanner</h1>
-        <p className="text-gray-600">Scan or enter QR code to check in appointments</p>
+        <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">QR Code Scanner</h1>
+        <p className="text-xs sm:text-sm text-gray-600">Scan or enter QR code to check in appointments</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-8">
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Scan size={20} className="text-gold-600" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
+        <Card className="p-3 sm:p-4 lg:p-6 xl:p-8">
+          <div className="mb-3 sm:mb-4 lg:mb-6">
+            <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4 flex items-center gap-1.5 sm:gap-2">
+              <Scan size={16} className="sm:w-5 sm:h-5 text-gold-600" />
               Scan QR Code
             </h3>
             <Input
@@ -110,22 +111,23 @@ const ScannerPage: React.FC = () => {
               placeholder="Paste QR code data or scan"
               value={qrCode}
               onChange={(e) => setQrCode(e.target.value)}
-              className="mb-4"
+              className="mb-2 sm:mb-3 lg:mb-4"
             />
             <Button
               variant="primary"
               onClick={handleScan}
               isLoading={isScanning}
-              className="w-full"
+              className="w-full !text-xs sm:!text-sm"
+              size="sm"
             >
-              <QrCode size={18} className="mr-2" />
+              <QrCode size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               Scan Code
             </Button>
           </div>
 
-          <div className="bg-gray-50 rounded-xl p-6">
-            <p className="text-sm text-gray-600 mb-2">Instructions:</p>
-            <ul className="text-sm text-gray-500 space-y-1 list-disc list-inside">
+          <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-6">
+            <p className="text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2">Instructions:</p>
+            <ul className="text-[10px] sm:text-xs lg:text-sm text-gray-500 space-y-0.5 sm:space-y-1 list-disc list-inside">
               <li>Scan the QR code from the appointment pass</li>
               <li>Or paste the QR code data manually</li>
               <li>Click "Scan Code" to validate</li>
@@ -133,57 +135,58 @@ const ScannerPage: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="p-8">
-          <h3 className="font-semibold text-gray-900 mb-4">Scan Result</h3>
+        <Card className="p-3 sm:p-4 lg:p-6 xl:p-8">
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Scan Result</h3>
           {scannedData ? (
-            <div className="space-y-4">
+            <div className="space-y-2 sm:space-y-3 lg:space-y-4">
               {scannedData.valid ? (
                 <>
-                  <div className="flex items-center gap-2 mb-4">
-                    <CheckCircle size={24} className="text-green-600" />
-                    <Badge variant="success">Valid QR Code</Badge>
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 lg:mb-4">
+                    <CheckCircle size={18} className="sm:w-5 sm:h-6 text-green-600" />
+                    <Badge variant="success" className="!text-[10px] sm:!text-xs">Valid QR Code</Badge>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <div className="bg-gray-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 space-y-1.5 sm:space-y-2">
                     <div>
-                      <p className="text-sm text-gray-500">Appointment ID</p>
-                      <p className="font-medium text-gray-900">{scannedData.appointmentId}</p>
+                      <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Appointment ID</p>
+                      <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">{scannedData.appointmentId}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Date</p>
-                      <p className="font-medium text-gray-900">{scannedData.date}</p>
+                      <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Date</p>
+                      <p className="font-medium text-xs sm:text-sm text-gray-900">{scannedData.date}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Time</p>
-                      <p className="font-medium text-gray-900">{scannedData.time}</p>
+                      <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Time</p>
+                      <p className="font-medium text-xs sm:text-sm text-gray-900">{scannedData.time}</p>
                     </div>
                   </div>
                   {!scannedData.checkedIn ? (
                     <Button
                       variant="primary"
                       onClick={handleCheckIn}
-                      className="w-full"
+                      className="w-full !text-xs sm:!text-sm"
+                      size="sm"
                     >
-                      <CheckCircle size={18} className="mr-2" />
+                      <CheckCircle size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                       Check In
                     </Button>
                   ) : (
-                    <div className="flex items-center gap-2 p-4 bg-green-50 rounded-xl">
-                      <CheckCircle size={20} className="text-green-600" />
-                      <span className="text-sm font-medium text-green-800">Checked In</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 p-2.5 sm:p-3 lg:p-4 bg-green-50 rounded-lg sm:rounded-xl">
+                      <CheckCircle size={16} className="sm:w-5 sm:h-5 text-green-600" />
+                      <span className="text-xs sm:text-sm font-medium text-green-800">Checked In</span>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="flex items-center gap-2 p-4 bg-rose-50 rounded-xl">
-                  <XCircle size={20} className="text-rose-600" />
-                  <span className="text-sm font-medium text-rose-800">Invalid QR Code</span>
+                <div className="flex items-center gap-1.5 sm:gap-2 p-2.5 sm:p-3 lg:p-4 bg-rose-50 rounded-lg sm:rounded-xl">
+                  <XCircle size={16} className="sm:w-5 sm:h-5 text-rose-600" />
+                  <span className="text-xs sm:text-sm font-medium text-rose-800">Invalid QR Code</span>
                 </div>
               )}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <QrCode size={48} className="text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No QR code scanned yet</p>
+            <div className="text-center py-6 sm:py-8 lg:py-12">
+              <QrCode size={32} className="sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3 lg:mb-4" />
+              <p className="text-xs sm:text-sm text-gray-500">No QR code scanned yet</p>
             </div>
           )}
         </Card>

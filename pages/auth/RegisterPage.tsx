@@ -82,22 +82,23 @@ const RegisterPage: React.FC = () => {
     <>
       {/* Confirmation Screen */}
       <div className={showConfirmation ? 'block' : 'hidden'}>
-        <Card className="p-8 shadow-xl">
-          <div className="mb-6">
-            <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle size={32} className="text-gold-600" />
+        <Card className="p-4 sm:p-6 shadow-xl">
+          <div className="mb-3 sm:mb-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-2 sm:mb-3">
+              <CheckCircle size={20} className="sm:w-6 sm:h-6 text-gold-600" />
             </div>
-            <h1 className="font-serif text-2xl font-bold text-gray-900 mb-2 text-center">Check Your Email</h1>
-            <p className="text-gray-600 text-center mb-2">
-              We've sent a confirmation email to <strong>{registeredEmail}</strong>
+            <h1 className="font-serif text-lg sm:text-xl font-bold text-gray-900 mb-1 text-center">Check Your Email</h1>
+            <p className="text-xs sm:text-sm text-gray-600 text-center mb-1">
+              We've sent a confirmation email to <strong className="break-all">{registeredEmail}</strong>
             </p>
-            <p className="text-sm text-gray-500 text-center">
-              Please click the confirmation link in the email to activate your account. Once confirmed, you can sign in.
+            <p className="text-[10px] sm:text-xs text-gray-500 text-center leading-relaxed">
+              Please click the confirmation link in the email to activate your account.
             </p>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <Button
               variant="primary"
+              size="md"
               className="w-full"
               onClick={() => {
                 sessionStorage.setItem('pendingLoginEmail', registeredEmail);
@@ -106,10 +107,11 @@ const RegisterPage: React.FC = () => {
               }}
             >
               Go to Sign In
-              <ArrowRight size={18} className="ml-2" />
+              <ArrowRight size={14} className="ml-1.5 sm:w-4 sm:h-4" />
             </Button>
             <Button
               variant="ghost"
+              size="sm"
               className="w-full"
               onClick={() => {
                 setShowConfirmation(false);
@@ -124,18 +126,18 @@ const RegisterPage: React.FC = () => {
 
       {/* Registration Form */}
       <div className={showConfirmation ? 'hidden' : 'block'}>
-        <Card className="p-8 shadow-xl">
-          <div className="mb-8">
-            <h1 className="font-serif text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-            <p className="text-gray-600">Get started with your marriage registration</p>
+        <Card className="p-4 sm:p-6 shadow-xl">
+          <div className="mb-3 sm:mb-4">
+            <h1 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 mb-0.5 sm:mb-1">Create Account</h1>
+            <p className="text-xs sm:text-sm text-gray-600">Get started with your marriage registration</p>
           </div>
 
-          <form id="register-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6" autoComplete="on">
+          <form id="register-form" onSubmit={handleSubmit(onSubmit)} className="space-y-2.5 sm:space-y-3" autoComplete="on">
             <Input
               label="Full Name"
               type="text"
               placeholder="Ahmed Hassan"
-              leftIcon={<User size={20} />}
+              leftIcon={<User size={16} className="sm:w-[18px] sm:h-[18px]" />}
               error={errors.name?.message}
               autoComplete="name"
               {...register('name')}
@@ -146,7 +148,7 @@ const RegisterPage: React.FC = () => {
               label="Email Address"
               type="email"
               placeholder="you@example.com"
-              leftIcon={<Mail size={20} />}
+              leftIcon={<Mail size={16} className="sm:w-[18px] sm:h-[18px]" />}
               error={errors.email?.message}
               {...register('email', {
                 required: true,
@@ -157,7 +159,7 @@ const RegisterPage: React.FC = () => {
 
             <PhoneInput
               label="Phone Number (Optional)"
-              leftIcon={<Phone size={20} />}
+              leftIcon={<Phone size={16} className="sm:w-[18px] sm:h-[18px]" />}
               error={errors.phone?.message}
               autoComplete="tel"
               value={(watch('phone') || '').replace(/^\+91/, '').trim()}
@@ -170,7 +172,7 @@ const RegisterPage: React.FC = () => {
               label="Password"
               type="password"
               placeholder="Create a strong password"
-              leftIcon={<Lock size={20} />}
+              leftIcon={<Lock size={16} className="sm:w-[18px] sm:h-[18px]" />}
               error={errors.password?.message}
               showPasswordToggle={true}
               {...register('password', {
@@ -184,7 +186,7 @@ const RegisterPage: React.FC = () => {
               label="Confirm Password"
               type="password"
               placeholder="Confirm your password"
-              leftIcon={<Lock size={20} />}
+              leftIcon={<Lock size={16} className="sm:w-[18px] sm:h-[18px]" />}
               error={errors.confirmPassword?.message}
               showPasswordToggle={true}
               {...register('confirmPassword', {
@@ -197,34 +199,34 @@ const RegisterPage: React.FC = () => {
             <Button
               type="submit"
               variant="primary"
-              size="lg"
+              size="md"
               isLoading={isLoading}
-              className="w-full"
+              className="w-full !mt-3"
             >
               Create Account
-              <ArrowRight size={18} className="ml-2" />
+              <ArrowRight size={14} className="ml-1.5 sm:w-4 sm:h-4" />
             </Button>
           </form>
 
-          <div className="mt-6">
+          <div className="mt-3 sm:mt-4">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200"></div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">Or continue with</span>
+              <div className="relative flex justify-center text-[10px] sm:text-xs">
+                <span className="px-2 sm:px-3 bg-white text-gray-500">Or continue with</span>
               </div>
             </div>
 
             <Button
               type="button"
               variant="outline"
-              size="lg"
+              size="md"
               isLoading={isGoogleLoading}
               onClick={handleGoogleSignIn}
-              className="w-full mt-4 border-gray-300 hover:bg-gray-50"
+              className="w-full mt-2.5 sm:mt-3 border-gray-300 hover:bg-gray-50"
             >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -246,8 +248,8 @@ const RegisterPage: React.FC = () => {
             </Button>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+          <div className="mt-3 sm:mt-4 text-center">
+            <p className="text-[11px] sm:text-xs text-gray-600">
               Already have an account?{' '}
               <Link to="/auth/login" className="text-gold-600 hover:text-gold-700 font-medium">
                 Sign in

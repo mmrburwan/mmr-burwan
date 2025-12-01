@@ -134,18 +134,18 @@ const MagicLinkPage: React.FC = () => {
 
   if (isSubmitted) {
     return (
-      <Card className="p-8 shadow-xl text-center">
-        <div className="mb-6">
-          <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle size={32} className="text-gold-600" />
+      <Card className="p-4 sm:p-6 shadow-xl text-center">
+        <div className="mb-3 sm:mb-4">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-2 sm:mb-3">
+            <CheckCircle size={20} className="sm:w-6 sm:h-6 text-gold-600" />
           </div>
-          <h1 className="font-serif text-2xl font-bold text-gray-900 mb-2">Check Your Email</h1>
-          <p className="text-gray-600">
-            We've sent a magic link to your email address. Click the link to sign in instantly.
+          <h1 className="font-serif text-lg sm:text-xl font-bold text-gray-900 mb-1">Check Your Email</h1>
+          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+            We've sent a magic link to your email. Click the link to sign in instantly.
           </p>
         </div>
         <Link to="/auth/login">
-          <Button variant="ghost" className="w-full">
+          <Button variant="ghost" size="sm" className="w-full">
             Back to Sign In
           </Button>
         </Link>
@@ -154,20 +154,20 @@ const MagicLinkPage: React.FC = () => {
   }
 
   return (
-    <Card className="p-8 shadow-xl">
-      <div className="mb-8">
-        <h1 className="font-serif text-3xl font-bold text-gray-900 mb-2">Sign In with Magic Link</h1>
-        <p className="text-gray-600">
-          Enter your email and we'll send you a secure link to sign in without a password.
+    <Card className="p-4 sm:p-6 shadow-xl">
+      <div className="mb-3 sm:mb-5">
+        <h1 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 mb-0.5 sm:mb-1">Magic Link Sign In</h1>
+        <p className="text-xs sm:text-sm text-gray-600">
+          Enter your email for a passwordless sign in link.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
         <Input
           label="Email Address"
           type="email"
           placeholder="you@example.com"
-          leftIcon={<Mail size={20} />}
+          leftIcon={<Mail size={16} className="sm:w-[18px] sm:h-[18px]" />}
           error={errors.email?.message}
           {...register('email')}
           required
@@ -176,19 +176,19 @@ const MagicLinkPage: React.FC = () => {
         <Button
           type="submit"
           variant="primary"
-          size="lg"
+          size="md"
           isLoading={isLoading}
           className="w-full"
         >
           Send Magic Link
-          <ArrowRight size={18} className="ml-2" />
+          <ArrowRight size={14} className="ml-1.5 sm:w-4 sm:h-4" />
         </Button>
       </form>
 
-      <div className="mt-6 text-center">
+      <div className="mt-3 sm:mt-4 text-center">
         <Link
           to="/auth/login"
-          className="text-sm text-gold-600 hover:text-gold-700 font-medium"
+          className="text-[11px] sm:text-xs text-gold-600 hover:text-gold-700 font-medium"
         >
           Back to Sign In
         </Link>

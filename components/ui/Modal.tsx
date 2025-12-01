@@ -42,15 +42,15 @@ const Modal: React.FC<ModalProps> = ({
   if (!isOpen) return null;
 
   const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
+    sm: 'max-w-sm sm:max-w-md',
+    md: 'max-w-sm sm:max-w-lg',
+    lg: 'max-w-md sm:max-w-2xl',
+    xl: 'max-w-lg sm:max-w-4xl',
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -62,33 +62,33 @@ const Modal: React.FC<ModalProps> = ({
       <div
         className={`
           relative z-10 w-full ${sizeClasses[size]} my-auto
-          bg-white rounded-3xl shadow-2xl
+          bg-white rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl
           animate-fade-up
         `}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-gray-200">
             {title && (
-              <h2 className="font-serif text-xl font-semibold text-gray-900">
+              <h2 className="font-serif text-base sm:text-lg lg:text-xl font-semibold text-gray-900">
                 {title}
               </h2>
             )}
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
                 aria-label="Close modal"
               >
-                <X size={20} />
+                <X size={18} className="sm:w-5 sm:h-5" />
               </button>
             )}
           </div>
         )}
         
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(100vh-8rem)]">
+        <div className="p-3 sm:p-4 lg:p-6 overflow-y-auto max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-8rem)]">
           {children}
         </div>
       </div>

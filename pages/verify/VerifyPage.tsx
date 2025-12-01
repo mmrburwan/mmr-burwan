@@ -133,32 +133,32 @@ const VerifyPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 pt-24 pb-12">
-      <div className="mb-8 text-center">
-        <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Verify Certificate</h1>
-        <p className="text-gray-600">Enter your certificate number to verify and view certificate details</p>
+    <div className="max-w-3xl mx-auto px-3 sm:px-6 pt-16 sm:pt-20 pb-6 sm:pb-10">
+      <div className="mb-4 sm:mb-6 text-center">
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Verify Certificate</h1>
+        <p className="text-xs sm:text-sm text-gray-600">Enter certificate number to verify details</p>
       </div>
 
       {!hasSearched ? (
-        <Card className="p-8">
-          <div className="space-y-6">
+        <Card className="p-4 sm:p-6">
+          <div className="space-y-3 sm:space-y-4">
             <Input
               label="Certificate Number"
-              placeholder="Enter certificate number (e.g., WB-MSD-BRW-V-5-C-2025-257-2026-599)"
+              placeholder="e.g., WB-MSD-BRW-V-5-C-2025-257-2026-599"
               value={certificateNumber}
               onChange={(e) => {
                 setCertificateNumber(e.target.value);
                 setError('');
               }}
               onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleVerify()}
-              leftIcon={<Search size={20} />}
+              leftIcon={<Search size={16} className="sm:w-[18px] sm:h-[18px]" />}
               error={error}
               disabled={isLoading}
             />
             
             {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200">
-                <p className="text-sm text-rose-600">{error}</p>
+              <div className="p-2 sm:p-3 rounded-lg bg-rose-50 border border-rose-200">
+                <p className="text-xs sm:text-sm text-rose-600">{error}</p>
               </div>
             )}
 
@@ -167,57 +167,57 @@ const VerifyPage: React.FC = () => {
               onClick={handleVerify}
               isLoading={isLoading}
               className="w-full"
-              size="lg"
+              size="md"
             >
-              {!isLoading && <Search size={18} className="mr-2" />}
+              {!isLoading && <Search size={14} className="mr-1.5 sm:w-4 sm:h-4" />}
               {isLoading ? 'Verifying...' : 'Verify Certificate'}
             </Button>
           </div>
         </Card>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {isValid && certificateData ? (
-            <Card className="p-8">
+            <Card className="p-4 sm:p-6">
               {/* Success Header */}
-              <div className="text-center mb-8">
-                <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4 animate-fade-in">
-                  <CheckCircle size={40} className="text-green-600" />
+              <div className="text-center mb-4 sm:mb-6">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-2 sm:mb-3 animate-fade-in">
+                  <CheckCircle size={24} className="sm:w-8 sm:h-8 text-green-600" />
                 </div>
-                <h2 className="font-serif text-2xl font-bold text-gray-900 mb-2">
+                <h2 className="font-serif text-lg sm:text-xl font-bold text-gray-900 mb-1">
                   Certificate Verified
                 </h2>
-                <p className="text-sm text-gray-600 mb-4">
-                  This certificate is valid and has been issued by the MMR Burwan office.
+                <p className="text-xs sm:text-sm text-gray-600 mb-3">
+                  This certificate is valid and issued by MMR Burwan office.
                 </p>
-                <div className="inline-block bg-gray-900 rounded-xl px-6 py-4 shadow-lg">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2 font-medium">Certificate Number</p>
-                  <p className="font-serif text-3xl font-black text-white tracking-wide">
+                <div className="inline-block bg-gray-900 rounded-lg sm:rounded-xl px-3 sm:px-5 py-2 sm:py-3 shadow-lg">
+                  <p className="text-[8px] sm:text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-medium">Certificate Number</p>
+                  <p className="font-serif text-sm sm:text-lg font-black text-white tracking-wide break-all">
                     {certificateData.certificateNumber}
                   </p>
                 </div>
               </div>
 
               {/* Certificate Details */}
-              <div className="bg-gradient-to-br from-gray-50 to-rose-50/30 rounded-2xl p-6 space-y-6 border border-gray-200">
+              <div className="bg-gradient-to-br from-gray-50 to-rose-50/30 rounded-xl sm:rounded-2xl p-3 sm:p-5 space-y-3 sm:space-y-4 border border-gray-200">
                 {/* Groom Details */}
-                <div className="bg-white rounded-xl p-5 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Users size={18} className="text-indigo-600" />
-                    <h4 className="font-serif font-semibold text-lg text-gray-900">Groom Details</h4>
+                <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+                    <Users size={14} className="sm:w-4 sm:h-4 text-indigo-600" />
+                    <h4 className="font-serif font-semibold text-sm sm:text-base text-gray-900">Groom Details</h4>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div>
-                      <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-medium">Name</p>
-                      <p className="font-semibold text-gray-900">
+                      <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 uppercase tracking-wider font-medium">Name</p>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900">
                         {certificateData.userDetails?.firstName} {certificateData.userDetails?.lastName}
                       </p>
                       {certificateData.userDetails?.fatherName && (
-                        <p className="text-sm text-gray-600">Son of {certificateData.userDetails.fatherName}</p>
+                        <p className="text-[11px] sm:text-xs text-gray-600">Son of {certificateData.userDetails.fatherName}</p>
                       )}
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-medium">Address</p>
-                      <p className="text-sm text-gray-700 leading-relaxed">
+                      <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 uppercase tracking-wider font-medium">Address</p>
+                      <p className="text-[11px] sm:text-xs text-gray-700 leading-relaxed">
                         {formatAddress(certificateData.userAddress)}
                       </p>
                     </div>
@@ -225,24 +225,24 @@ const VerifyPage: React.FC = () => {
                 </div>
 
                 {/* Bride Details */}
-                <div className="bg-white rounded-xl p-5 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Users size={18} className="text-rose-600" />
-                    <h4 className="font-serif font-semibold text-lg text-gray-900">Bride Details</h4>
+                <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+                    <Users size={14} className="sm:w-4 sm:h-4 text-rose-600" />
+                    <h4 className="font-serif font-semibold text-sm sm:text-base text-gray-900">Bride Details</h4>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div>
-                      <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-medium">Name</p>
-                      <p className="font-semibold text-gray-900">
+                      <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 uppercase tracking-wider font-medium">Name</p>
+                      <p className="font-semibold text-xs sm:text-sm text-gray-900">
                         {certificateData.partnerForm?.firstName} {certificateData.partnerForm?.lastName}
                       </p>
                       {certificateData.partnerForm?.fatherName && (
-                        <p className="text-sm text-gray-600">Daughter of {certificateData.partnerForm.fatherName}</p>
+                        <p className="text-[11px] sm:text-xs text-gray-600">Daughter of {certificateData.partnerForm.fatherName}</p>
                       )}
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-medium">Address</p>
-                      <p className="text-sm text-gray-700 leading-relaxed">
+                      <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 uppercase tracking-wider font-medium">Address</p>
+                      <p className="text-[11px] sm:text-xs text-gray-700 leading-relaxed">
                         {formatAddress(certificateData.partnerAddress)}
                       </p>
                     </div>
@@ -250,45 +250,45 @@ const VerifyPage: React.FC = () => {
                 </div>
 
                 {/* Marriage & Registration Dates */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white rounded-xl p-4 border border-gray-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Calendar size={16} className="text-gold-600" />
-                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Marriage Date</p>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="bg-white rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-gray-200">
+                    <div className="flex items-center gap-1 sm:gap-1.5 mb-1">
+                      <Calendar size={12} className="sm:w-3.5 sm:h-3.5 text-gold-600" />
+                      <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wider font-medium">Marriage</p>
                     </div>
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-[11px] sm:text-xs text-gray-900">
                       {certificateData.declarations?.marriageDate 
-                        ? safeFormatDateObject(new Date(certificateData.declarations.marriageDate), 'MMMM d, yyyy')
+                        ? safeFormatDateObject(new Date(certificateData.declarations.marriageDate), 'MMM d, yyyy')
                         : 'N/A'}
                     </p>
                   </div>
-                  <div className="bg-white rounded-xl p-4 border border-gray-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Calendar size={16} className="text-gold-600" />
-                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Registration Date</p>
+                  <div className="bg-white rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-gray-200">
+                    <div className="flex items-center gap-1 sm:gap-1.5 mb-1">
+                      <Calendar size={12} className="sm:w-3.5 sm:h-3.5 text-gold-600" />
+                      <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wider font-medium">Registration</p>
                     </div>
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-[11px] sm:text-xs text-gray-900">
                       {certificateData.registrationDate 
-                        ? safeFormatDateObject(new Date(certificateData.registrationDate), 'MMMM d, yyyy')
+                        ? safeFormatDateObject(new Date(certificateData.registrationDate), 'MMM d, yyyy')
                         : 'N/A'}
                     </p>
                   </div>
                 </div>
 
                 {/* Registration Office Details */}
-                <div className="bg-white rounded-xl p-5 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <MapPin size={18} className="text-indigo-600" />
-                    <h4 className="font-serif font-semibold text-lg text-gray-900">Registration Office</h4>
+                <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-2">
+                    <MapPin size={14} className="sm:w-4 sm:h-4 text-indigo-600" />
+                    <h4 className="font-serif font-semibold text-sm sm:text-base text-gray-900">Registration Office</h4>
                   </div>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-1 text-[11px] sm:text-xs">
                     <p className="font-semibold text-gray-900">
                       Office of the Muhammadan Marriage Registrar & Qaazi
                     </p>
                     <p className="text-gray-700">
                       Vill. & P.O. Gramshalika, P.S. Burwan, Dist. Murshidabad, PIN- 742132
                     </p>
-                    <p className="text-xs text-gray-500 italic mt-2">
+                    <p className="text-[10px] sm:text-[11px] text-gray-500 italic mt-1">
                       Under The Bengal Muhammadan Marriages and Divorces Registration Act- 1876.
                     </p>
                   </div>
@@ -296,9 +296,10 @@ const VerifyPage: React.FC = () => {
               </div>
 
               {/* Action Button */}
-              <div className="mt-6">
+              <div className="mt-4">
                 <Button
                   variant="primary"
+                  size="md"
                   onClick={handleReset}
                   className="w-full"
                 >
@@ -307,39 +308,38 @@ const VerifyPage: React.FC = () => {
               </div>
             </Card>
           ) : (
-            <Card className="p-8 text-center">
-              <div className="w-20 h-20 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-6">
-                <XCircle size={40} className="text-rose-600" />
+            <Card className="p-4 sm:p-6 text-center">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <XCircle size={24} className="sm:w-8 sm:h-8 text-rose-600" />
               </div>
-              <h2 className="font-serif text-3xl font-bold text-gray-900 mb-2">
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
                 Certificate Not Found
               </h2>
-              <p className="text-gray-600 mb-8">
-                The certificate with number "{certificateNumber || id}" could not be found or is invalid.
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
+                The certificate "{certificateNumber || id}" could not be found or is invalid.
               </p>
 
               {error && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 mb-6">
-                  <p className="text-sm text-rose-600">{error}</p>
+                <div className="p-2 sm:p-3 rounded-lg bg-rose-50 border border-rose-200 mb-4">
+                  <p className="text-xs sm:text-sm text-rose-600">{error}</p>
                 </div>
               )}
 
-              <div className="flex gap-3 justify-center">
-                <Button
-                  variant="primary"
-                  onClick={handleReset}
-                  className="flex-1"
-                >
-                  Try Another Number
-                </Button>
-              </div>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleReset}
+                className="w-full"
+              >
+                Try Another Number
+              </Button>
             </Card>
           )}
         </div>
       )}
 
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-500">
+      <div className="mt-4 text-center">
+        <p className="text-[11px] sm:text-xs text-gray-500">
           Need help? <a href="/help" className="text-gold-600 hover:text-gold-700">Contact Support</a>
         </p>
       </div>

@@ -167,78 +167,82 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      <div className="mb-8 flex items-start justify-between">
-        <div>
-          <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">
-            Welcome back, {profile?.firstName || user?.name}!
-          </h1>
-          <p className="text-gray-600">Here's your registration progress</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {user && (
-            <>
-              <NotificationIcon
-                userId={user.id}
-                onOpenPanel={() => setIsNotificationPanelOpen(true)}
-              />
-              <NotificationPanel
-                userId={user.id}
-                isOpen={isNotificationPanelOpen}
-                onClose={() => setIsNotificationPanelOpen(false)}
-              />
-            </>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
-          >
-            <LogOut size={18} />
-            <span>Logout</span>
-          </Button>
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+      {/* Header */}
+      <div className="mb-4 sm:mb-6">
+        <div className="flex items-center justify-between mb-2 sm:mb-0">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">
+              Welcome, {profile?.firstName || user?.name}!
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-600 mt-0.5">Your registration progress</p>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3 ml-2">
+            {user && (
+              <>
+                <NotificationIcon
+                  userId={user.id}
+                  onOpenPanel={() => setIsNotificationPanelOpen(true)}
+                />
+                <NotificationPanel
+                  userId={user.id}
+                  isOpen={isNotificationPanelOpen}
+                  onClose={() => setIsNotificationPanelOpen(false)}
+                />
+              </>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-gray-700 hover:text-gray-900 !px-2 sm:!px-3"
+            >
+              <LogOut size={16} className="sm:w-[18px] sm:h-[18px]" />
+              <span className="hidden sm:inline text-xs sm:text-sm">Logout</span>
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
         {/* Profile Card */}
-        <Card className="p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 rounded-full bg-gold-100 flex items-center justify-center">
-              <User size={24} className="text-gold-600" />
+        <Card className="p-3 sm:p-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
+              <User size={18} className="sm:w-5 sm:h-5 text-gold-600" />
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Profile</h3>
-              <p className="text-sm text-gray-500">{profile?.completionPercentage || 0}% complete</p>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900">Profile</h3>
+              <p className="text-xs sm:text-sm text-gray-500">{profile?.completionPercentage || 0}% complete</p>
             </div>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+          <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2 mb-3">
             <div
-              className="bg-gold-500 h-2 rounded-full transition-all"
+              className="bg-gold-500 h-1.5 sm:h-2 rounded-full transition-all"
               style={{ width: `${profile?.completionPercentage || 0}%` }}
             />
           </div>
-          <Button variant="ghost" size="sm" className="w-full" onClick={() => navigate('/settings')}>
+          <Button variant="ghost" size="sm" className="w-full !text-xs sm:!text-sm" onClick={() => navigate('/settings')}>
             Update Profile
           </Button>
         </Card>
 
         {/* Application Progress */}
-        <Card className="p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center">
-              <FileText size={24} className="text-rose-600" />
+        <Card className="p-3 sm:p-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
+              <FileText size={18} className="sm:w-5 sm:h-5 text-rose-600" />
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Application</h3>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900">Application</h3>
               <Badge variant={application?.status === 'submitted' ? 'success' : 'warning'}>
                 {application?.status || 'Not started'}
               </Badge>
             </div>
           </div>
           {application ? (
-            <div className="mb-4">
+            <div className="mb-3">
               <Stepper
                 steps={applicationSteps}
                 currentStep={currentStep}
@@ -246,41 +250,41 @@ const DashboardPage: React.FC = () => {
               />
             </div>
           ) : (
-            <p className="text-sm text-gray-500 mb-4">Start your application</p>
+            <p className="text-xs sm:text-sm text-gray-500 mb-3">Start your application</p>
           )}
           {application?.status === 'submitted' || application?.status === 'under_review' || application?.status === 'approved' ? (
             <Button
               variant="ghost"
               size="sm"
-              className="w-full"
+              className="w-full !text-xs sm:!text-sm"
               disabled
             >
               Application Submitted
-              <CheckCircle size={16} className="ml-2" />
+              <CheckCircle size={14} className="ml-1.5 sm:w-4 sm:h-4" />
             </Button>
           ) : (
             <Button
               variant="primary"
               size="sm"
-              className="w-full"
+              className="w-full !text-xs sm:!text-sm"
               onClick={() => navigate('/application')}
             >
-              {application ? 'Continue Application' : 'Start Application'}
-              <ArrowRight size={16} className="ml-2" />
+              {application ? 'Continue' : 'Start Application'}
+              <ArrowRight size={14} className="ml-1.5 sm:w-4 sm:h-4" />
             </Button>
           )}
         </Card>
 
         {/* Messages */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <MessageSquare size={24} className="text-blue-600" />
+        <Card className="p-3 sm:p-4 sm:col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <MessageSquare size={18} className="sm:w-5 sm:h-5 text-blue-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Messages</h3>
-                <p className="text-sm text-gray-500">
+                <h3 className="font-semibold text-sm sm:text-base text-gray-900">Messages</h3>
+                <p className="text-xs sm:text-sm text-gray-500">
                   {unreadMessages > 0 ? `${unreadMessages} unread` : 'No new messages'}
                 </p>
               </div>
@@ -292,22 +296,23 @@ const DashboardPage: React.FC = () => {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full"
+            className="w-full !text-xs sm:!text-sm"
             onClick={() => navigate('/chat')}
           >
             View Messages
-            <ArrowRight size={16} className="ml-2" />
+            <ArrowRight size={14} className="ml-1.5 sm:w-4 sm:h-4" />
           </Button>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Secondary Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         {/* Upcoming Appointment */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <Calendar size={20} className="text-gold-600" />
-              Upcoming Appointment
+        <Card className="p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 flex items-center gap-1.5 sm:gap-2">
+              <Calendar size={16} className="sm:w-5 sm:h-5 text-gold-600" />
+              Appointment
             </h3>
             {appointment && (
               <Badge variant={appointment.status === 'confirmed' ? 'success' : 'warning'}>
@@ -316,17 +321,18 @@ const DashboardPage: React.FC = () => {
             )}
           </div>
           {appointment ? (
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Date & Time</p>
-                <p className="font-medium text-gray-900">
-                  {safeFormatDate(appointment.date, 'MMMM d, yyyy')} at {appointment.time}
+                <p className="text-[11px] sm:text-xs text-gray-500">Date & Time</p>
+                <p className="font-medium text-xs sm:text-sm text-gray-900">
+                  {safeFormatDate(appointment.date, 'MMM d, yyyy')} at {appointment.time}
                 </p>
               </div>
               <div className="flex gap-2">
                 <Button
                   variant="primary"
                   size="sm"
+                  className="!text-xs sm:!text-sm flex-1"
                   onClick={() => navigate('/pass')}
                 >
                   View Pass
@@ -334,10 +340,8 @@ const DashboardPage: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    // Navigate to appointments page - the page will detect existing appointment and show reschedule option
-                    navigate('/appointments');
-                  }}
+                  className="!text-xs sm:!text-sm"
+                  onClick={() => navigate('/appointments')}
                 >
                   Reschedule
                 </Button>
@@ -345,62 +349,62 @@ const DashboardPage: React.FC = () => {
             </div>
           ) : (
             <div>
-              <p className="text-sm text-gray-500 mb-4">No appointment scheduled</p>
+              <p className="text-xs sm:text-sm text-gray-500 mb-3">No appointment scheduled</p>
               <Button
                 variant="primary"
                 size="sm"
+                className="!text-xs sm:!text-sm"
                 onClick={() => navigate('/appointments')}
               >
                 Book Appointment
-                <ArrowRight size={16} className="ml-2" />
+                <ArrowRight size={14} className="ml-1.5 sm:w-4 sm:h-4" />
               </Button>
             </div>
           )}
         </Card>
 
         {/* Latest Certificate */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <Award size={20} className="text-gold-600" />
-              Latest Certificate
+        <Card className="p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 flex items-center gap-1.5 sm:gap-2">
+              <Award size={16} className="sm:w-5 sm:h-5 text-gold-600" />
+              Certificate
             </h3>
             {application?.verified && <Badge variant="success">Verified</Badge>}
           </div>
           {application?.verified ? (
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Verification Status</p>
-                <p className="font-medium text-gray-900">
-                  Your application has been verified
+                <p className="text-[11px] sm:text-xs text-gray-500">Status</p>
+                <p className="font-medium text-xs sm:text-sm text-gray-900">
+                  Application verified
                 </p>
                 {application.verifiedAt && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Verified on {safeFormatDate(application.verifiedAt, 'MMMM d, yyyy')}
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                    Verified on {safeFormatDate(application.verifiedAt, 'MMM d, yyyy')}
                   </p>
                 )}
                 {application.certificateNumber && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Certificate Number: {application.certificateNumber}
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 break-all">
+                    Cert: {application.certificateNumber}
                   </p>
                 )}
               </div>
               {certificate ? (
-                <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button
                     variant="primary"
                     size="sm"
-                    className="w-full"
+                    className="!text-xs sm:!text-sm flex-1"
                     onClick={() => navigate(`/verify/${certificate.verificationId}`)}
                   >
-                    <Award size={16} className="mr-2" />
-                    View Certificate
-                    <ArrowRight size={16} className="ml-2" />
+                    <Award size={14} className="mr-1 sm:w-4 sm:h-4" />
+                    View
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full"
+                    className="!text-xs sm:!text-sm flex-1"
                     onClick={async () => {
                       if (application) {
                         try {
@@ -413,14 +417,14 @@ const DashboardPage: React.FC = () => {
                       }
                     }}
                   >
-                    Download Certificate PDF
+                    Download PDF
                   </Button>
                 </div>
               ) : (
                 <Button
                   variant="primary"
                   size="sm"
-                  className="w-full"
+                  className="w-full !text-xs sm:!text-sm"
                   onClick={async () => {
                     if (application) {
                       try {
@@ -433,70 +437,68 @@ const DashboardPage: React.FC = () => {
                     }
                   }}
                 >
-                  <Award size={16} className="mr-2" />
+                  <Award size={14} className="mr-1 sm:w-4 sm:h-4" />
                   Download Certificate
                 </Button>
               )}
             </div>
           ) : (
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-500">Certificate Status</p>
-                <p className="font-medium text-gray-900">
-                  {application?.status === 'submitted' || application?.status === 'under_review'
-                    ? 'Your application is under review'
-                    : application
-                    ? 'Your application is pending verification'
-                    : 'No application submitted yet'}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {application?.status === 'submitted' || application?.status === 'under_review'
-                    ? 'Once verified by admin, your certificate will be available here.'
-                    : application
-                    ? 'Complete and submit your application to proceed with verification.'
-                    : 'Start your application to begin the registration process.'}
-                </p>
-              </div>
+            <div>
+              <p className="text-[11px] sm:text-xs text-gray-500">Status</p>
+              <p className="font-medium text-xs sm:text-sm text-gray-900">
+                {application?.status === 'submitted' || application?.status === 'under_review'
+                  ? 'Under review'
+                  : application
+                  ? 'Pending verification'
+                  : 'No application'}
+              </p>
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-1 leading-relaxed">
+                {application?.status === 'submitted' || application?.status === 'under_review'
+                  ? 'Certificate will be available once verified.'
+                  : application
+                  ? 'Complete and submit to proceed.'
+                  : 'Start your application first.'}
+              </p>
             </div>
           )}
         </Card>
       </div>
 
       {/* Quick Actions */}
-      <div className="mt-8">
-        <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="mt-4 sm:mt-6">
+        <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3">Quick Actions</h3>
+        <div className="grid grid-cols-4 gap-2 sm:gap-3">
           <Button
             variant="outline"
-            className="flex flex-col items-center gap-2 h-auto py-4"
+            className="flex flex-col items-center gap-1 sm:gap-1.5 h-auto py-2.5 sm:py-3 !px-1 sm:!px-2"
             onClick={() => navigate('/documents')}
           >
-            <Upload size={24} className="text-gold-600" />
-            <span className="text-sm">Upload Documents</span>
+            <Upload size={18} className="sm:w-5 sm:h-5 text-gold-600" />
+            <span className="text-[10px] sm:text-xs text-center leading-tight">Upload<br className="sm:hidden" /> Docs</span>
           </Button>
           <Button
             variant="outline"
-            className="flex flex-col items-center gap-2 h-auto py-4"
+            className="flex flex-col items-center gap-1 sm:gap-1.5 h-auto py-2.5 sm:py-3 !px-1 sm:!px-2"
             onClick={() => navigate('/appointments')}
           >
-            <Calendar size={24} className="text-gold-600" />
-            <span className="text-sm">Book Appointment</span>
+            <Calendar size={18} className="sm:w-5 sm:h-5 text-gold-600" />
+            <span className="text-[10px] sm:text-xs text-center leading-tight">Book<br className="sm:hidden" /> Appt</span>
           </Button>
           <Button
             variant="outline"
-            className="flex flex-col items-center gap-2 h-auto py-4"
+            className="flex flex-col items-center gap-1 sm:gap-1.5 h-auto py-2.5 sm:py-3 !px-1 sm:!px-2"
             onClick={() => navigate('/chat')}
           >
-            <MessageSquare size={24} className="text-gold-600" />
-            <span className="text-sm">Contact Support</span>
+            <MessageSquare size={18} className="sm:w-5 sm:h-5 text-gold-600" />
+            <span className="text-[10px] sm:text-xs text-center leading-tight">Support</span>
           </Button>
           <Button
             variant="outline"
-            className="flex flex-col items-center gap-2 h-auto py-4"
+            className="flex flex-col items-center gap-1 sm:gap-1.5 h-auto py-2.5 sm:py-3 !px-1 sm:!px-2"
             onClick={() => navigate('/help-center')}
           >
-            <FileText size={24} className="text-gold-600" />
-            <span className="text-sm">Help Center</span>
+            <FileText size={18} className="sm:w-5 sm:h-5 text-gold-600" />
+            <span className="text-[10px] sm:text-xs text-center leading-tight">Help</span>
           </Button>
         </div>
       </div>

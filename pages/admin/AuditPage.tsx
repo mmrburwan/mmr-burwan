@@ -55,18 +55,18 @@ const AuditPage: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Audit Logs</h1>
-        <p className="text-gray-600">View all system activities and changes</p>
+      <div className="mb-4 sm:mb-6 lg:mb-8">
+        <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Audit Logs</h1>
+        <p className="text-xs sm:text-sm text-gray-600">View all system activities and changes</p>
       </div>
 
-      <Card className="p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Card className="p-3 sm:p-4 lg:p-6 mb-3 sm:mb-4 lg:mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
           <Input
             placeholder="Search logs..."
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            leftIcon={<Search size={20} />}
+            leftIcon={<Search size={16} className="sm:w-5 sm:h-5" />}
           />
           <Select
             options={[
@@ -90,30 +90,30 @@ const AuditPage: React.FC = () => {
         </div>
       </Card>
 
-      <Card className="p-6">
-        <div className="space-y-4">
+      <Card className="p-3 sm:p-4 lg:p-6">
+        <div className="space-y-2 sm:space-y-3 lg:space-y-4">
           {filteredLogs.map((log) => (
             <div
               key={log.id}
-              className="p-4 bg-gray-50 rounded-xl border-l-4 border-gold-500"
+              className="p-2.5 sm:p-3 lg:p-4 bg-gray-50 rounded-lg sm:rounded-xl border-l-4 border-gold-500"
             >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <ShieldCheck size={20} className="text-gold-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">{log.actorName}</p>
-                    <p className="text-sm text-gray-500">{log.action}</p>
+              <div className="flex items-start justify-between mb-1.5 sm:mb-2 gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <ShieldCheck size={16} className="sm:w-5 sm:h-5 text-gold-600 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">{log.actorName}</p>
+                    <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500 truncate">{log.action}</p>
                   </div>
                 </div>
-                <Badge variant={log.actorRole === 'admin' ? 'info' : 'default'}>
+                <Badge variant={log.actorRole === 'admin' ? 'info' : 'default'} className="!text-[10px] sm:!text-xs flex-shrink-0">
                   {log.actorRole}
                 </Badge>
               </div>
-              <div className="flex items-center justify-between mt-2">
-                <p className="text-xs text-gray-500">
+              <div className="flex items-center justify-between mt-1.5 sm:mt-2 gap-2">
+                <p className="text-[10px] sm:text-xs text-gray-500 truncate min-w-0 flex-1">
                   {log.resourceType}: {log.resourceId}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-[10px] sm:text-xs text-gray-500 flex-shrink-0">
                   {safeFormatDateObject(new Date(log.timestamp), 'MMM d, yyyy HH:mm')}
                 </p>
               </div>
@@ -122,8 +122,8 @@ const AuditPage: React.FC = () => {
         </div>
 
         {filteredLogs.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No audit logs found</p>
+          <div className="text-center py-6 sm:py-8 lg:py-12">
+            <p className="text-xs sm:text-sm text-gray-500">No audit logs found</p>
           </div>
         )}
       </Card>

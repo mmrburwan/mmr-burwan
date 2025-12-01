@@ -34,17 +34,17 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
       case 'document_rejected':
-        return <XCircle size={24} className="text-rose-600" />;
+        return <XCircle size={18} className="sm:w-6 sm:h-6 text-rose-600" />;
       case 'document_approved':
-        return <CheckCircle size={24} className="text-green-600" />;
+        return <CheckCircle size={18} className="sm:w-6 sm:h-6 text-green-600" />;
       case 'application_approved':
-        return <CheckCircle size={24} className="text-green-600" />;
+        return <CheckCircle size={18} className="sm:w-6 sm:h-6 text-green-600" />;
       case 'application_rejected':
-        return <XCircle size={24} className="text-rose-600" />;
+        return <XCircle size={18} className="sm:w-6 sm:h-6 text-rose-600" />;
       case 'application_verified':
-        return <Award size={24} className="text-gold-600" />;
+        return <Award size={18} className="sm:w-6 sm:h-6 text-gold-600" />;
       default:
-        return <Info size={24} className="text-blue-600" />;
+        return <Info size={18} className="sm:w-6 sm:h-6 text-blue-600" />;
     }
   };
 
@@ -62,105 +62,88 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
       title={notification.title}
       size="md"
     >
-      <div className="space-y-6">
+      <div className="space-y-3 sm:space-y-4 lg:space-y-6">
         {/* Notification Header */}
-        <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+        <div className="flex items-start gap-2.5 sm:gap-4 p-2.5 sm:p-4 bg-gray-50 rounded-lg sm:rounded-xl">
           <div className="flex-shrink-0 mt-0.5">
             {getNotificationIcon(notification.type)}
           </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-gray-900">{notification.title}</h3>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1 sm:mb-2 gap-2">
+              <h3 className="font-semibold text-xs sm:text-sm text-gray-900 truncate">{notification.title}</h3>
               {!notification.read && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-100 text-blue-700 text-[10px] sm:text-xs font-medium rounded-full flex-shrink-0">
                   New
                 </span>
               )}
             </div>
-            <p className="text-xs text-gray-500">
-              {safeFormatDate(notification.createdAt, 'MMMM d, yyyy at h:mm a')}
+            <p className="text-[10px] sm:text-xs text-gray-500">
+              {safeFormatDate(notification.createdAt, 'MMM d, yyyy h:mm a')}
             </p>
           </div>
         </div>
 
         {/* Notification Message */}
-        <div className="p-4 bg-white border border-gray-200 rounded-xl">
-          <p className="text-sm font-medium text-gray-700 mb-2">Message:</p>
-          <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+        <div className="p-2.5 sm:p-4 bg-white border border-gray-200 rounded-lg sm:rounded-xl">
+          <p className="text-[10px] sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Message:</p>
+          <p className="text-[11px] sm:text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
             {notification.message}
           </p>
         </div>
 
         {/* Download Error Message */}
         {downloadError && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl">
-            <p className="text-sm text-rose-700">{downloadError}</p>
+          <div className="p-2 sm:p-3 bg-rose-50 border border-rose-200 rounded-lg sm:rounded-xl">
+            <p className="text-[10px] sm:text-sm text-rose-700">{downloadError}</p>
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row items-stretch gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-200">
           <Button
             variant="outline"
+            size="sm"
             onClick={handleClose}
-            className="flex-1"
+            className="flex-1 !text-xs sm:!text-sm"
           >
             Close
           </Button>
           {notification.type === 'document_rejected' && (
             <Button
               variant="primary"
+              size="sm"
               onClick={() => {
-                // Store navigation target
                 const targetPath = '/documents';
-                
-                // Close modal and panel
                 onClose();
                 if (onNavigate) {
                   onNavigate();
                 }
-                
-                // Navigate after brief delay to ensure cleanup
                 requestAnimationFrame(() => {
                   navigate(targetPath);
                 });
               }}
-              className="flex-1"
+              className="flex-1 !text-xs sm:!text-sm"
             >
-              <Upload size={16} className="mr-2" />
-              Upload Document
+              <Upload size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+              Upload Doc
             </Button>
           )}
           {notification.type === 'application_verified' && user && (
             <Button
               variant="primary"
+              size="sm"
               disabled={isDownloading}
               onClick={async () => {
                 if (!user) return;
-                
                 setIsDownloading(true);
                 setDownloadError(null);
-                
                 try {
-                  // Fetch the user's application (same as dashboard does)
                   const application = await applicationService.getApplication(user.id);
-                  
-                  if (!application) {
-                    throw new Error('Application not found');
-                  }
-                  
-                  if (!application.verified) {
-                    throw new Error('Application is not yet verified');
-                  }
-                  
-                  // Download the certificate
+                  if (!application) throw new Error('Application not found');
+                  if (!application.verified) throw new Error('Application is not yet verified');
                   await downloadCertificate(application);
-                  
-                  // Close modal after successful download
                   onClose();
-                  if (onNavigate) {
-                    onNavigate();
-                  }
+                  if (onNavigate) onNavigate();
                 } catch (error: any) {
                   console.error('Failed to download certificate:', error);
                   setDownloadError(error.message || 'Failed to download certificate');
@@ -168,17 +151,19 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
                   setIsDownloading(false);
                 }
               }}
-              className="flex-1 bg-gold-500 hover:bg-gold-600"
+              className="flex-1 !text-xs sm:!text-sm bg-gold-500 hover:bg-gold-600"
             >
               {isDownloading ? (
                 <>
-                  <Loader2 size={16} className="mr-2 animate-spin" />
-                  Downloading...
+                  <Loader2 size={14} className="sm:w-4 sm:h-4 mr-1.5 animate-spin" />
+                  <span className="hidden sm:inline">Downloading...</span>
+                  <span className="sm:hidden">Loading</span>
                 </>
               ) : (
                 <>
-                  <Download size={16} className="mr-2" />
-                  Download Certificate
+                  <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                  <span className="hidden sm:inline">Download Certificate</span>
+                  <span className="sm:hidden">Download</span>
                 </>
               )}
             </Button>

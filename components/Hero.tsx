@@ -118,7 +118,7 @@ const Hero: React.FC = () => {
                    color="indigo"
                    className="min-h-[110px] sm:min-h-[140px]"
                    onClick={() => navigate('/help')}
-               />
+                />
              </div>
 
              {/* Contact Support */}
@@ -131,7 +131,7 @@ const Hero: React.FC = () => {
                    color="rose"
                    className="min-h-[110px] sm:min-h-[140px]"
                    onClick={() => navigate('/chat')}
-               />
+                />
              </div>
 
              {/* Verify Certificate */}
@@ -144,7 +144,7 @@ const Hero: React.FC = () => {
                    color="indigo"
                    className="min-h-[100px] sm:min-h-[140px]"
                    onClick={() => setIsVerifyModalOpen(true)}
-               />
+                />
              </div>
           </div>
         </div>

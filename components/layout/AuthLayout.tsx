@@ -37,20 +37,20 @@ const AuthLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 via-white to-gold-50 px-4 py-8 overflow-hidden relative">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 via-white to-gold-50 px-3 py-3 sm:px-4 sm:py-6 overflow-hidden relative">
       {/* Decorative Background Elements - Constrained to viewport */}
-      <div className="fixed top-0 right-0 -z-10 w-[400px] h-[400px] bg-gold-100/30 rounded-full blur-[120px] translate-x-1/4 -translate-y-1/4 animate-pulse-slow pointer-events-none"></div>
-      <div className="fixed bottom-0 left-0 -z-10 w-[400px] h-[400px] bg-rose-100/30 rounded-full blur-[100px] -translate-x-1/4 translate-y-1/4 pointer-events-none"></div>
+      <div className="fixed top-0 right-0 -z-10 w-[250px] sm:w-[400px] h-[250px] sm:h-[400px] bg-gold-100/30 rounded-full blur-[80px] sm:blur-[120px] translate-x-1/4 -translate-y-1/4 animate-pulse-slow pointer-events-none"></div>
+      <div className="fixed bottom-0 left-0 -z-10 w-[250px] sm:w-[400px] h-[250px] sm:h-[400px] bg-rose-100/30 rounded-full blur-[60px] sm:blur-[100px] -translate-x-1/4 translate-y-1/4 pointer-events-none"></div>
       
-      <div className="w-full max-w-md z-10 relative">
+      <div className="w-full max-w-sm sm:max-w-md z-10 relative">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3 mb-6 justify-center">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-md text-white font-serif font-bold text-xl">
+        <Link to="/" className="flex items-center gap-2 mb-3 sm:mb-5 justify-center">
+          <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-md text-white font-serif font-bold text-base sm:text-lg">
             M
           </div>
           <div className="flex flex-col">
-            <span className="font-serif font-bold text-gray-900 leading-none text-xl tracking-tight">MMR Burwan</span>
-            <span className="text-[10px] uppercase tracking-widest text-gold-600 font-medium">Official Portal</span>
+            <span className="font-serif font-bold text-gray-900 leading-none text-base sm:text-lg tracking-tight">MMR Burwan</span>
+            <span className="text-[8px] sm:text-[10px] uppercase tracking-widest text-gold-600 font-medium">Official Portal</span>
           </div>
         </Link>
         

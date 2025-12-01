@@ -85,15 +85,15 @@ const Navbar: React.FC = () => {
             >
               Log In
             </button>
-            <button 
-              onClick={() => {
-                navigate('/auth/register');
-                setMobileMenuOpen(false);
-              }}
+          <button 
+            onClick={() => {
+              navigate('/auth/register');
+              setMobileMenuOpen(false);
+            }}
               className="w-full bg-gold-500 text-white py-2.5 sm:py-3 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
-            >
-              Registration
-            </button>
+          >
+            Registration
+          </button>
           </div>
         </div>
       )}

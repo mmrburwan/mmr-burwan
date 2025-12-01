@@ -232,44 +232,47 @@ const ApplicationDetailsPage: React.FC = () => {
   const declarations = isEditing ? editForm.declarations : (application.declarations || {});
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      <div className="mb-8">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+      <div className="mb-4 sm:mb-6 lg:mb-8">
         <Button
           variant="ghost"
           onClick={() => navigate('/admin')}
-          className="mb-4"
+          className="mb-2 sm:mb-3 lg:mb-4 !text-xs sm:!text-sm !px-2 sm:!px-3"
+          size="sm"
         >
-          <ArrowLeft size={18} className="mr-2" />
+          <ArrowLeft size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
           Back to Dashboard
         </Button>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Application Details</h1>
-            <p className="text-gray-600">Application ID: {application.id}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Application Details</h1>
+            <p className="text-xs sm:text-sm text-gray-600 truncate">Application ID: {application.id}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {!isEditing ? (
-              <Button variant="outline" onClick={() => setIsEditing(true)}>
-                <Edit2 size={18} className="mr-2" />
-                Edit Application
+              <Button variant="outline" onClick={() => setIsEditing(true)} size="sm" className="!text-xs sm:!text-sm !px-2 sm:!px-3">
+                <Edit2 size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Edit Application</span>
+                <span className="sm:hidden">Edit</span>
               </Button>
             ) : (
-              <div className="flex gap-2">
-                <Button variant="primary" onClick={handleSaveEdit}>
-                  <Save size={18} className="mr-2" />
-                  Save Changes
+              <div className="flex gap-1.5 sm:gap-2">
+                <Button variant="primary" onClick={handleSaveEdit} size="sm" className="!text-xs sm:!text-sm !px-2 sm:!px-3">
+                  <Save size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Save Changes</span>
+                  <span className="sm:hidden">Save</span>
                 </Button>
-                <Button variant="outline" onClick={handleCancelEdit}>
-                  <X size={18} className="mr-2" />
+                <Button variant="outline" onClick={handleCancelEdit} size="sm" className="!text-xs sm:!text-sm !px-2 sm:!px-3">
+                  <X size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   Cancel
                 </Button>
               </div>
             )}
-            <Badge variant={application.status === 'submitted' ? 'info' : application.status === 'approved' ? 'success' : 'default'}>
+            <Badge variant={application.status === 'submitted' ? 'info' : application.status === 'approved' ? 'success' : 'default'} className="!text-[10px] sm:!text-xs">
               {application.status}
             </Badge>
             {application.verified !== undefined && (
-              <Badge variant={application.verified ? 'success' : 'default'}>
+              <Badge variant={application.verified ? 'success' : 'default'} className="!text-[10px] sm:!text-xs">
                 {application.verified ? 'Verified' : 'Unverified'}
               </Badge>
             )}
@@ -319,15 +322,18 @@ const ApplicationDetailsPage: React.FC = () => {
                       setIsVerifyModalOpen(true);
                     }
                   }}
+                  size="sm"
+                  className="!text-xs sm:!text-sm !px-2 sm:!px-3"
                 >
-                  <CheckCircle size={18} className="mr-2" />
-                  Verify Application
+                  <CheckCircle size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Verify Application</span>
+                  <span className="sm:hidden">Verify</span>
                 </Button>
               );
             })()}
             {application.verified && application.certificateNumber && (
-              <div className="text-sm text-gray-600">
-                <p>Certificate: {application.certificateNumber}</p>
+              <div className="text-[10px] sm:text-xs lg:text-sm text-gray-600">
+                <p className="truncate">Certificate: {application.certificateNumber}</p>
                 {application.registrationDate && (
                   <p>Reg. Date: {safeFormatDate(application.registrationDate, 'MMM d, yyyy')}</p>
                 )}
@@ -337,15 +343,15 @@ const ApplicationDetailsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-3 sm:space-y-4 lg:space-y-6">
         {/* User Aadhaar Details */}
-        <Card className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">User's Aadhaar Details</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+        <Card className="p-3 sm:p-4 lg:p-6">
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">User's Aadhaar Details</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4 text-xs sm:text-sm">
             <div>
-              <p className="text-gray-500 mb-1">Full Name</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Full Name</p>
               {isEditing ? (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                   <Input
                     value={userDetails.firstName || ''}
                     onChange={(e) => setEditForm({
@@ -364,13 +370,13 @@ const ApplicationDetailsPage: React.FC = () => {
                   />
                 </div>
               ) : (
-                <p className="font-medium text-gray-900">
+                <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">
                   {userDetails.firstName || '-'} {userDetails.lastName || ''}
                 </p>
               )}
             </div>
             <div>
-              <p className="text-gray-500 mb-1">Date of Birth</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
               {isEditing ? (
                 <Input
                   type="date"
@@ -420,11 +426,11 @@ const ApplicationDetailsPage: React.FC = () => {
         </Card>
 
         {/* Partner Aadhaar Details */}
-        <Card className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Partner's Aadhaar Details</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+        <Card className="p-3 sm:p-4 lg:p-6">
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Partner's Aadhaar Details</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4 text-xs sm:text-sm">
             <div>
-              <p className="text-gray-500 mb-1">Full Name</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Full Name</p>
               {isEditing ? (
                 <div className="grid grid-cols-2 gap-2">
                   <Input
@@ -445,13 +451,13 @@ const ApplicationDetailsPage: React.FC = () => {
                   />
                 </div>
               ) : (
-                <p className="font-medium text-gray-900">
+                <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">
                   {partnerForm.firstName || '-'} {partnerForm.lastName || ''}
                 </p>
               )}
             </div>
             <div>
-              <p className="text-gray-500 mb-1">Date of Birth</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
               {isEditing ? (
                 <Input
                   type="date"
@@ -501,11 +507,11 @@ const ApplicationDetailsPage: React.FC = () => {
         </Card>
 
         {/* User Addresses */}
-        <Card className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">User's Addresses</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="p-3 sm:p-4 lg:p-6">
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">User's Addresses</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Permanent Address</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Permanent Address</p>
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
@@ -919,243 +925,264 @@ const ApplicationDetailsPage: React.FC = () => {
         </Card>
 
         {/* Documents */}
-        <Card className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Uploaded Documents</h3>
-          <div className="space-y-4">
+        <Card className="p-3 sm:p-4 lg:p-6">
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Uploaded Documents</h3>
+          <div className="space-y-3 sm:space-y-4">
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">User's Documents</p>
-              <div className="space-y-2">
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">User's Documents</p>
+              <div className="space-y-1.5 sm:space-y-2">
                 {documents.filter(d => d.belongsTo === 'user').map(doc => {
                   const reuploaded = isReuploaded(doc);
                   return (
-                  <div key={doc.id} className={`flex items-center gap-3 text-sm text-gray-600 p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
-                    <FileText size={18} className="text-gold-600 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-gray-900">
-                          {getDocumentTypeLabel(doc.type)}: {doc.name}
-                        </p>
-                        {reuploaded && (
-                          <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300">
-                            Re-uploaded
-                          </Badge>
-                        )}
+                  <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600 p-2 sm:p-2.5 lg:p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'} min-w-0`}>
+                    {/* First Row: Document Name (Mobile) / Inline (Desktop) */}
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                      <FileText size={14} className="sm:w-4 sm:h-5 lg:w-[18px] lg:h-[18px] text-gold-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
+                          <p className="font-medium text-xs sm:text-sm text-gray-900 truncate" title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}>
+                            {getDocumentTypeLabel(doc.type)}: {doc.name}
+                          </p>
+                          {reuploaded && (
+                            <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300 !text-[10px] sm:!text-xs flex-shrink-0">
+                              Re-uploaded
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0">
-                      {doc.status}
-                    </Badge>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          setPreviewDocument(doc);
-                          setIsLoadingPreview(true);
-                          setPreviewUrl(null);
-                          try {
-                            const signedUrl = await documentService.getSignedUrl(doc.id);
-                            setPreviewUrl(signedUrl);
-                          } catch (error: any) {
-                            console.error('Failed to get signed URL:', error);
-                            // Fallback to original URL
-                            setPreviewUrl(doc.url);
-                          } finally {
-                            setIsLoadingPreview(false);
-                          }
-                        }}
-                        title="Preview"
-                      >
-                        <Eye size={16} />
-                      </Button>
-                      {doc.status === 'pending' && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleApproveDocument(doc.id)}
-                            disabled={isProcessingDoc === doc.id}
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                            title="Approve"
-                          >
-                            <CheckCircle size={16} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRejectDocument(doc)}
-                            disabled={isProcessingDoc === doc.id}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            title="Reject"
-                          >
-                            <XCircle size={16} />
-                          </Button>
-                        </>
-                      )}
+                    {/* Second Row: Status and Buttons (Mobile) / Inline (Desktop) */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-shrink-0">
+                      <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0 !text-[10px] sm:!text-xs">
+                        {doc.status}
+                      </Badge>
+                      <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
+                          onClick={async () => {
+                            setPreviewDocument(doc);
+                            setIsLoadingPreview(true);
+                            setPreviewUrl(null);
+                            try {
+                              const signedUrl = await documentService.getSignedUrl(doc.id);
+                              setPreviewUrl(signedUrl);
+                            } catch (error: any) {
+                              console.error('Failed to get signed URL:', error);
+                              // Fallback to original URL
+                              setPreviewUrl(doc.url);
+                            } finally {
+                              setIsLoadingPreview(false);
+                            }
+                          }}
+                          title="Preview"
+                        >
+                          <Eye size={12} className="sm:w-4 sm:h-4" />
+                        </Button>
+                        {doc.status === 'pending' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => handleApproveDocument(doc.id)}
+                              disabled={isProcessingDoc === doc.id}
+                              title="Approve"
+                            >
+                              <CheckCircle size={12} className="sm:w-4 sm:h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleRejectDocument(doc)}
+                              disabled={isProcessingDoc === doc.id}
+                              title="Reject"
+                            >
+                              <XCircle size={12} className="sm:w-4 sm:h-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                   );
                 })}
                 {documents.filter(d => d.belongsTo === 'user').length === 0 && (
-                  <p className="text-sm text-gray-400 italic">No documents uploaded</p>
+                  <p className="text-xs sm:text-sm text-gray-400 italic">No documents uploaded</p>
                 )}
               </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Partner's Documents</p>
-              <div className="space-y-2">
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Partner's Documents</p>
+              <div className="space-y-1.5 sm:space-y-2">
                 {documents.filter(d => d.belongsTo === 'partner').map(doc => {
                   const reuploaded = isReuploaded(doc);
                   return (
-                  <div key={doc.id} className={`flex items-center gap-3 text-sm text-gray-600 p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
-                    <FileText size={18} className="text-gold-600 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-gray-900">
-                          {getDocumentTypeLabel(doc.type)}: {doc.name}
-                        </p>
-                        {reuploaded && (
-                          <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300">
-                            Re-uploaded
-                          </Badge>
-                        )}
+                  <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600 p-2 sm:p-2.5 lg:p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'} min-w-0`}>
+                    {/* First Row: Document Name (Mobile) / Inline (Desktop) */}
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                      <FileText size={14} className="sm:w-4 sm:h-5 lg:w-[18px] lg:h-[18px] text-gold-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
+                          <p className="font-medium text-xs sm:text-sm text-gray-900 truncate" title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}>
+                            {getDocumentTypeLabel(doc.type)}: {doc.name}
+                          </p>
+                          {reuploaded && (
+                            <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300 !text-[10px] sm:!text-xs flex-shrink-0">
+                              Re-uploaded
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0">
-                      {doc.status}
-                    </Badge>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          setPreviewDocument(doc);
-                          setIsLoadingPreview(true);
-                          setPreviewUrl(null);
-                          try {
-                            const signedUrl = await documentService.getSignedUrl(doc.id);
-                            setPreviewUrl(signedUrl);
-                          } catch (error: any) {
-                            console.error('Failed to get signed URL:', error);
-                            // Fallback to original URL
-                            setPreviewUrl(doc.url);
-                          } finally {
-                            setIsLoadingPreview(false);
-                          }
-                        }}
-                        title="Preview"
-                      >
-                        <Eye size={16} />
-                      </Button>
-                      {doc.status === 'pending' && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleApproveDocument(doc.id)}
-                            disabled={isProcessingDoc === doc.id}
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                            title="Approve"
-                          >
-                            <CheckCircle size={16} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRejectDocument(doc)}
-                            disabled={isProcessingDoc === doc.id}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            title="Reject"
-                          >
-                            <XCircle size={16} />
-                          </Button>
-                        </>
-                      )}
+                    {/* Second Row: Status and Buttons (Mobile) / Inline (Desktop) */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-shrink-0">
+                      <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0 !text-[10px] sm:!text-xs">
+                        {doc.status}
+                      </Badge>
+                      <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
+                          onClick={async () => {
+                            setPreviewDocument(doc);
+                            setIsLoadingPreview(true);
+                            setPreviewUrl(null);
+                            try {
+                              const signedUrl = await documentService.getSignedUrl(doc.id);
+                              setPreviewUrl(signedUrl);
+                            } catch (error: any) {
+                              console.error('Failed to get signed URL:', error);
+                              // Fallback to original URL
+                              setPreviewUrl(doc.url);
+                            } finally {
+                              setIsLoadingPreview(false);
+                            }
+                          }}
+                          title="Preview"
+                        >
+                          <Eye size={12} className="sm:w-4 sm:h-4" />
+                        </Button>
+                        {doc.status === 'pending' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => handleApproveDocument(doc.id)}
+                              disabled={isProcessingDoc === doc.id}
+                              title="Approve"
+                            >
+                              <CheckCircle size={12} className="sm:w-4 sm:h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleRejectDocument(doc)}
+                              disabled={isProcessingDoc === doc.id}
+                              title="Reject"
+                            >
+                              <XCircle size={12} className="sm:w-4 sm:h-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                   );
                 })}
                 {documents.filter(d => d.belongsTo === 'partner').length === 0 && (
-                  <p className="text-sm text-gray-400 italic">No documents uploaded</p>
+                  <p className="text-xs sm:text-sm text-gray-400 italic">No documents uploaded</p>
                 )}
               </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Joint Documents</p>
-              <div className="space-y-2">
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Joint Documents</p>
+              <div className="space-y-1.5 sm:space-y-2">
                 {documents.filter(d => d.belongsTo === 'joint').map(doc => {
                   const reuploaded = isReuploaded(doc);
                   return (
-                  <div key={doc.id} className={`flex items-center gap-3 text-sm text-gray-600 p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
-                    <FileText size={18} className="text-gold-600 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-gray-900">
-                          {getDocumentTypeLabel(doc.type)}: {doc.name}
-                        </p>
-                        {reuploaded && (
-                          <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300">
-                            Re-uploaded
-                          </Badge>
-                        )}
+                  <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600 p-2 sm:p-2.5 lg:p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'} min-w-0`}>
+                    {/* First Row: Document Name (Mobile) / Inline (Desktop) */}
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                      <FileText size={14} className="sm:w-4 sm:h-5 lg:w-[18px] lg:h-[18px] text-gold-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
+                          <p className="font-medium text-xs sm:text-sm text-gray-900 truncate" title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}>
+                            {getDocumentTypeLabel(doc.type)}: {doc.name}
+                          </p>
+                          {reuploaded && (
+                            <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300 !text-[10px] sm:!text-xs flex-shrink-0">
+                              Re-uploaded
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0">
-                      {doc.status}
-                    </Badge>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          setPreviewDocument(doc);
-                          setIsLoadingPreview(true);
-                          setPreviewUrl(null);
-                          try {
-                            const signedUrl = await documentService.getSignedUrl(doc.id);
-                            setPreviewUrl(signedUrl);
-                          } catch (error: any) {
-                            console.error('Failed to get signed URL:', error);
-                            // Fallback to original URL
-                            setPreviewUrl(doc.url);
-                          } finally {
-                            setIsLoadingPreview(false);
-                          }
-                        }}
-                        title="Preview"
-                      >
-                        <Eye size={16} />
-                      </Button>
-                      {doc.status === 'pending' && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleApproveDocument(doc.id)}
-                            disabled={isProcessingDoc === doc.id}
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                            title="Approve"
-                          >
-                            <CheckCircle size={16} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRejectDocument(doc)}
-                            disabled={isProcessingDoc === doc.id}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            title="Reject"
-                          >
-                            <XCircle size={16} />
-                          </Button>
-                        </>
-                      )}
+                    {/* Second Row: Status and Buttons (Mobile) / Inline (Desktop) */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-shrink-0">
+                      <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0 !text-[10px] sm:!text-xs">
+                        {doc.status}
+                      </Badge>
+                      <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
+                          onClick={async () => {
+                            setPreviewDocument(doc);
+                            setIsLoadingPreview(true);
+                            setPreviewUrl(null);
+                            try {
+                              const signedUrl = await documentService.getSignedUrl(doc.id);
+                              setPreviewUrl(signedUrl);
+                            } catch (error: any) {
+                              console.error('Failed to get signed URL:', error);
+                              // Fallback to original URL
+                              setPreviewUrl(doc.url);
+                            } finally {
+                              setIsLoadingPreview(false);
+                            }
+                          }}
+                          title="Preview"
+                        >
+                          <Eye size={12} className="sm:w-4 sm:h-4" />
+                        </Button>
+                        {doc.status === 'pending' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => handleApproveDocument(doc.id)}
+                              disabled={isProcessingDoc === doc.id}
+                              title="Approve"
+                            >
+                              <CheckCircle size={12} className="sm:w-4 sm:h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleRejectDocument(doc)}
+                              disabled={isProcessingDoc === doc.id}
+                              title="Reject"
+                            >
+                              <XCircle size={12} className="sm:w-4 sm:h-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                   );
                 })}
                 {documents.filter(d => d.belongsTo === 'joint').length === 0 && (
-                  <p className="text-sm text-gray-400 italic">No documents uploaded</p>
+                  <p className="text-xs sm:text-sm text-gray-400 italic">No documents uploaded</p>
                 )}
               </div>
             </div>
@@ -1257,90 +1284,126 @@ const ApplicationDetailsPage: React.FC = () => {
 
       {/* Document Preview Modal */}
       {previewDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => {
-          setPreviewDocument(null);
-          setPreviewUrl(null);
-        }}>
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10">
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-900">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-2 sm:p-4" 
+          onClick={() => {
+            setPreviewDocument(null);
+            setPreviewUrl(null);
+          }}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+        >
+          <div 
+            className="bg-white rounded-lg sm:rounded-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-auto" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ zIndex: 101 }}
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-2.5 sm:p-3 lg:p-4 flex items-center justify-between z-10 gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+                <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 truncate" title={`${getDocumentTypeLabel(previewDocument.type)}: ${previewDocument.name}`}>
                   {getDocumentTypeLabel(previewDocument.type)}: {previewDocument.name}
                 </h3>
                 {isReuploaded(previewDocument) && (
-                  <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300">
+                  <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300 !text-[10px] sm:!text-xs flex-shrink-0">
                     Re-uploaded
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={previewDocument.status === 'approved' ? 'success' : previewDocument.status === 'rejected' ? 'error' : 'default'}>
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                <Badge variant={previewDocument.status === 'approved' ? 'success' : previewDocument.status === 'rejected' ? 'error' : 'default'} className="!text-[10px] sm:!text-xs">
                   {previewDocument.status}
                 </Badge>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
+                  className="!text-xs sm:!text-sm !px-2 sm:!px-3"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     const urlToDownload = previewUrl || previewDocument.url;
-                    window.open(urlToDownload, '_blank');
+                    if (urlToDownload) {
+                      window.open(urlToDownload, '_blank');
+                    }
                   }}
                 >
-                  <Download size={18} className="mr-2" />
-                  Download
+                  <Download size={14} className="sm:w-4 sm:h-4 mr-1" />
+                  <span className="hidden sm:inline">Download</span>
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => {
-                  setPreviewDocument(null);
-                  setPreviewUrl(null);
-                }}>
-                  <X size={18} />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="!p-1.5 sm:!p-2 hover:bg-red-50 hover:text-red-600 !text-xs sm:!text-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPreviewDocument(null);
+                    setPreviewUrl(null);
+                  }}
+                  title="Close"
+                >
+                  <X size={16} className="sm:w-5 sm:h-5" />
                 </Button>
               </div>
             </div>
-            <div className="p-6">
+            <div className="p-2 sm:p-3 lg:p-6 overflow-y-auto max-h-[calc(95vh-80px)] sm:max-h-[calc(90vh-100px)]">
               {isLoadingPreview ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
+                <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 border-t-2 border-b-2 border-gold-500"></div>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-3">Loading preview...</p>
                 </div>
               ) : previewUrl ? (
                 <>
                   {isImage(previewDocument.mimeType) ? (
-                    <img
-                      src={previewUrl}
-                      alt={previewDocument.name}
-                      className="max-w-full h-auto rounded-lg shadow-lg mx-auto"
-                      onError={(e) => {
-                        console.error('Failed to load image:', e);
-                        (e.target as HTMLImageElement).src = previewDocument.url;
-                      }}
-                    />
+                    <div className="flex items-center justify-center min-h-[200px] sm:min-h-[300px] w-full">
+                      <img
+                        src={previewUrl}
+                        alt={previewDocument.name}
+                        className="max-w-full max-h-[calc(95vh-120px)] sm:max-h-[calc(90vh-140px)] w-auto h-auto rounded-lg shadow-lg mx-auto object-contain"
+                        onLoad={() => console.log('Image loaded successfully')}
+                        onError={(e) => {
+                          console.error('Failed to load image:', e);
+                          const fallbackUrl = previewDocument.url;
+                          if (fallbackUrl) {
+                            console.log('Trying fallback URL:', fallbackUrl);
+                            (e.target as HTMLImageElement).src = fallbackUrl;
+                          } else {
+                            console.error('No fallback URL available');
+                          }
+                        }}
+                      />
+                    </div>
                   ) : isPDF(previewDocument.mimeType) ? (
-                    <iframe
-                      src={previewUrl}
-                      className="w-full h-[70vh] rounded-lg border border-gray-200"
-                      title={previewDocument.name}
-                      onError={() => {
-                        console.error('Failed to load PDF');
-                      }}
-                    />
+                    <div className="w-full">
+                      <iframe
+                        src={previewUrl}
+                        className="w-full h-[calc(95vh-120px)] sm:h-[calc(90vh-140px)] lg:h-[70vh] rounded-lg border border-gray-200"
+                        title={previewDocument.name}
+                        onLoad={() => console.log('PDF iframe loaded')}
+                        onError={() => {
+                          console.error('Failed to load PDF');
+                        }}
+                      />
+                    </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-4">Preview not available for this file type</p>
-                      <Button variant="primary" onClick={() => window.open(previewUrl, '_blank')}>
-                        <Download size={18} className="mr-2" />
+                    <div className="text-center py-8 sm:py-12">
+                      <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                      <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Preview not available</p>
+                      <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => window.open(previewUrl, '_blank')}>
+                        <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
                         Download to View
                       </Button>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="text-center py-12">
-                  <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">Failed to load document preview</p>
-                  <Button variant="primary" onClick={() => window.open(previewDocument.url, '_blank')}>
-                    <Download size={18} className="mr-2" />
-                    Download to View
-                  </Button>
+                <div className="text-center py-8 sm:py-12">
+                  <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                  <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Failed to load preview</p>
+                  <div className="space-y-2">
+                    {previewDocument.url && (
+                      <Button variant="primary" size="sm" className="!text-xs sm:!text-sm w-full sm:w-auto" onClick={() => window.open(previewDocument.url, '_blank')}>
+                        <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                        Open in New Tab
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

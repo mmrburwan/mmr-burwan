@@ -141,7 +141,7 @@ const OnboardingPage: React.FC = () => {
       if (currentStep < steps.length - 1) {
         setCurrentStep(currentStep + 1);
       } else {
-        handleComplete();
+        await handleComplete();
       }
     }
   };
@@ -179,7 +179,7 @@ const OnboardingPage: React.FC = () => {
     switch (currentStep) {
       case 0:
         return (
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-4">
             <Input
               label="First Name"
               {...personalForm.register('firstName')}
@@ -209,7 +209,7 @@ const OnboardingPage: React.FC = () => {
         );
       case 1:
         return (
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-4">
             <Input
               label="Partner First Name"
               {...partnerForm.register('partnerFirstName')}
@@ -239,7 +239,7 @@ const OnboardingPage: React.FC = () => {
         );
       case 2:
         return (
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-4">
             <Input
               label="Street Address"
               {...addressForm.register('street')}
@@ -275,22 +275,22 @@ const OnboardingPage: React.FC = () => {
         );
       case 3:
         return (
-          <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900 mb-4">Required Documents</h3>
-            <div className="space-y-3">
+          <div className="space-y-3">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3">Required Documents</h3>
+            <div className="space-y-2">
               {[
                 'National ID (Front & Back)',
                 'Passport-sized photos (2 copies)',
                 'Birth certificate',
                 'Previous marriage certificate (if applicable)',
               ].map((doc, index) => (
-                <div key={index} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-                  <Check size={20} className="text-gold-600 flex-shrink-0" />
-                  <span className="text-sm text-gray-700">{doc}</span>
+                <div key={index} className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-50 rounded-lg sm:rounded-xl">
+                  <Check size={16} className="sm:w-5 sm:h-5 text-gold-600 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm text-gray-700">{doc}</span>
                 </div>
               ))}
             </div>
-            <p className="text-sm text-gray-500 mt-6">
+            <p className="text-[11px] sm:text-xs text-gray-500 mt-3 sm:mt-4">
               You can upload these documents after completing your application.
             </p>
           </div>
@@ -301,46 +301,48 @@ const OnboardingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-gold-50 py-12 px-6">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-gold-50 py-6 sm:py-10 px-3 sm:px-6">
       <div className="max-w-3xl mx-auto">
-        <div className="mb-8 text-center">
-          <h1 className="font-serif text-4xl font-bold text-gray-900 mb-2">Complete Your Profile</h1>
-          <p className="text-gray-600">Let's get you started with a few details</p>
+        <div className="mb-4 sm:mb-6 text-center">
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Complete Your Profile</h1>
+          <p className="text-xs sm:text-sm text-gray-600">Let's get you started with a few details</p>
         </div>
 
         <Stepper
           steps={steps}
           currentStep={currentStep}
           completedSteps={Array.from({ length: currentStep }, (_, i) => i)}
-          className="mb-12"
+          className="mb-6 sm:mb-10"
         />
 
-        <Card className="p-8">
-          <div className="mb-6">
-            <h2 className="font-serif text-2xl font-semibold text-gray-900">
+        <Card className="p-4 sm:p-6">
+          <div className="mb-4 sm:mb-5">
+            <h2 className="font-serif text-lg sm:text-xl font-semibold text-gray-900">
               {steps[currentStep].label}
             </h2>
-            <p className="text-gray-600 mt-1">{steps[currentStep].description}</p>
+            <p className="text-xs sm:text-sm text-gray-600 mt-0.5">{steps[currentStep].description}</p>
           </div>
 
           {renderStep()}
 
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
+          <div className="flex items-center justify-between mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-gray-200">
             <Button
               variant="ghost"
+              size="sm"
               onClick={handleBack}
               disabled={currentStep === 0}
             >
-              <ArrowLeft size={18} className="mr-2" />
+              <ArrowLeft size={14} className="mr-1 sm:w-4 sm:h-4" />
               Back
             </Button>
             <Button
               variant="primary"
+              size="sm"
               onClick={handleNext}
               isLoading={isSaving}
             >
               {currentStep === steps.length - 1 ? 'Complete' : 'Next'}
-              {currentStep < steps.length - 1 && <ArrowRight size={18} className="ml-2" />}
+              {currentStep < steps.length - 1 && <ArrowRight size={14} className="ml-1 sm:w-4 sm:h-4" />}
             </Button>
           </div>
         </Card>

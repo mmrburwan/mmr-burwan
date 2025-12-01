@@ -80,18 +80,18 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <Card className="p-8 shadow-xl">
-      <div className="mb-8">
-        <h1 className="font-serif text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-        <p className="text-gray-600">Sign in to your account to continue</p>
+    <Card className="p-4 sm:p-6 shadow-xl">
+      <div className="mb-3 sm:mb-5">
+        <h1 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 mb-0.5 sm:mb-1">Welcome Back</h1>
+        <p className="text-xs sm:text-sm text-gray-600">Sign in to your account to continue</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
         <Input
           label="Email Address"
           type="email"
           placeholder="you@example.com"
-          leftIcon={<Mail size={20} />}
+          leftIcon={<Mail size={16} className="sm:w-[18px] sm:h-[18px]" />}
           error={errors.email?.message}
           autoComplete="email"
           {...register('email')}
@@ -103,17 +103,17 @@ const LoginPage: React.FC = () => {
             label="Password"
             type="password"
             placeholder="Enter your password"
-            leftIcon={<Lock size={20} />}
+            leftIcon={<Lock size={16} className="sm:w-[18px] sm:h-[18px]" />}
             error={errors.password?.message}
             showPasswordToggle={true}
             autoComplete="current-password"
             {...register('password')}
             required
           />
-          <div className="mt-2 flex items-center justify-between">
+          <div className="mt-1 flex items-center justify-between">
             <Link
               to="/auth/forgot-password"
-              className="text-sm text-gold-600 hover:text-gold-700 font-medium"
+              className="text-[11px] sm:text-xs text-gold-600 hover:text-gold-700 font-medium"
             >
               Forgot password?
             </Link>
@@ -123,34 +123,34 @@ const LoginPage: React.FC = () => {
         <Button
           type="submit"
           variant="primary"
-          size="lg"
+          size="md"
           isLoading={isLoading}
           className="w-full"
         >
           Sign In
-          <ArrowRight size={18} className="ml-2" />
+          <ArrowRight size={14} className="ml-1.5 sm:w-4 sm:h-4" />
         </Button>
       </form>
 
-      <div className="mt-6">
+      <div className="mt-3 sm:mt-4">
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-200"></div>
           </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-white text-gray-500">Or continue with</span>
+          <div className="relative flex justify-center text-[10px] sm:text-xs">
+            <span className="px-2 sm:px-3 bg-white text-gray-500">Or continue with</span>
           </div>
         </div>
 
         <Button
           type="button"
           variant="outline"
-          size="lg"
+          size="md"
           isLoading={isGoogleLoading}
           onClick={handleGoogleSignIn}
-          className="w-full mt-4 border-gray-300 hover:bg-gray-50"
+          className="w-full mt-2.5 sm:mt-3 border-gray-300 hover:bg-gray-50"
         >
-          <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5" viewBox="0 0 24 24">
             <path
               fill="currentColor"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -172,8 +172,8 @@ const LoginPage: React.FC = () => {
         </Button>
       </div>
 
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
+      <div className="mt-3 sm:mt-4 text-center">
+        <p className="text-[11px] sm:text-xs text-gray-600">
           Don't have an account?{' '}
           <Link to="/auth/register" className="text-gold-600 hover:text-gold-700 font-medium">
             Sign up
@@ -181,10 +181,10 @@ const LoginPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="mt-6 pt-6 border-t border-gray-200">
+      <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
         <Link
           to="/auth/magic-link"
-          className="block text-center text-sm text-gray-600 hover:text-gold-600 font-medium"
+          className="block text-center text-[11px] sm:text-xs text-gray-600 hover:text-gold-600 font-medium"
         >
           Sign in with magic link
         </Link>
