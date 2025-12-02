@@ -14,20 +14,20 @@ interface SearchableSelectProps extends Omit<React.InputHTMLAttributes<HTMLInput
 }
 
 const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
-  ({ 
-    label, 
-    error, 
-    helperText, 
-    options, 
-    value, 
-    onChange, 
+  ({
+    label,
+    error,
+    helperText,
+    options,
+    value,
+    onChange,
     onBlur,
     name,
     allowCustom = true,
     disabled = false,
     required = false,
     className = '',
-    ...props 
+    ...props
   }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -70,7 +70,7 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
         switch (e.key) {
           case 'ArrowDown':
             e.preventDefault();
-            setHighlightedIndex(prev => 
+            setHighlightedIndex(prev =>
               prev < filteredOptions.length - 1 ? prev + 1 : prev
             );
             break;
@@ -124,7 +124,7 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
       setSearchTerm(newValue);
       setIsOpen(true);
       setHighlightedIndex(-1);
-      
+
       // If allowCustom is true, update the value directly
       if (allowCustom) {
         onChange(newValue);
@@ -158,8 +158,8 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
       }
     };
 
-    const displayValue = isOpen 
-      ? searchTerm 
+    const displayValue = isOpen
+      ? searchTerm
       : (value && currentValueExists ? currentLabel : value);
 
     return (
@@ -193,8 +193,8 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
               disabled={disabled}
               className={`
                 w-full pl-7 sm:pl-10 pr-7 sm:pr-10 py-2 sm:py-3 text-xs sm:text-base rounded-lg sm:rounded-xl border transition-all duration-200
-                ${error 
-                  ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500' 
+                ${error
+                  ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500'
                   : 'border-gray-200 focus:border-gold-500 focus:ring-gold-500'
                 }
                 ${disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}
@@ -216,16 +216,16 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
               </button>
             )}
             <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 z-10">
-              <ChevronDown 
-                size={16} 
-                className={`sm:w-5 sm:h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+              <ChevronDown
+                size={16}
+                className={`sm:w-5 sm:h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
               />
             </div>
           </div>
 
           {/* Dropdown List - Mobile Optimized */}
           {isOpen && !disabled && (
-            <div 
+            <div
               className="absolute z-50 w-full mt-0.5 sm:mt-1 bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-lg max-h-[40vh] sm:max-h-60 overflow-auto overscroll-contain"
               style={{
                 // Ensure dropdown doesn't go off-screen on mobile
@@ -237,14 +237,20 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
                   {filteredOptions.map((option, index) => (
                     <li
                       key={option.value}
-                      onClick={() => handleSelect(option.value)}
+                      onClick={(e) => {
+                        e.preventDefault(); // Prevent input blur
+                        handleSelect(option.value);
+                      }}
+                      onMouseDown={(e) => {
+                        e.preventDefault(); // Prevent input blur
+                      }}
                       onTouchStart={() => setHighlightedIndex(index)}
                       className={`
                         px-2.5 sm:px-4 py-2 sm:py-2.5 cursor-pointer text-xs sm:text-base transition-colors touch-manipulation
                         min-h-[44px] sm:min-h-0 flex items-center
                         active:bg-gray-100
-                        ${index === highlightedIndex 
-                          ? 'bg-gold-50 text-gold-900' 
+                        ${index === highlightedIndex
+                          ? 'bg-gold-50 text-gold-900'
                           : 'text-gray-900 hover:bg-gray-50'
                         }
                       `}

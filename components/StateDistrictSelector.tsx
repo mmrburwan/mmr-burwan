@@ -74,9 +74,9 @@ const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
         onChange={(value) => {
           // Create a synthetic event for react-hook-form
           const event = {
-            target: { 
-              value, 
-              name: stateRegister.name 
+            target: {
+              value,
+              name: stateRegister.name
             }
           } as React.ChangeEvent<HTMLInputElement>;
           stateRegister.onChange(event);
@@ -91,8 +91,8 @@ const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
         disabled={disabled}
         error={stateError}
         required={required}
-        allowCustom={true}
-        placeholder="Search or type state name..."
+        allowCustom={false}
+        placeholder="Search or select state..."
         className="text-sm sm:text-base"
       />
       <SearchableSelect
@@ -102,9 +102,9 @@ const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
         onChange={(value) => {
           // Create a synthetic event for react-hook-form
           const event = {
-            target: { 
-              value, 
-              name: districtRegister.name 
+            target: {
+              value,
+              name: districtRegister.name
             }
           } as React.ChangeEvent<HTMLInputElement>;
           districtRegister.onChange(event);
@@ -115,8 +115,8 @@ const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
         disabled={disabled || !stateValue}
         error={districtError}
         required={required}
-        allowCustom={true}
-        placeholder="Search or type district name..."
+        allowCustom={false}
+        placeholder="Search or select district..."
         className="text-sm sm:text-base"
       />
     </>

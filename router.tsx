@@ -38,264 +38,264 @@ const PrivacyPage = lazy(() => import('./pages/privacy/PrivacyPage'));
 
 const router = createBrowserRouter(
   [
-  {
-    path: '/',
-    element: <AppLayout />,
-    children: [
-      {
-        index: true,
-        element: <LandingPage />,
-      },
-      {
-        path: 'verify',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <VerifyPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'verify/:id',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <VerifyPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'help',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <HelpPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'privacy',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <PrivacyPage />
-          </Suspense>
-        ),
-      },
-    ],
-  },
-  {
-    path: '/auth',
-    element: <AuthLayout />,
-    children: [
-      {
-        path: 'login',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <LoginPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'register',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <RegisterPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'forgot-password',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <ForgotPasswordPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'magic-link',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <MagicLinkPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'reset-password',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <ResetPasswordPage />
-          </Suspense>
-        ),
-      },
-    ],
-  },
-  {
-    path: '/onboarding',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <OnboardingPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/dashboard',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <DashboardPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/help-center',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <HelpCenterPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/application',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <ApplicationPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/application/view',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <ViewApplicationPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/documents',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <DocumentsPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/chat',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <ChatPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/appointments',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <AppointmentsPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/appointments/book',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <BookAppointmentPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/pass',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <PassPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/settings',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <SettingsPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/admin',
-    element: (
-      <ProtectedAdminRoute>
-        <AdminLayout />
-      </ProtectedAdminRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <AdminDashboardPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'clients',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <ClientsPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'applications/:applicationId',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <ApplicationDetailsPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'appointments',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <AppointmentsAdminPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'chat',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <AdminChatPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'settings',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <SettingsPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'scanner',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <ScannerPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'audit',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <AuditPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'certificates',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <CertificatesPage />
-          </Suspense>
-        ),
-      },
-    ],
-  },
+    {
+      path: '/',
+      element: <AppLayout />,
+      children: [
+        {
+          index: true,
+          element: <LandingPage />,
+        },
+        {
+          path: 'verify',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <VerifyPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'verify/:id',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <VerifyPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'help',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <HelpPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'privacy',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <PrivacyPage />
+            </Suspense>
+          ),
+        },
+      ],
+    },
+    {
+      path: '/auth',
+      element: <AuthLayout />,
+      children: [
+        {
+          path: 'login',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <LoginPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'register',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <RegisterPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'forgot-password',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <ForgotPasswordPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'magic-link',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <MagicLinkPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'reset-password',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <ResetPasswordPage />
+            </Suspense>
+          ),
+        },
+      ],
+    },
+    {
+      path: '/onboarding',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <OnboardingPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/dashboard',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <DashboardPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/help-center',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <HelpCenterPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/application',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <ApplicationPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/application/view',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <ViewApplicationPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/documents',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <DocumentsPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/chat',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <ChatPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/appointments',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <AppointmentsPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/appointments/book',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <BookAppointmentPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/pass',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <PassPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/settings',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <SettingsPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/admin',
+      element: (
+        <ProtectedAdminRoute>
+          <AdminLayout />
+        </ProtectedAdminRoute>
+      ),
+      children: [
+        {
+          index: true,
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminDashboardPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'clients',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <ClientsPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'applications/:applicationId',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <ApplicationDetailsPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'appointments',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <AppointmentsAdminPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'chat',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminChatPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'settings',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <SettingsPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'scanner',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <ScannerPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'audit',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <AuditPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'certificates',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <CertificatesPage />
+            </Suspense>
+          ),
+        },
+      ],
+    },
   ],
   {
     future: {
