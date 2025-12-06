@@ -74,7 +74,7 @@ export const adminService = {
 
   async approveDocument(documentId: string, actorId: string, actorName: string): Promise<void> {
     await documentService.approveDocument(documentId);
-    
+
     await auditService.createLog({
       actorId,
       actorName,
@@ -143,7 +143,7 @@ export const adminService = {
     };
 
     const personLabel = getPersonLabel(document.belongs_to);
-    const documentTitle = personLabel 
+    const documentTitle = personLabel
       ? `${personLabel} ${documentTypeLabel}`
       : documentTypeLabel;
 
@@ -165,25 +165,12 @@ export const adminService = {
     }
 
     // Send email if requested
-    if (sendEmail && userEmail) {
-      try {
-        const userDetails = application.user_details as any;
-        const userName = userDetails?.firstName 
-          ? `${userDetails.firstName} ${userDetails.lastName || ''}`.trim()
-          : undefined;
-
-        await emailService.sendRejectionEmail({
-          userEmail,
-          documentType: document.type,
-          documentName: document.name,
-          rejectionReason: reason,
-          userName,
-        });
-      } catch (emailError) {
-        // Log error but don't fail the rejection
-        console.error('Failed to send rejection email:', emailError);
-      }
-    }
+    // Note: Email is now handled by a database webhook on the notifications table
+    // The 'sendEmail' parameter is kept for backward compatibility but the logic is event-driven
+    // if (sendEmail && userEmail) {
+    //   // Email sending is handled by the 'send-rejection-email' Edge Function
+    //   // triggered by the notification creation above
+    // }
 
     // Create audit log
     await auditService.createLog({
@@ -282,7 +269,7 @@ export const adminService = {
 
     // Get user details for personalized notification
     const userDetails = data.user_details as any;
-    const userName = userDetails?.firstName 
+    const userName = userDetails?.firstName
       ? `${userDetails.firstName} ${userDetails.lastName || ''}`.trim()
       : 'Applicant';
 
@@ -315,24 +302,24 @@ export const adminService = {
     try {
       // Check if certificate already exists
       const existingCert = await certificateService.getCertificateByApplicationId(applicationId);
-      
+
       if (!existingCert) {
         // Generate and upload certificate PDF
         const mappedApplication = applicationService.mapApplication(data);
         const { pdfUrl, certificateData } = await generateAndUploadCertificate(mappedApplication, supabase);
-        
+
         // Extract user names from application data
         const userDetails = data.user_details as any;
         const partnerDetails = (data.partner_form || data.partner_details) as any;
-        
+
         const groomName = userDetails?.firstName && userDetails?.lastName
           ? `${userDetails.firstName} ${userDetails.lastName}`.trim()
           : userDetails?.firstName || 'N/A';
-        
+
         const brideName = partnerDetails?.firstName && partnerDetails?.lastName
           ? `${partnerDetails.firstName} ${partnerDetails.lastName}`.trim()
           : partnerDetails?.firstName || 'N/A';
-        
+
         // Create certificate record in database (canDownload defaults to false)
         await certificateService.issueCertificate(
           data.user_id,
@@ -398,33 +385,33 @@ export const adminService = {
     // Generate and upload certificate PDF
     const mappedApplication = applicationService.mapApplication(appData);
     const { pdfUrl, certificateData } = await generateAndUploadCertificate(mappedApplication, supabase);
-    
+
     // Extract user names from application data
     const userDetails = appData.user_details as any;
     const partnerDetails = (appData.partner_form || appData.partner_details) as any;
-    
+
     const groomName = userDetails?.firstName && userDetails?.lastName
       ? `${userDetails.firstName} ${userDetails.lastName}`.trim()
       : userDetails?.firstName || 'N/A';
-    
+
     const brideName = partnerDetails?.firstName && partnerDetails?.lastName
       ? `${partnerDetails.firstName} ${partnerDetails.lastName}`.trim()
       : partnerDetails?.firstName || 'N/A';
-    
+
     // Create certificate record in database
-        await certificateService.issueCertificate(
-          appData.user_id,
-          applicationId,
-          pdfUrl,
-          appData.certificate_number,
-          appData.registration_date,
-          groomName,
-          brideName,
-          false // canDownload defaults to false - admin must enable it
-        );
+    await certificateService.issueCertificate(
+      appData.user_id,
+      applicationId,
+      pdfUrl,
+      appData.certificate_number,
+      appData.registration_date,
+      groomName,
+      brideName,
+      false // canDownload defaults to false - admin must enable it
+    );
 
     // Get user details for personalized notification
-    const userName = userDetails?.firstName 
+    const userName = userDetails?.firstName
       ? `${userDetails.firstName} ${userDetails.lastName || ''}`.trim()
       : 'Applicant';
 
@@ -500,7 +487,7 @@ export const adminService = {
     actorName: string
   ): Promise<Application> {
     const updatedData: any = {};
-    
+
     if (updates.userDetails) updatedData.user_details = updates.userDetails;
     if (updates.partnerForm) updatedData.partner_form = updates.partnerForm;
     if (updates.userAddress) updatedData.user_address = updates.userAddress;
