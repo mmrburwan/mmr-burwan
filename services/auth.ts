@@ -66,35 +66,60 @@ export const authService = {
   },
 
   async register(data: RegisterData): Promise<AuthResponse | { needsConfirmation: true; email: string }> {
-    const { data: authData, error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          name: data.name,
-          phone: data.phone,
-          role: data.email.includes('admin') ? 'admin' : 'client',
+    try {
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            phone: data.phone,
+            role: data.email.includes('admin') ? 'admin' : 'client',
+          },
+          emailRedirectTo: `${window.location.origin}/auth/magic-link`,
         },
-        emailRedirectTo: `${window.location.origin}/auth/magic-link`,
-      },
-    });
+      });
 
-    if (error) {
-      throw new Error(error.message);
+      if (error) {
+        console.error('Registration error:', error);
+        // Provide more helpful error messages
+        if (error.message.includes('rate limit')) {
+          throw new Error('Too many registration attempts. Please wait a few minutes and try again.');
+        }
+        if (error.message.includes('email')) {
+          throw new Error('There was an issue with the email address. Please check it and try again.');
+        }
+        throw new Error(error.message);
+      }
+
+      if (!authData.user) {
+        throw new Error('Registration failed - no user data returned');
+      }
+
+      // Log registration details for debugging
+      console.log('Registration successful:', {
+        userId: authData.user.id,
+        email: data.email,
+        emailConfirmed: authData.user.email_confirmed_at,
+        confirmationSent: authData.user.confirmation_sent_at,
+      });
+
+      // Check if email confirmation was actually sent
+      if (!authData.user.confirmation_sent_at && !authData.user.email_confirmed_at) {
+        console.warn('Email confirmation may not have been sent. Check Supabase SMTP configuration.');
+      }
+
+      // ALWAYS return needsConfirmation for new registrations
+      // This ensures the confirmation screen always shows
+      // Even if Supabase has email confirmation disabled, we still want to show the screen
+      return {
+        needsConfirmation: true,
+        email: data.email,
+      };
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      throw error;
     }
-
-    if (!authData.user) {
-      throw new Error('Registration failed');
-    }
-
-    // ALWAYS return needsConfirmation for new registrations
-    // This ensures the confirmation screen always shows
-    // Even if Supabase has email confirmation disabled, we still want to show the screen
-    console.log('Registration successful - always showing confirmation screen');
-    return {
-      needsConfirmation: true,
-      email: data.email,
-    };
   },
 
   async signInWithGoogle(): Promise<void> {
@@ -159,6 +184,24 @@ export const authService = {
       user,
       token: data.session.access_token,
     };
+  },
+
+  async resendConfirmationEmail(email: string): Promise<void> {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/magic-link`,
+      },
+    });
+
+    if (error) {
+      console.error('Resend confirmation email error:', error);
+      if (error.message.includes('rate limit')) {
+        throw new Error('Too many requests. Please wait a few minutes before requesting another email.');
+      }
+      throw new Error(error.message);
+    }
   },
 
   async forgotPassword(email: string): Promise<void> {

@@ -113,7 +113,7 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
       />
 
       {/* Content */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
+      <div style={{ position: 'relative', zIndex: 1, paddingTop: '15px' }}>
         {/* Header Section */}
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <h1 style={{ 
@@ -231,7 +231,7 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
               <p><strong>Phone No:</strong> {userDetails.mobileNumber || 'N/A'}</p>
               <p style={{ marginTop: '8px' }}><strong>Present Address:</strong></p>
               <p style={{ fontSize: '10px', marginLeft: '10px' }}>
-                {formatAddressDisplay(userCurrentAddress.villageStreet ? userCurrentAddress : userAddress)}
+                {formatAddressDisplay((userCurrentAddress.villageStreet || userCurrentAddress.street) ? userCurrentAddress : userAddress)}
               </p>
               <p style={{ marginTop: '8px' }}><strong>Permanent Address:</strong></p>
               <p style={{ fontSize: '10px', marginLeft: '10px' }}>
@@ -266,7 +266,7 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
               <p><strong>Phone No:</strong> {partnerDetails.mobileNumber || 'N/A'}</p>
               <p style={{ marginTop: '8px' }}><strong>Present Address:</strong></p>
               <p style={{ fontSize: '10px', marginLeft: '10px' }}>
-                {formatAddressDisplay(partnerCurrentAddress.villageStreet ? partnerCurrentAddress : partnerAddress)}
+                {formatAddressDisplay((partnerCurrentAddress.villageStreet || partnerCurrentAddress.street) ? partnerCurrentAddress : partnerAddress)}
               </p>
               <p style={{ marginTop: '8px' }}><strong>Permanent Address:</strong></p>
               <p style={{ fontSize: '10px', marginLeft: '10px' }}>

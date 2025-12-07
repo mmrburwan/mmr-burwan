@@ -231,30 +231,17 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
                     </div>
                   </div>
 
-                  {/* Marriage & Registration Dates */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white rounded-xl p-4 border border-gray-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar size={16} className="text-gold-600" />
-                        <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Marriage Date</p>
-                      </div>
-                      <p className="font-semibold text-gray-900">
-                        {certificateData.declarations?.marriageDate 
-                          ? safeFormatDateObject(new Date(certificateData.declarations.marriageDate), 'MMMM d, yyyy')
-                          : 'N/A'}
-                      </p>
+                  {/* Registration Date */}
+                  <div className="bg-white rounded-xl p-4 border border-gray-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar size={16} className="text-gold-600" />
+                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Registration Date</p>
                     </div>
-                    <div className="bg-white rounded-xl p-4 border border-gray-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar size={16} className="text-gold-600" />
-                        <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Registration Date</p>
-                      </div>
-                      <p className="font-semibold text-gray-900">
-                        {certificateData.registrationDate 
-                          ? safeFormatDateObject(new Date(certificateData.registrationDate), 'MMMM d, yyyy')
-                          : 'N/A'}
-                      </p>
-                    </div>
+                    <p className="font-semibold text-gray-900">
+                      {certificateData.registrationDate 
+                        ? safeFormatDateObject(new Date(certificateData.registrationDate), 'MMMM d, yyyy')
+                        : 'N/A'}
+                    </p>
                   </div>
 
                   {/* Registration Office Details */}

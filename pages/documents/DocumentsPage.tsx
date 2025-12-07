@@ -91,7 +91,16 @@ const DocumentsPage: React.FC = () => {
     loadData();
   }, [user, navigate]);
 
+  // Maximum file size: 500KB
+  const MAX_FILE_SIZE = 500 * 1024; // 500KB in bytes
+
   const handleFileSelection = (file: File, type: string, belongsTo: 'user' | 'partner' | 'joint', docType: 'aadhaar' | 'tenth_certificate' | 'voter_id' | 'photo') => {
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      showToast(`File size exceeds 500KB limit. Please compress or resize the image before uploading.`, 'error');
+      return;
+    }
+
     // Store the selected file with its type key
     setSelectedFiles(prev => {
       const newMap = new Map(prev);

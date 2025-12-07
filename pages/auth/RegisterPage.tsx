@@ -35,6 +35,7 @@ const RegisterPage: React.FC = () => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState<string>('');
   const [registeredPassword, setRegisteredPassword] = useState<string>('');
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
 
   const registerSchema = createRegisterSchema(t);
 
@@ -82,6 +83,21 @@ const RegisterPage: React.FC = () => {
     }
   };
 
+  const handleResendEmail = async () => {
+    if (!registeredEmail) return;
+    
+    setIsResendingEmail(true);
+    try {
+      const { authService } = await import('../../services/auth');
+      await authService.resendConfirmationEmail(registeredEmail);
+      showToast(t('register.confirmation.emailResent') || 'Confirmation email sent! Please check your inbox.', 'success');
+    } catch (error: any) {
+      showToast(error.message || t('errors.resendEmailFailed') || 'Failed to resend email. Please try again.', 'error');
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
+
   return (
     <>
       {/* Confirmation Screen */}
@@ -112,6 +128,16 @@ const RegisterPage: React.FC = () => {
             >
               {t('register.confirmation.goToSignIn')}
               <ArrowRight size={14} className="ml-1.5 sm:w-4 sm:h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={handleResendEmail}
+              isLoading={isResendingEmail}
+              disabled={isResendingEmail}
+            >
+              {t('register.confirmation.resendEmail') || 'Resend Confirmation Email'}
             </Button>
             <Button
               variant="ghost"

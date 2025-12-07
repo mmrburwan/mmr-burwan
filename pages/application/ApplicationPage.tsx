@@ -25,7 +25,7 @@ import { ArrowRight, ArrowLeft, Save, Upload, X, FileText, Edit, CheckCircle, Ey
 const groomSchema = z.object({
   // Personal details
   firstName: z.string().min(2, 'First name is required'),
-  lastName: z.string().min(2, 'Last name is required'),
+  lastName: z.string().optional(),
   fatherName: z.string().min(2, 'Father name is required'),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   aadhaarNumber: z.string().regex(/^\d{12}$/, 'Aadhaar number must be exactly 12 digits'),
@@ -53,7 +53,7 @@ const groomSchema = z.object({
 const brideSchema = z.object({
   // Personal details
   firstName: z.string().min(2, 'First name is required'),
-  lastName: z.string().min(2, 'Last name is required'),
+  lastName: z.string().optional(),
   fatherName: z.string().min(2, 'Father name is required'),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   aadhaarNumber: z.string().regex(/^\d{12}$/, 'Aadhaar number must be exactly 12 digits'),
@@ -824,7 +824,16 @@ const ApplicationFormContent: React.FC = () => {
     return existsInUnsaved || existsInSaved;
   };
 
+  // Maximum file size: 500KB
+  const MAX_FILE_SIZE = 500 * 1024; // 500KB in bytes
+
   const handleFileUpload = (file: File, type: 'aadhaar' | 'tenth_certificate' | 'voter_id' | 'photo', belongsTo: 'user' | 'partner' | 'joint') => {
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      showToast(`File size exceeds 500KB limit. Please compress or resize the image before uploading.`, 'error');
+      return;
+    }
+
     // Check if document already exists
     if (documentExists(type, belongsTo)) {
       showToast(`A ${getDocumentTypeLabel(type)} has already been uploaded. Please remove the existing document first.`, 'error');
@@ -968,7 +977,6 @@ const ApplicationFormContent: React.FC = () => {
                     label="Last Name"
                     {...groomForm.register('lastName')}
                     error={groomForm.formState.errors.lastName?.message}
-                    required
                     disabled={isSubmitted}
                   />
                 </div>
@@ -1188,7 +1196,6 @@ const ApplicationFormContent: React.FC = () => {
                     label="Last Name"
                     {...brideForm.register('lastName')}
                     error={brideForm.formState.errors.lastName?.message}
-                    required
                     disabled={isSubmitted}
                   />
                 </div>

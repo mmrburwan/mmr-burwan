@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   content: {
     position: 'relative',
     zIndex: 1,
-    padding: '40 45 35 45',
+    padding: '55 45 35 45', // Increased top padding to shift content down
   },
   
   // ===== HEADER =====
@@ -481,9 +481,13 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
   const partnerAddress = ((application as any).partnerAddress || (partnerDetails as any).address || {}) as any;
   const partnerCurrentAddress = ((application as any).partnerCurrentAddress || {}) as any;
   
-  const userPresentAddr = formatAddress(userCurrentAddress.street ? userCurrentAddress : userAddress);
+  // Check for villageStreet (new format) OR street (legacy format) to determine if current address exists
+  const hasUserCurrentAddress = userCurrentAddress.villageStreet || userCurrentAddress.street;
+  const hasPartnerCurrentAddress = partnerCurrentAddress.villageStreet || partnerCurrentAddress.street;
+  
+  const userPresentAddr = formatAddress(hasUserCurrentAddress ? userCurrentAddress : userAddress);
   const userPermanentAddr = formatAddress(userAddress);
-  const partnerPresentAddr = formatAddress(partnerCurrentAddress.street ? partnerCurrentAddress : partnerAddress);
+  const partnerPresentAddr = formatAddress(hasPartnerCurrentAddress ? partnerCurrentAddress : partnerAddress);
   const partnerPermanentAddr = formatAddress(partnerAddress);
 
   return (

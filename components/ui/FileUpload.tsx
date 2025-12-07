@@ -17,7 +17,7 @@ interface FileUploadProps {
 
 const FileUpload: React.FC<FileUploadProps> = ({
   accept = 'image/*,.pdf',
-  maxSize = 10 * 1024 * 1024, // 10MB default
+  maxSize = 500 * 1024, // 500KB default
   maxFiles = 10,
   onFilesChange,
   existingFiles = [],
@@ -32,9 +32,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [uploadErrors, setUploadErrors] = useState<Record<number, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Format file size for display
+  const formatFileSize = (bytes: number): string => {
+    if (bytes >= 1024 * 1024) {
+      return `${(bytes / 1024 / 1024).toFixed(0)}MB`;
+    }
+    return `${Math.round(bytes / 1024)}KB`;
+  };
+
   const validateFile = (file: File): string | null => {
     if (file.size > maxSize) {
-      return `File size exceeds ${(maxSize / 1024 / 1024).toFixed(0)}MB limit`;
+      return `File size exceeds ${formatFileSize(maxSize)} limit. Please compress or resize the file.`;
     }
     // Additional validation can be added here
     return null;
@@ -150,7 +158,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               {isDragging ? 'Drop files here' : 'Click to upload or drag and drop'}
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              {accept} (max {maxSize / 1024 / 1024}MB per file)
+              {accept} (max {formatFileSize(maxSize)} per file)
             </p>
           </div>
         </div>
