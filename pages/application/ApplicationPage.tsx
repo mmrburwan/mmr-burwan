@@ -317,8 +317,8 @@ const ApplicationFormContent: React.FC = () => {
       // Calculate current step based on filled data (same logic as dashboard)
       let calculatedStep = 0;
       
-      // Check if groom details are filled
-      const groomDetailsFilled = application.userDetails?.firstName && application.userDetails?.lastName && application.userDetails?.fatherName &&
+      // Check if groom details are filled (lastName is optional)
+      const groomDetailsFilled = application.userDetails?.firstName && application.userDetails?.fatherName &&
                                  application.userDetails?.dateOfBirth && application.userDetails?.aadhaarNumber && application.userDetails?.mobileNumber &&
                                  (application.userAddress?.villageStreet || application.userAddress?.street) && application.userAddress?.postOffice && application.userAddress?.policeStation &&
                                  (application.userAddress?.district || application.userAddress?.city) && application.userAddress?.state && application.userAddress?.zipCode && application.userAddress?.country &&
@@ -329,8 +329,8 @@ const ApplicationFormContent: React.FC = () => {
       if (!groomDetailsFilled) {
         calculatedStep = 0;
       } else {
-        // Check if bride details are filled
-        const brideDetailsFilled = application.partnerForm?.firstName && application.partnerForm?.lastName && application.partnerForm?.fatherName &&
+        // Check if bride details are filled (lastName is optional)
+        const brideDetailsFilled = application.partnerForm?.firstName && application.partnerForm?.fatherName &&
                                    application.partnerForm?.dateOfBirth && (application.partnerForm?.aadhaarNumber || (application.partnerForm as any)?.idNumber) && (application.partnerForm as any)?.mobileNumber &&
                                    (application.partnerAddress?.villageStreet || application.partnerAddress?.street) && application.partnerAddress?.postOffice && application.partnerAddress?.policeStation &&
                                    (application.partnerAddress?.district || application.partnerAddress?.city) && application.partnerAddress?.state && application.partnerAddress?.zipCode && application.partnerAddress?.country &&
@@ -447,11 +447,10 @@ const ApplicationFormContent: React.FC = () => {
     if (isSubmitted) return true; // Allow navigation if already submitted
     
     if (currentStep === 0) {
-      // Check if all groom form fields are filled
+      // Check if all required groom form fields are filled (lastName is optional)
       const values = groomFormValues;
       return !!(
         values.firstName?.trim() && 
-        values.lastName?.trim() && 
         values.fatherName?.trim() && 
         values.dateOfBirth && 
         values.aadhaarNumber?.trim() && 
@@ -473,11 +472,10 @@ const ApplicationFormContent: React.FC = () => {
         values.marriageDate
       );
     } else if (currentStep === 1) {
-      // Check if all bride form fields are filled
+      // Check if all required bride form fields are filled (lastName is optional)
       const values = brideFormValues;
       return !!(
         values.firstName?.trim() && 
-        values.lastName?.trim() && 
         values.fatherName?.trim() && 
         values.dateOfBirth && 
         values.aadhaarNumber?.trim() && 
@@ -1388,7 +1386,10 @@ const ApplicationFormContent: React.FC = () => {
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             <div>
               <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">Groom's Documents</h3>
-              <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4 lg:mb-6">Upload Aadhaar card + 10th certificate or Voter ID</p>
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Upload Aadhaar card + 10th certificate or Voter ID</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-3 sm:mb-4 lg:mb-6">
+                <span className="text-gold-600 font-medium">Max file size: 500KB</span> per document
+              </p>
               
               {isLoadingDocuments && (
                 <div className="flex items-center justify-center py-3 sm:py-4 mb-3 sm:mb-4 bg-gray-50 rounded-lg">
@@ -1607,7 +1608,10 @@ const ApplicationFormContent: React.FC = () => {
 
             <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
               <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">Bride's Documents</h3>
-              <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4 lg:mb-6">Upload Aadhaar card + 10th certificate or Voter ID</p>
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Upload Aadhaar card + 10th certificate or Voter ID</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-3 sm:mb-4 lg:mb-6">
+                <span className="text-gold-600 font-medium">Max file size: 500KB</span> per document
+              </p>
               
               {isLoadingDocuments && (
                 <div className="flex items-center justify-center py-3 sm:py-4 mb-3 sm:mb-4 bg-gray-50 rounded-lg">
@@ -1826,7 +1830,10 @@ const ApplicationFormContent: React.FC = () => {
 
             <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
               <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">Joint Photograph</h3>
-              <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4 lg:mb-6">Upload a joint photo of bride and groom</p>
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Upload a joint photo of bride and groom</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-3 sm:mb-4 lg:mb-6">
+                <span className="text-gold-600 font-medium">Max file size: 500KB</span>
+              </p>
               
               {isLoadingDocuments && (
                 <div className="flex items-center justify-center py-3 sm:py-4 mb-3 sm:mb-4 bg-gray-50 rounded-lg">

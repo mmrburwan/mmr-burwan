@@ -251,30 +251,17 @@ const VerifyPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Marriage & Registration Dates */}
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  <div className="bg-white rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-gray-200">
-                    <div className="flex items-center gap-1 sm:gap-1.5 mb-1">
-                      <Calendar size={12} className="sm:w-3.5 sm:h-3.5 text-gold-600" />
-                      <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wider font-medium">Marriage</p>
-                    </div>
-                    <p className="font-semibold text-[11px] sm:text-xs text-gray-900">
-                      {certificateData.declarations?.marriageDate
-                        ? safeFormatDateObject(new Date(certificateData.declarations.marriageDate), 'MMM d, yyyy')
-                        : 'N/A'}
-                    </p>
+                {/* Registration Date */}
+                <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                    <Calendar size={14} className="sm:w-4 sm:h-4 text-gold-600" />
+                    <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider font-medium">Registration Date</p>
                   </div>
-                  <div className="bg-white rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-gray-200">
-                    <div className="flex items-center gap-1 sm:gap-1.5 mb-1">
-                      <Calendar size={12} className="sm:w-3.5 sm:h-3.5 text-gold-600" />
-                      <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wider font-medium">Registration</p>
-                    </div>
-                    <p className="font-semibold text-[11px] sm:text-xs text-gray-900">
-                      {certificateData.registrationDate
-                        ? safeFormatDateObject(new Date(certificateData.registrationDate), 'MMM d, yyyy')
-                        : 'N/A'}
-                    </p>
-                  </div>
+                  <p className="font-semibold text-xs sm:text-sm text-gray-900">
+                    {certificateData.registrationDate
+                      ? safeFormatDateObject(new Date(certificateData.registrationDate), 'MMMM d, yyyy')
+                      : 'N/A'}
+                  </p>
                 </div>
 
                 {/* Registration Office Details */}

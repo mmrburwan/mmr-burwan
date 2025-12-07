@@ -464,8 +464,11 @@ const DocumentsPage: React.FC = () => {
               <h3 className="font-semibold text-sm sm:text-base text-rose-900 mb-1 sm:mb-2">
                 Documents Need Re-upload
               </h3>
-              <p className="text-[10px] sm:text-xs text-rose-800 mb-3 sm:mb-4">
+              <p className="text-[10px] sm:text-xs text-rose-800 mb-1 sm:mb-2">
                 Review reasons below and select new files.
+              </p>
+              <p className="text-[10px] sm:text-xs text-rose-700 mb-3 sm:mb-4">
+                <span className="font-medium">Max file size: 500KB</span> per document
               </p>
               <div className="space-y-3 sm:space-y-4">
                 {rejectedDocuments.map((doc) => {
@@ -583,7 +586,10 @@ const DocumentsPage: React.FC = () => {
       {/* Main Upload Section - Only show if no rejected documents */}
       {rejectedDocuments.length === 0 && isUploadEnabled && (
         <Card className="p-3 sm:p-5 mb-4 sm:mb-6">
-          <h2 className="font-serif text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-5">Upload Documents</h2>
+          <h2 className="font-serif text-lg sm:text-xl font-semibold text-gray-900 mb-2 sm:mb-3">Upload Documents</h2>
+          <p className="text-[10px] sm:text-xs text-gray-500 mb-4 sm:mb-5">
+            <span className="text-gold-600 font-medium">Max file size: 500KB</span> per document. Supported formats: Images and PDF.
+          </p>
           
           {/* Groom's Documents */}
           <div className="mb-5 sm:mb-6">

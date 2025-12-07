@@ -5,10 +5,13 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { profileService } from '../../services/profile';
 import { applicationService } from '../../services/application';
-import { appointmentService } from '../../services/appointments';
+// HIDDEN: Appointment feature temporarily disabled for client dashboard
+// import { appointmentService } from '../../services/appointments';
 import { certificateService } from '../../services/certificates';
 import { messageService } from '../../services/messages';
-import { Profile, Application, Appointment, Certificate } from '../../types';
+import { Profile, Application, Certificate } from '../../types';
+// HIDDEN: Appointment type temporarily disabled
+// import { Appointment } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
@@ -37,7 +40,8 @@ const DashboardPage: React.FC = () => {
   const { t } = useTranslation('dashboard');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [application, setApplication] = useState<Application | null>(null);
-  const [appointment, setAppointment] = useState<Appointment | null>(null);
+  // HIDDEN: Appointment state temporarily disabled
+  // const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,10 +54,11 @@ const DashboardPage: React.FC = () => {
     }
 
     try {
-      const [profileData, appData, aptData, certData, conversations] = await Promise.all([
+      // HIDDEN: Appointment service call temporarily disabled
+      const [profileData, appData, certData, conversations] = await Promise.all([
         profileService.getProfile(user.id),
         applicationService.getApplication(user.id),
-        appointmentService.getUserAppointment(user.id),
+        // appointmentService.getUserAppointment(user.id),
         certificateService.getCertificate(user.id),
         messageService.getConversations(user.id),
       ]);
@@ -69,7 +74,8 @@ const DashboardPage: React.FC = () => {
       }
 
       setApplication(appData);
-      setAppointment(aptData);
+      // HIDDEN: Appointment state setter temporarily disabled
+      // setAppointment(aptData);
       setCertificate(certData);
       setUnreadMessages(conversations.reduce((sum, c) => sum + c.unreadCount, 0));
     } catch (error) {
@@ -103,9 +109,8 @@ const DashboardPage: React.FC = () => {
   const getCurrentStep = () => {
     if (!application) return 0;
     
-    // Check if groom details are filled
+    // Check if groom details are filled (lastName is optional)
     const hasGroomDetails = application.userDetails?.firstName && 
-                            application.userDetails?.lastName &&
                             application.userDetails?.dateOfBirth &&
                             application.userDetails?.aadhaarNumber &&
                             application.userDetails?.mobileNumber;
@@ -119,9 +124,8 @@ const DashboardPage: React.FC = () => {
       return 0; // Still on groom details step
     }
     
-    // Check if bride details are filled
+    // Check if bride details are filled (lastName is optional)
     const hasBrideDetails = application.partnerForm?.firstName && 
-                            application.partnerForm?.lastName &&
                             application.partnerForm?.dateOfBirth &&
                             ((application.partnerForm as any)?.aadhaarNumber || (application.partnerForm as any)?.idNumber);
     const hasBrideAddress = (application.partnerAddress as any)?.villageStreet || 
@@ -316,7 +320,7 @@ const DashboardPage: React.FC = () => {
 
       {/* Secondary Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-        {/* Upcoming Appointment */}
+        {/* HIDDEN: Upcoming Appointment card temporarily disabled
         <Card className="p-3 sm:p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm sm:text-base text-gray-900 flex items-center gap-1.5 sm:gap-2">
@@ -371,6 +375,7 @@ const DashboardPage: React.FC = () => {
             </div>
           )}
         </Card>
+        */}
 
         {/* Latest Certificate */}
         <Card className="p-3 sm:p-4">
@@ -492,7 +497,7 @@ const DashboardPage: React.FC = () => {
       {/* Quick Actions */}
       <div className="mt-4 sm:mt-6">
         <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3">{t('quickActions.title')}</h3>
-        <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Button
             variant="outline"
             className="flex flex-col items-center gap-1 sm:gap-1.5 h-auto py-2.5 sm:py-3 !px-1 sm:!px-2"
@@ -501,6 +506,7 @@ const DashboardPage: React.FC = () => {
             <Upload size={18} className="sm:w-5 sm:h-5 text-gold-600" />
             <span className="text-[10px] sm:text-xs text-center leading-tight">{t('quickActions.uploadDocs')}</span>
           </Button>
+          {/* HIDDEN: Book Appointment quick action temporarily disabled
           <Button
             variant="outline"
             className="flex flex-col items-center gap-1 sm:gap-1.5 h-auto py-2.5 sm:py-3 !px-1 sm:!px-2"
@@ -509,6 +515,7 @@ const DashboardPage: React.FC = () => {
             <Calendar size={18} className="sm:w-5 sm:h-5 text-gold-600" />
             <span className="text-[10px] sm:text-xs text-center leading-tight">{t('quickActions.bookAppt')}</span>
           </Button>
+          */}
           <Button
             variant="outline"
             className="flex flex-col items-center gap-1 sm:gap-1.5 h-auto py-2.5 sm:py-3 !px-1 sm:!px-2"

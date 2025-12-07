@@ -3,10 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { adminService } from '../../services/admin';
-import { applicationService } from '../../services/application';
-import { profileService } from '../../services/profile';
 import { certificateService } from '../../services/certificates';
-import { Application, Profile } from '../../types';
+import { Application } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
@@ -18,7 +16,6 @@ import { safeFormatDateObject } from '../../utils/dateUtils';
 interface ClientWithApplication {
   userId: string;
   email: string;
-  profile: Profile | null;
   application: Application | null;
 }
 
@@ -46,32 +43,21 @@ const ClientsPage: React.FC = () => {
   useEffect(() => {
     const loadClients = async () => {
       try {
+        // Get ALL applications (same as dashboard)
         const applications = await adminService.getAllApplications();
         
-        // Get unique user IDs from applications, excluding mock user IDs
-        const mockUserIds = ['user-1', 'admin-1'];
-        const userIds = [...new Set(applications.map(app => app.userId))]
-          .filter(userId => !mockUserIds.includes(userId));
+        // Get unique user IDs from all applications
+        const userIds = [...new Set(applications.map(app => app.userId))];
         
         // Fetch user emails in batch
         const emailMap = await adminService.getUserEmails(userIds);
         
-        // Load profiles and applications for each user
-        const clientsData = await Promise.all(
-          userIds.map(async (userId) => {
-            const [profile, application] = await Promise.all([
-              profileService.getProfile(userId),
-              applicationService.getApplication(userId),
-            ]);
-            
-            return {
-              userId,
-              email: emailMap[userId] || 'N/A',
-              profile,
-              application,
-            };
-          })
-        );
+        // Create client entries for EACH application (not grouped by user)
+        const clientsData: ClientWithApplication[] = applications.map((application) => ({
+          userId: application.userId,
+          email: emailMap[application.userId] || 'N/A',
+          application,
+        }));
         
         setClients(clientsData);
         setFilteredClients(clientsData);
@@ -112,26 +98,15 @@ const ClientsPage: React.FC = () => {
       );
       showToast('Application verified successfully', 'success');
       
-      // Reload clients
+      // Reload clients - show ALL applications
       const applications = await adminService.getAllApplications();
-      const mockUserIds = ['user-1', 'admin-1'];
-      const userIds = [...new Set(applications.map(app => app.userId))]
-        .filter(userId => !mockUserIds.includes(userId));
+      const userIds = [...new Set(applications.map(app => app.userId))];
       const emailMap = await adminService.getUserEmails(userIds);
-      const clientsData = await Promise.all(
-        userIds.map(async (userId) => {
-          const [profile, application] = await Promise.all([
-            profileService.getProfile(userId),
-            applicationService.getApplication(userId),
-          ]);
-          return { 
-            userId, 
-            email: emailMap[userId] || 'N/A',
-            profile, 
-            application 
-          };
-        })
-      );
+      const clientsData: ClientWithApplication[] = applications.map((application) => ({
+        userId: application.userId,
+        email: emailMap[application.userId] || 'N/A',
+        application,
+      }));
       setClients(clientsData);
       setFilteredClients(clientsData);
 
@@ -243,24 +218,28 @@ const ClientsPage: React.FC = () => {
 
       <Card className="p-3 sm:p-4 lg:p-6">
         {/* Mobile Card View */}
-        <div className="block sm:hidden space-y-2">
+        <div className="block sm:hidden space-y-3">
           {filteredClients.map((client) => {
-            const name = client.profile 
-              ? `${client.profile.firstName} ${client.profile.lastName}`
-              : 'Unknown User';
-            const email = client.email || 'N/A';
+            const groomName = client.application?.userDetails 
+              ? `${client.application.userDetails.firstName}${client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''}`
+              : '-';
+            const brideName = client.application?.partnerForm 
+              ? `${client.application.partnerForm.firstName}${client.application.partnerForm.lastName ? ' ' + client.application.partnerForm.lastName : ''}`
+              : '-';
+            const groomPhone = client.application?.userDetails?.mobileNumber || '-';
+            const bridePhone = client.application?.partnerForm?.mobileNumber || '-';
             
             return (
-              <Card key={client.userId} className="p-3">
-                <div className="space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <div className="w-8 h-8 rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
-                        <Users size={14} className="text-gold-600" />
+              <Card key={client.userId} className="p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                <div className="space-y-3">
+                  {/* Header with Status Badge */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-100 to-gold-200 flex items-center justify-center shadow-sm">
+                        <Users size={18} className="text-gold-600" />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-xs text-gray-900 truncate">{name}</p>
-                        <p className="text-[10px] text-gray-500 truncate">{email}</p>
+                      <div>
+                        <p className="text-[10px] font-medium text-gold-600 uppercase tracking-wide">Couple</p>
                       </div>
                     </div>
                     {client.application 
@@ -268,61 +247,102 @@ const ClientsPage: React.FC = () => {
                       : <Badge variant="default" className="!text-[10px]">No App</Badge>
                     }
                   </div>
+
+                  {/* Groom & Bride Names */}
+                  <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs">🤵</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wide">Groom</p>
+                        <p className="font-semibold text-sm text-gray-900 truncate">{groomName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs">👰</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wide">Bride</p>
+                        <p className="font-semibold text-sm text-gray-900 truncate">{brideName}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Phone Numbers */}
                   <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <p className="text-[10px] text-gray-500 mb-0.5">Verified</p>
+                    <div className="bg-blue-50/50 rounded-lg p-2">
+                      <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">Groom Phone</p>
+                      <p className="text-xs font-medium text-gray-800">{groomPhone}</p>
+                    </div>
+                    <div className="bg-pink-50/50 rounded-lg p-2">
+                      <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">Bride Phone</p>
+                      <p className="text-xs font-medium text-gray-800">{bridePhone}</p>
+                    </div>
+                  </div>
+
+                  {/* Status Info Row */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="text-center p-2 bg-gray-50 rounded-lg">
+                      <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1">Verified</p>
                       {client.application?.verified !== undefined ? (
-                        <Badge variant={client.application.verified ? 'success' : 'default'} className="!text-[10px]">
-                          {client.application.verified ? 'Verified' : 'Unverified'}
+                        <Badge variant={client.application.verified ? 'success' : 'default'} className="!text-[9px] !px-1.5">
+                          {client.application.verified ? 'Yes' : 'No'}
                         </Badge>
                       ) : (
                         <span className="text-[10px] text-gray-400">-</span>
                       )}
                     </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 mb-0.5">Progress</p>
+                    <div className="text-center p-2 bg-gray-50 rounded-lg">
+                      <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1">Progress</p>
                       {client.application ? (
-                        <div className="flex items-center gap-1">
-                          <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
                             <div
-                              className="bg-gold-500 h-1.5 rounded-full"
+                              className="bg-gold-500 h-1.5 rounded-full transition-all duration-300"
                               style={{ width: `${client.application.progress}%` }}
                             />
                           </div>
-                          <span className="text-[10px] text-gray-500">{client.application.progress}%</span>
+                          <span className="text-[10px] font-medium text-gray-700">{client.application.progress}%</span>
                         </div>
                       ) : (
                         <span className="text-[10px] text-gray-400">-</span>
                       )}
                     </div>
-                  </div>
-                  {client.application?.lastUpdated && (
-                    <div>
-                      <p className="text-[10px] text-gray-500 mb-0.5">Last Updated</p>
-                      <p className="text-[10px] text-gray-600">{safeFormatDateObject(new Date(client.application.lastUpdated), 'MMM d, yyyy')}</p>
+                    <div className="text-center p-2 bg-gray-50 rounded-lg">
+                      <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1">Updated</p>
+                      <p className="text-[10px] font-medium text-gray-700">
+                        {client.application?.lastUpdated 
+                          ? safeFormatDateObject(new Date(client.application.lastUpdated), 'MMM d')
+                          : '-'
+                        }
+                      </p>
                     </div>
-                  )}
-                  <div className="flex flex-wrap gap-1 pt-1">
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
                     {client.application && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="!text-[10px] !px-2 !py-1"
+                        className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-gold-50 hover:bg-gold-100 text-gold-700 flex-1"
                         onClick={() => {
                           navigate(`/admin/applications/${client.application!.id}`);
                         }}
                       >
-                        <Eye size={12} className="mr-0.5" />
+                        <Eye size={14} className="mr-1" />
                         View
                       </Button>
                     )}
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="!text-[10px] !px-2 !py-1"
+                      className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 flex-1"
                       onClick={() => navigate(`/admin/chat?userId=${client.userId}`)}
                     >
-                      <MessageSquare size={12} className="mr-0.5" />
+                      <MessageSquare size={14} className="mr-1" />
                       Message
                     </Button>
                     {client.application && client.application.status === 'submitted' && (
@@ -332,7 +352,7 @@ const ClientsPage: React.FC = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="!text-[10px] !px-2 !py-1"
+                              className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex-1"
                               onClick={async () => {
                                 try {
                                   await adminService.unverifyApplication(
@@ -343,15 +363,12 @@ const ClientsPage: React.FC = () => {
                                   showToast('Application unverified', 'success');
                                   const applications = await adminService.getAllApplications();
                                   const userIds = [...new Set(applications.map(app => app.userId))];
-                                  const clientsData = await Promise.all(
-                                    userIds.map(async (userId) => {
-                                      const [profile, application] = await Promise.all([
-                                        profileService.getProfile(userId),
-                                        applicationService.getApplication(userId),
-                                      ]);
-                                      return { userId, profile, application };
-                                    })
-                                  );
+                                  const emailMap = await adminService.getUserEmails(userIds);
+                                  const clientsData: ClientWithApplication[] = applications.map((application) => ({
+                                    userId: application.userId,
+                                    email: emailMap[application.userId] || 'N/A',
+                                    application,
+                                  }));
                                   setClients(clientsData);
                                   setFilteredClients(clientsData);
                                 } catch (error) {
@@ -360,14 +377,14 @@ const ClientsPage: React.FC = () => {
                                 }
                               }}
                             >
-                              <XCircle size={12} className="mr-0.5" />
+                              <XCircle size={14} className="mr-1" />
                               Unverify
                             </Button>
                             {!certificatesMap[client.application.id] && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="!text-[10px] !px-2 !py-1"
+                                className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-green-50 hover:bg-green-100 text-green-700 flex-1"
                                 disabled={generatingCert === client.application.id}
                                 onClick={async () => {
                                   if (!user) return;
@@ -391,8 +408,8 @@ const ClientsPage: React.FC = () => {
                                   }
                                 }}
                               >
-                                <FileText size={12} className="mr-0.5" />
-                                {generatingCert === client.application.id ? 'Generating...' : 'Generate Cert'}
+                                <FileText size={14} className="mr-1" />
+                                {generatingCert === client.application.id ? 'Generating...' : 'Generate'}
                               </Button>
                             )}
                           </>
@@ -400,7 +417,7 @@ const ClientsPage: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="!text-[10px] !px-2 !py-1"
+                            className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-green-50 hover:bg-green-100 text-green-700 flex-1"
                             onClick={() => {
                               setVerifyModalState({
                                 isOpen: true,
@@ -410,7 +427,7 @@ const ClientsPage: React.FC = () => {
                               });
                             }}
                           >
-                            <CheckCircle size={12} className="mr-0.5" />
+                            <CheckCircle size={14} className="mr-1" />
                             Verify
                           </Button>
                         )}
@@ -428,8 +445,8 @@ const ClientsPage: React.FC = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Client Name</th>
-                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Email</th>
+                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Groom & Bride</th>
+                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Phone Numbers</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Status</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Verified</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Progress</th>
@@ -439,10 +456,14 @@ const ClientsPage: React.FC = () => {
             </thead>
             <tbody>
               {filteredClients.map((client) => {
-                const name = client.profile 
-                  ? `${client.profile.firstName} ${client.profile.lastName}`
-                  : 'Unknown User';
-                const email = client.email || 'N/A';
+                const groomName = client.application?.userDetails 
+                  ? `${client.application.userDetails.firstName}${client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''}`
+                  : '-';
+                const brideName = client.application?.partnerForm 
+                  ? `${client.application.partnerForm.firstName}${client.application.partnerForm.lastName ? ' ' + client.application.partnerForm.lastName : ''}`
+                  : '-';
+                const groomPhone = client.application?.userDetails?.mobileNumber || '-';
+                const bridePhone = client.application?.partnerForm?.mobileNumber || '-';
                 
                 return (
                   <tr key={client.userId} className="border-b border-gray-100 hover:bg-gray-50">
@@ -451,10 +472,18 @@ const ClientsPage: React.FC = () => {
                         <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
                           <Users size={14} className="sm:w-5 sm:h-5 text-gold-600" />
                         </div>
-                        <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">{name}</span>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">🤵 {groomName}</span>
+                          <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">👰 {brideName}</span>
+                        </div>
                       </div>
                     </td>
-                    <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm text-gray-600 truncate max-w-[120px] sm:max-w-none">{email}</td>
+                    <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
+                      <div className="flex flex-col text-[10px] sm:text-xs lg:text-sm text-gray-600">
+                        <span className="truncate">🤵 {groomPhone}</span>
+                        <span className="truncate">👰 {bridePhone}</span>
+                      </div>
+                    </td>
                     <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
                       {client.application 
                         ? getStatusBadge(client.application.status)
@@ -533,15 +562,12 @@ const ClientsPage: React.FC = () => {
                                       showToast('Application unverified', 'success');
                                       const applications = await adminService.getAllApplications();
                                       const userIds = [...new Set(applications.map(app => app.userId))];
-                                      const clientsData = await Promise.all(
-                                        userIds.map(async (userId) => {
-                                          const [profile, application] = await Promise.all([
-                                            profileService.getProfile(userId),
-                                            applicationService.getApplication(userId),
-                                          ]);
-                                          return { userId, profile, application };
-                                        })
-                                      );
+                                      const emailMap = await adminService.getUserEmails(userIds);
+                                      const clientsData: ClientWithApplication[] = applications.map((application) => ({
+                                        userId: application.userId,
+                                        email: emailMap[application.userId] || 'N/A',
+                                        application,
+                                      }));
                                       setClients(clientsData);
                                       setFilteredClients(clientsData);
                                     } catch (error) {
