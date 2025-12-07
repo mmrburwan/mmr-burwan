@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { appointmentService } from '../../services/appointments';
@@ -30,7 +31,7 @@ const BookAppointmentPage: React.FC = () => {
 
     const slotId = searchParams.get('slotId');
     const rescheduleId = searchParams.get('reschedule');
-    
+
     if (!slotId) {
       navigate('/appointments');
       return;
@@ -99,7 +100,7 @@ const BookAppointmentPage: React.FC = () => {
             {isRescheduling ? 'Rescheduled!' : 'Confirmed!'}
           </h1>
           <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
-            {isRescheduling 
+            {isRescheduling
               ? 'Your appointment has been rescheduled.'
               : 'Your appointment is booked.'}
           </p>
@@ -147,7 +148,7 @@ const BookAppointmentPage: React.FC = () => {
         </h1>
         <p className="text-xs sm:text-sm text-gray-600">
           {isRescheduling ? t('reviewNewDetails') : t('reviewAppointment')}
-</p>
+        </p>
       </div>
 
       <Card className="p-4 sm:p-6">
