@@ -6,6 +6,7 @@ import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 import { CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { adminService } from '../../services/admin';
 
 // Generate roman numerals from 1 to 50
 const generateRomanNumerals = (): string[] => {
@@ -59,7 +60,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
   // Format: WB-MSD-BRW-{book}-{volumeNumber}-{volumeLetter}-{volumeYear?}-{serialNumber}-{serialYear?}-{pageNumber}
   // volumeYear and serialYear are optional
   const parts = certNumber.split('-');
-  
+
   // Must start with WB-MSD-BRW
   if (parts.length < 8 || parts[0] !== 'WB' || parts[1] !== 'MSD' || parts[2] !== 'BRW') {
     return {
@@ -93,7 +94,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     // Check if part[6] looks like a year (4 digits) or serial number
     const part6 = parts[6] || '';
     const isYear = /^\d{4}$/.test(part6);
-    
+
     if (isYear) {
       // volumeYear present: WB-MSD-BRW-book-volNum-volLet-volYear-serialNum-pageNum
       return {
@@ -240,6 +241,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
     reset,
     watch,
     setValue,
+    setError,
   } = useForm({
     resolver: zodResolver(verifySchema),
     defaultValues: {
@@ -318,6 +320,20 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
         data.pageNumber
       ];
       const fullCertificateNumber = parts.join('-');
+
+      // check if certificate number already exists
+      const exists = await adminService.checkCertificateNumber(fullCertificateNumber, applicationId);
+
+      if (exists) {
+        // Show error message
+        setError('root', {
+          type: 'manual',
+          message: `Certificate number ${fullCertificateNumber} already exists. Please use a different number.`
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       await onConfirm(fullCertificateNumber, data.registrationDate);
       reset();
       onClose();
@@ -344,6 +360,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4 lg:space-y-6">
         <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+
           {/* Rejected Documents Warning */}
           {hasRejectedDocuments && (
             <div className="bg-rose-50 border-2 border-rose-300 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4">
@@ -360,7 +377,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
                     {rejectedDocuments.map((doc) => {
                       const personLabel = getPersonLabel(doc.belongsTo);
                       const documentLabel = getDocumentTypeLabel(doc.type);
-                      const documentTitle = personLabel 
+                      const documentTitle = personLabel
                         ? `${personLabel} ${documentLabel}`
                         : documentLabel;
                       return (
@@ -372,6 +389,23 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
                       );
                     })}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Duplicate Certificate Error */}
+          {errors.root && (
+            <div className="bg-rose-50 border-2 border-rose-300 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 animate-pulse">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <AlertTriangle size={18} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-rose-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-rose-900">
+                    Certificate Number Error
+                  </h3>
+                  <p className="text-[10px] sm:text-xs lg:text-sm text-rose-800 mt-1">
+                    {errors.root.message}
+                  </p>
                 </div>
               </div>
             </div>
