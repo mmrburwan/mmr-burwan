@@ -15,12 +15,7 @@
 4. [Database Schema & Data Model](#-database-schema--data-model)
 5. [Security & Privacy](#-security--privacy)
 6. [Folder Structure](#-folder-structure)
-<<<<<<< HEAD
 7. [Getting Started & Deployment](#-getting-started--deployment)
-=======
-7. [Technical Highlights](#-technical-highlights)
-8. [Getting Started & Deployment](#-getting-started--deployment)
->>>>>>> 91c072db48e4bce55ff1272902c3b3f2f3e5d410
 
 ---
 
@@ -37,7 +32,6 @@ The platform serves two primary user groups with distinct interfaces and permiss
 
 ### 2. Administrators (Officials)
 - **Command Center**: A dashboard view of all applications with filtering and sorting.
-<<<<<<< HEAD
 - **Proxy Applications**: Ability to create accounts and applications on behalf of citizens (Walk-in applicants).
 - **Verification Suite**: Tools to view documents side-by-side with application data for verification.
 - **Rejection Management**: Granular rejection system with automated email notifications explaining the reason.
@@ -45,11 +39,6 @@ The platform serves two primary user groups with distinct interfaces and permiss
     - One-click generation of unique, traceable certificate numbers.
     - Automatic PDF generation with QR codes.
     - Strict duplicate prevention and history management.
-=======
-- **Verification Suite**: Tools to view documents side-by-side with application data for verification.
-- **Rejection Management**: Granular rejection system with automated email notifications explaining the reason.
-- **Certificate Issuance**: One-click generation of unique, traceable certificate numbers.
->>>>>>> 91c072db48e4bce55ff1272902c3b3f2f3e5d410
 
 ---
 
@@ -63,7 +52,6 @@ The project follows a **Modern Serverless Architecture** leveraging the **Supaba
     - **Language**: TypeScript for type safety.
     - **Styling**: Tailwind CSS for responsive, utility-first design.
     - **State Management**: React Context API.
-<<<<<<< HEAD
     - **PDF Generation**: `@react-pdf/renderer` for client-side certificate generation.
     - **Internationalization**: `react-i18next` (English & Bengali).
     - **Testing**: `Vitest` and `React Testing Library`.
@@ -71,13 +59,6 @@ The project follows a **Modern Serverless Architecture** leveraging the **Supaba
     - **Supabase**: Provides Auth, Database, Storage, and Realtime subscriptions.
 - **Compute (Serverless)**: 
     - **Supabase Edge Functions**: Deno-based serverless functions for backend logic (Email sending, Proxy user creation).
-=======
-    - **Internationalization**: `react-i18next` (English & Bengali).
-- **Backend (BaaS)**: 
-    - **Supabase**: Provides Auth, Database, Storage, and Realtime subscriptions.
-- **Compute (Serverless)**: 
-    - **Supabase Edge Functions**: Deno-based serverless functions for backend logic (Email sending, complex validation).
->>>>>>> 91c072db48e4bce55ff1272902c3b3f2f3e5d410
 - **Communication**: 
     - **Resend.com**: Transactional email API for reliable delivery.
 
@@ -102,10 +83,7 @@ graph TD
     subgraph Edge Functions
         VerifyFn[send-verification-email]
         RejectFn[send-rejection-email]
-<<<<<<< HEAD
         ProxyFn[create-proxy-user]
-=======
->>>>>>> 91c072db48e4bce55ff1272902c3b3f2f3e5d410
     end
     
     EdgeFn -->|API Call| Resend[Resend Email API]
@@ -117,7 +95,6 @@ graph TD
 ## 🚀 Key Features & Workflows
 
 ### A. The Application Lifecycle
-<<<<<<< HEAD
 1.  **Drafting**: Users start an application. Data is validated strictly using `Zod` schemas.
 2.  **Submission**: Once submitted, the application is locked and moves to the Admin queue.
 3.  **Review**: Admins review the data.
@@ -137,28 +114,6 @@ We utilize an **Event-Driven Architecture** to decouple the frontend from side e
 - **Generation**: Certificates are generated as PDF files with unique serial numbers.
 - **Synchronization**: Updating a certificate number automatically regenerates the PDF and updates database records, ensuring consistency.
 - **Security**: Old certificate files are automatically deleted to prevent data leaks.
-=======
-1.  **Drafting**: Users can start an application and save it as a draft. Data is validated using `Zod` schemas.
-2.  **Submission**: Once submitted, the application is locked for editing and moves to the Admin queue.
-3.  **Review**: Admins review the data.
-    - **Rejection**: If rejected, the status reverts, and the user is notified to correct errors.
-    - **Verification**: If approved, the status becomes `verified`.
-
-### B. Event-Driven Notification System
-We utilize an **Event-Driven Architecture** to decouple the frontend from side effects like emails.
-- **Mechanism**: 
-    1. Admin performs an action (e.g., rejects a document).
-    2. Frontend inserts a record into the `notifications` table.
-    3. **Database Webhook** detects the `INSERT`.
-    4. **Edge Function** (`send-rejection-email`) is triggered.
-    5. Email is sent.
-- **Benefit**: This ensures that even if the Admin's browser crashes immediately after the action, the email is guaranteed to be sent by the backend.
-
-### C. Appointment System
-- **Slot Management**: Admins define available slots.
-- **Concurrency Control**: The database ensures that two users cannot book the same slot simultaneously.
-- **QR Code**: Upon booking, a QR code is generated for easy check-in at the office.
->>>>>>> 91c072db48e4bce55ff1272902c3b3f2f3e5d410
 
 ---
 
@@ -170,7 +125,6 @@ The core data model is built on **PostgreSQL**. Key tables include:
 | :--- | :--- | :--- |
 | `users` | Extends Supabase Auth with app-specific profile data. | `id` references `auth.users` |
 | `applications` | The central record for a marriage registration. | `user_id` references `users` |
-<<<<<<< HEAD
 | `certificates` | Stores issued certificate metadata and file URLs. | `application_id` references `applications` |
 | `documents` | Metadata for uploaded files. | `belongs_to` references `applications` |
 | `appointments` | Booking slots and status. | `user_id` references `users` |
@@ -190,30 +144,6 @@ The core data model is built on **PostgreSQL**. Key tables include:
 
 3.  **Validation**:
     - Strict backend validation prevents duplicate certificate numbers.
-=======
-| `documents` | Metadata for uploaded files. | `belongs_to` references `applications` |
-| `appointments` | Booking slots and status. | `user_id` references `users` |
-| `notifications` | System alerts and email triggers. | `user_id` references `users` |
-
----
-
-## � Security & Privacy
-
-Security is paramount for government applications.
-
-1.  **Row Level Security (RLS)**:
-    - We strictly enforce RLS policies on all tables.
-    - **Applicants** can ONLY `SELECT`, `INSERT`, `UPDATE` their own rows (`user_id = auth.uid()`).
-    - **Admins** have a special role that grants access to all rows for processing.
-    
-2.  **Secure Storage**:
-    - Documents are stored in private Supabase Storage buckets.
-    - Access is granted only via **Signed URLs** with short expiration times (e.g., 1 hour), generated on-demand.
-
-3.  **Edge Function Security**:
-    - Functions are protected and can only be invoked by the system (Webhooks) or authenticated users with valid JWTs.
-    - API Keys (e.g., Resend) are stored in **Supabase Secrets**, never in the code.
->>>>>>> 91c072db48e4bce55ff1272902c3b3f2f3e5d410
 
 ---
 
@@ -222,7 +152,6 @@ Security is paramount for government applications.
 ```
 mmr-burwan/
 ├── src/
-<<<<<<< HEAD
 │   ├── components/       # Reusable UI components
 │   │   ├── admin/        # Admin-specific components (tables, modals)
 │   │   ├── application/  # Application form steps
@@ -238,47 +167,17 @@ mmr-burwan/
 │   └── utils/            # Helpers (certificateGenerator.ts)
 ├── supabase/
 │   ├── functions/        # Deno Edge Functions
-=======
-│   ├── components/       # Reusable UI components (Buttons, Inputs, Cards)
-│   ├── contexts/         # Global state (Auth, Notifications)
-│   ├── hooks/            # Custom React hooks (useAuth, useForm)
-│   ├── pages/            # Route components (ApplicationPage, AdminDashboard)
-│   ├── services/         # API service layer (Supabase calls)
-│   ├── types/            # TypeScript interfaces and Zod schemas
-│   └── utils/            # Helper functions (Date formatting, Validation)
-├── supabase/
-│   ├── functions/        # Deno Edge Functions
-│   │   ├── send-verification-email/
-│   │   └── send-rejection-email/
->>>>>>> 91c072db48e4bce55ff1272902c3b3f2f3e5d410
 │   └── migrations/       # SQL migration files
 └── public/               # Static assets
 ```
 
 ---
 
-<<<<<<< HEAD
 ## 🚦 Getting Started & Deployment
 
 ### Prerequisites
 - Node.js (v18+)
 - Supabase CLI
-=======
-## 💡 Technical Highlights
-
-- **Optimistic UI**: The interface updates immediately while data syncs in the background, providing a snappy experience.
-- **Real-time Sync**: If an Admin updates an application status, the User sees it instantly without refreshing (powered by Supabase Realtime).
-- **Type Safety**: End-to-end TypeScript ensures robust code and fewer runtime errors.
-
----
-
-## 🚦 Getting Started & Deployment
-
-### Prerequisites
-- Node.js (v16+)
-- Supabase CLI
-- A Supabase Project
->>>>>>> 91c072db48e4bce55ff1272902c3b3f2f3e5d410
 
 ### Local Development
 
@@ -305,7 +204,6 @@ mmr-burwan/
     npm run dev
     ```
 
-<<<<<<< HEAD
 5.  **Run Tests**
     ```bash
     npm run test
@@ -327,32 +225,6 @@ mmr-burwan/
       ```bash
       supabase functions deploy
       ```
-=======
-### Deploying Edge Functions
-
-To deploy the email notification system:
-
-1.  **Login to Supabase CLI**
-    ```bash
-    supabase login
-    ```
-
-2.  **Deploy Functions**
-    ```bash
-    supabase functions deploy send-verification-email --no-verify-jwt
-    supabase functions deploy send-rejection-email --no-verify-jwt
-    ```
-
-3.  **Set Secrets**
-    ```bash
-    supabase secrets set RESEND_API_KEY=re_123...
-    supabase secrets set FROM_EMAIL=noreply@yourdomain.com
-    supabase secrets set SITE_URL=https://your-app-url.com
-    ```
-
-4.  **Configure Webhooks**
-    In the Supabase Dashboard, set up Database Webhooks to trigger these functions on specific table events (`UPDATE` on `applications`, `INSERT` on `notifications`).
->>>>>>> 91c072db48e4bce55ff1272902c3b3f2f3e5d410
 
 ---
 
