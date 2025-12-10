@@ -26,6 +26,25 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      build: {
+        // Production optimizations
+        minify: 'esbuild',
+        sourcemap: false,
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+              'form-vendor': ['react-hook-form', '@hookform/resolvers', 'zod'],
+              'supabase-vendor': ['@supabase/supabase-js'],
+            },
+          },
+        },
+        chunkSizeWarningLimit: 1000,
+      },
+      // Performance optimizations
+      optimizeDeps: {
+        include: ['react', 'react-dom', 'react-router-dom'],
+      },
     };
 });
