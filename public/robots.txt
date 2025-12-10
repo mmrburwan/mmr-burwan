@@ -1,0 +1,25 @@
+# robots.txt for MMR Burwan
+# https://mmrburwan.com/robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /auth/
+Disallow: /dashboard/
+Disallow: /application/
+Disallow: /api/
+Disallow: /_next/
+Disallow: /static/
+
+# Allow important public pages
+Allow: /
+Allow: /verify
+Allow: /help
+Allow: /privacy
+
+# Sitemap location
+Sitemap: https://mmrburwan.com/sitemap.xml
+
+# Crawl-delay (optional, adjust as needed)
+Crawl-delay: 1
+

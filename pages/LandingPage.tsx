@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import SEO from '../components/SEO';
+import StructuredData from '../components/StructuredData';
 import Hero from '../components/Hero';
 import Features from '../components/Features';
 import HowItWorks from '../components/HowItWorks';
@@ -47,6 +49,13 @@ const LandingPage: React.FC = () => {
   // Show landing page for unauthenticated users
   return (
     <>
+      <SEO
+        title="MMR Burwan | Digital Marriage Registration System"
+        description="Apply for marriage registration online from anywhere, anytime. Secure, fast, and paperless digital marriage registration system for Burwan. Official government service with 24/7 support."
+        keywords="marriage registration, nikah registration, burwan, digital marriage certificate, online marriage registration, government service, marriage certificate online"
+        url="https://mmrburwan.com"
+      />
+      <StructuredData type="GovernmentService" />
       <Hero />
       <Features />
       <HowItWorks />

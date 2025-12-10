@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,11 +11,12 @@ import { applicationService } from '../../services/application';
 import { supabase } from '../../lib/supabase';
 import { ApplicationFormContent } from '../application/ApplicationPage';
 import AdminApplicationSuccessModal from '../../components/admin/AdminApplicationSuccessModal';
+import SelectCertificateNumberModal from '../../components/admin/SelectCertificateNumberModal';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Badge from '../../components/ui/Badge';
-import { UserPlus, ArrowRight, Loader2, Clock, FileText, ChevronRight, X } from 'lucide-react';
+import { UserPlus, ArrowRight, Loader2, Clock, FileText, ChevronRight, X, Award } from 'lucide-react';
 import { Application } from '../../types';
 import { safeFormatDate } from '../../utils/dateUtils';
 
@@ -32,30 +33,147 @@ const BasicInfoForm: React.FC<{
   onSubmit: (data: BasicInfoFormData) => Promise<void>;
   isLoading: boolean;
   onCancel?: () => void;
-}> = ({ onSubmit, isLoading, onCancel }) => {
+  onSelectCertificateNumber?: () => void;
+  certificateEmailTrigger?: number;
+  onCertificateEmailSet?: (email: string) => void;
+}> = ({ onSubmit, isLoading, onCancel, onSelectCertificateNumber, certificateEmailTrigger, onCertificateEmailSet }) => {
   const {
     register,
     handleSubmit,
     formState: { errors },
+    control,
+    setValue,
+    watch,
+    reset,
   } = useForm<BasicInfoFormData>({
     resolver: zodResolver(basicInfoSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
+
+  const emailValue = watch('email');
+  const [isLoadingCertificateEmail, setIsLoadingCertificateEmail] = useState(false);
+
+  // Pre-fill form with certificate email from sessionStorage (same pattern as registration -> login)
+  // This runs on mount AND when certificateEmailTrigger changes (when certificate modal closes)
+  useEffect(() => {
+    const pendingCertificateEmail = sessionStorage.getItem('pendingCertificateEmail');
+    
+    if (pendingCertificateEmail) {
+      setIsLoadingCertificateEmail(true);
+      // Use requestAnimationFrame to ensure DOM is ready, then update
+      requestAnimationFrame(() => {
+        setValue('email', pendingCertificateEmail, { 
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: false,
+        });
+        // Force a re-render by triggering validation
+        setTimeout(() => {
+          // Remove from sessionStorage after using (same pattern as login page)
+          sessionStorage.removeItem('pendingCertificateEmail');
+          setIsLoadingCertificateEmail(false);
+          // Notify parent if callback provided
+          if (onCertificateEmailSet) {
+            onCertificateEmailSet(pendingCertificateEmail);
+          }
+        }, 50);
+      });
+    }
+  }, [setValue, certificateEmailTrigger, onCertificateEmailSet]);
+
+  // Aggressive polling when trigger changes - checks immediately and then every 50ms
+  useEffect(() => {
+    if (certificateEmailTrigger && certificateEmailTrigger > 0) {
+      // Check immediately
+      const checkImmediately = () => {
+        const pendingCertificateEmail = sessionStorage.getItem('pendingCertificateEmail');
+        if (pendingCertificateEmail) {
+          setIsLoadingCertificateEmail(true);
+          setValue('email', pendingCertificateEmail, { 
+            shouldValidate: true,
+            shouldDirty: true,
+            shouldTouch: false,
+          });
+          sessionStorage.removeItem('pendingCertificateEmail');
+          setIsLoadingCertificateEmail(false);
+          return true;
+        }
+        return false;
+      };
+
+      // Check immediately first
+      if (checkImmediately()) {
+        return;
+      }
+
+      // If not found, poll aggressively
+      const interval = setInterval(() => {
+        if (checkImmediately()) {
+          clearInterval(interval);
+        }
+      }, 50);
+
+      // Clear interval after 1 second (safety timeout)
+      const timeout = setTimeout(() => {
+        clearInterval(interval);
+        setIsLoadingCertificateEmail(false);
+      }, 1000);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [certificateEmailTrigger, setValue]);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 sm:space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Email Address <span className="text-rose-500">*</span>
-        </label>
-        <Input
-          {...register('email')}
-          type="email"
-          placeholder="email@example.com"
-          error={errors.email?.message}
-          className="text-sm"
-        />
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Email Address <span className="text-rose-500">*</span>
+          </label>
+          {onSelectCertificateNumber && (
+            <button
+              type="button"
+              onClick={onSelectCertificateNumber}
+              className="flex items-center gap-1.5 text-xs sm:text-sm text-gold-700 hover:text-gold-800 font-medium hover:underline transition-colors"
+            >
+              <Award size={14} className="sm:w-4 sm:h-4" />
+              <span>Use Certificate Number</span>
+            </button>
+          )}
+        </div>
+        <div className="relative">
+          {isLoadingCertificateEmail && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg z-10">
+              <Loader2 size={16} className="animate-spin text-gold-600" />
+            </div>
+          )}
+          <Input
+            type="email"
+            placeholder="email@example.com"
+            error={errors.email?.message}
+            className="text-sm"
+            disabled={isLoadingCertificateEmail}
+            value={emailValue || ''}
+            onChange={(e) => {
+              setValue('email', e.target.value, { shouldValidate: true });
+            }}
+            onBlur={() => {
+              setValue('email', emailValue || '', { shouldValidate: true });
+            }}
+            name="email"
+            autoComplete="email"
+          />
+        </div>
         <p className="mt-1.5 text-xs text-gray-500">
-          This email will be used for the user account
+          {emailValue && emailValue.includes('@mmrburwan.com') 
+            ? 'Username will be set from certificate number'
+            : 'This email will be used for the user account'}
         </p>
       </div>
 
@@ -162,6 +280,9 @@ const CreateApplicationPage: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [pendingApplications, setPendingApplications] = useState<Application[]>([]);
   const [isLoadingPending, setIsLoadingPending] = useState(false);
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [selectedCertificateNumber, setSelectedCertificateNumber] = useState<string | null>(null);
+  const [certificateEmailTrigger, setCertificateEmailTrigger] = useState(0);
 
   useEffect(() => {
     if (adminUser && adminUser.role === 'admin') {
@@ -283,6 +404,7 @@ const CreateApplicationPage: React.FC = () => {
         password: data.password,
       });
       setShowCreateForm(false); // Close the modal
+      setSelectedCertificateNumber(null); // Reset certificate number selection
       setPhase('application-form');
       showToast('Account created successfully. Please fill the application form.', 'success');
     } catch (error: any) {
@@ -440,7 +562,10 @@ const CreateApplicationPage: React.FC = () => {
                     </p>
                   </div>
                   <button
-                    onClick={() => setShowCreateForm(false)}
+                    onClick={() => {
+                      setShowCreateForm(false);
+                      setSelectedCertificateNumber(null);
+                    }}
                     className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
                     aria-label="Close"
                   >
@@ -449,17 +574,40 @@ const CreateApplicationPage: React.FC = () => {
                 </div>
                 <div className="pt-2">
                   <BasicInfoForm
+                    key={selectedCertificateNumber || 'default'}
                     onSubmit={async (data) => {
                       await handleBasicInfoSubmit(data);
                     }}
                     isLoading={isCreatingAccount}
-                    onCancel={() => setShowCreateForm(false)}
+                    onCancel={() => {
+                      setShowCreateForm(false);
+                      setSelectedCertificateNumber(null);
+                    }}
+                    onSelectCertificateNumber={() => setShowCertificateModal(true)}
+                    certificateEmailTrigger={certificateEmailTrigger}
                   />
                 </div>
               </div>
             </div>
           </div>
         )}
+
+        {/* Certificate Number Selection Modal */}
+        <SelectCertificateNumberModal
+          isOpen={showCertificateModal}
+          onClose={() => {
+            setShowCertificateModal(false);
+            setSelectedCertificateNumber(null);
+          }}
+          onSelect={(certificateNumber) => {
+            // Update state first, then close modal to ensure state propagates
+            setSelectedCertificateNumber(certificateNumber);
+            // Small delay to ensure state update propagates before modal closes
+            setTimeout(() => {
+              setShowCertificateModal(false);
+            }, 100);
+          }}
+        />
       </div>
     );
   }
@@ -477,8 +625,11 @@ const CreateApplicationPage: React.FC = () => {
         </div>
         <Card className="p-4 sm:p-5 lg:p-6">
           <BasicInfoForm
+            key={selectedCertificateNumber || 'default'}
             onSubmit={handleBasicInfoSubmit}
             isLoading={isCreatingAccount}
+            onSelectCertificateNumber={() => setShowCertificateModal(true)}
+            certificateEmailTrigger={certificateEmailTrigger}
           />
         </Card>
       </div>
@@ -507,6 +658,31 @@ const CreateApplicationPage: React.FC = () => {
             credentials={credentials}
           />
         )}
+
+        {/* Certificate Number Selection Modal */}
+        <SelectCertificateNumberModal
+          isOpen={showCertificateModal}
+          onClose={() => {
+            setShowCertificateModal(false);
+            setSelectedCertificateNumber(null);
+          }}
+          onSelect={(certificateNumber) => {
+            // Store in sessionStorage first
+            const certificateEmail = `${certificateNumber}@mmrburwan.com`;
+            sessionStorage.setItem('pendingCertificateEmail', certificateEmail);
+            
+            // Update state
+            setSelectedCertificateNumber(certificateNumber);
+            
+            // Trigger re-check of sessionStorage in BasicInfoForm
+            setCertificateEmailTrigger(prev => prev + 1);
+            
+            // Close modal after a brief delay to ensure sessionStorage is set
+            setTimeout(() => {
+              setShowCertificateModal(false);
+            }, 150);
+          }}
+        />
       </>
     );
   }

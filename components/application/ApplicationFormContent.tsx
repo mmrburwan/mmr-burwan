@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -91,10 +91,14 @@ interface DocumentFile {
 
 const ApplicationFormContent: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { application, updateDraft, submitApplication, isLoading, refreshApplication } = useApplication();
   const { showToast } = useNotification();
   const { t } = useTranslation('application');
+  
+  // Detect if we're in admin context by checking the current route
+  const isAdminContext = location.pathname.startsWith('/admin');
   
   const applicationSteps = [
     { id: 'groom', label: t('steps.groom') },
@@ -129,8 +133,11 @@ const ApplicationFormContent: React.FC = () => {
     resolver: zodResolver(groomSchema),
     mode: 'onChange', // Validate on change for real-time feedback
     defaultValues: {
-      firstName: (application?.userDetails as any)?.firstName || user?.name?.split(' ')[0] || '',
-      lastName: (application?.userDetails as any)?.lastName || user?.name?.split(' ').slice(1).join(' ') || '',
+      // For proxy/offline applications (admin context), don't use admin's name - only use saved application data
+      // For regular applications, use user's name as fallback
+      // Use isAdminContext OR isProxyApplication to detect proxy apps (isAdminContext is more reliable on initial load)
+      firstName: (application?.userDetails as any)?.firstName || (isAdminContext || application?.isProxyApplication ? '' : (user?.name?.split(' ')[0] || '')),
+      lastName: (application?.userDetails as any)?.lastName || (isAdminContext || application?.isProxyApplication ? '' : (user?.name?.split(' ').slice(1).join(' ') || '')),
       fatherName: (application?.userDetails as any)?.fatherName || '',
       dateOfBirth: (application?.userDetails as any)?.dateOfBirth || '',
       aadhaarNumber: (application?.userDetails as any)?.aadhaarNumber || '',
@@ -231,9 +238,10 @@ const ApplicationFormContent: React.FC = () => {
   useEffect(() => {
     if (application && !isLoading) {
       // Update groom form
+      // For proxy/offline applications (admin context), don't use admin's name - only use saved application data
       const groomData = {
-        firstName: (application?.userDetails as any)?.firstName || user?.name?.split(' ')[0] || '',
-        lastName: (application?.userDetails as any)?.lastName || user?.name?.split(' ').slice(1).join(' ') || '',
+        firstName: (application?.userDetails as any)?.firstName || (isAdminContext || application?.isProxyApplication ? '' : (user?.name?.split(' ')[0] || '')),
+        lastName: (application?.userDetails as any)?.lastName || (isAdminContext || application?.isProxyApplication ? '' : (user?.name?.split(' ').slice(1).join(' ') || '')),
         fatherName: (application?.userDetails as any)?.fatherName || '',
         dateOfBirth: (application?.userDetails as any)?.dateOfBirth || '',
         aadhaarNumber: (application?.userDetails as any)?.aadhaarNumber || '',
@@ -2618,12 +2626,17 @@ const ApplicationFormContent: React.FC = () => {
     }
   };
 
+  // Get the correct dashboard route based on context
+  const getDashboardRoute = () => {
+    return isAdminContext ? '/admin' : '/dashboard';
+  };
+
   // Handle exit
   const handleExit = () => {
     if (hasUnsavedChanges) {
       setShowExitConfirm(true);
     } else {
-      navigate('/dashboard');
+      navigate(getDashboardRoute());
     }
   };
 
@@ -2631,7 +2644,7 @@ const ApplicationFormContent: React.FC = () => {
   const handleExitAfterSave = async () => {
     await saveDraftWithoutValidation();
     setShowExitConfirm(false);
-    navigate('/dashboard');
+    navigate(getDashboardRoute());
   };
 
   return (
@@ -2657,7 +2670,7 @@ const ApplicationFormContent: React.FC = () => {
                     variant="outline"
                     onClick={() => {
                       setShowExitConfirm(false);
-                      navigate('/dashboard');
+                      navigate(getDashboardRoute());
                     }}
                     className="border-rose-300 text-rose-700 hover:bg-rose-100"
                   >
