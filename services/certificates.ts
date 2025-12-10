@@ -262,4 +262,85 @@ export const certificateService = {
 
     return signedUrlData.signedUrl;
   },
+
+
+  async updateCertificate(
+    certificateId: string,
+    updates: {
+      pdfUrl?: string;
+      certificateNumber?: string;
+      registrationDate?: string;
+      groomName?: string;
+      brideName?: string;
+      canDownload?: boolean;
+    }
+  ): Promise<Certificate> {
+    // Construct update object with snake_case keys matching DB schema
+    const updateData: any = {
+      verified: true, // Ensure it stays verified
+    };
+
+    if (updates.pdfUrl) updateData.pdf_url = updates.pdfUrl;
+    if (updates.certificateNumber) updateData.certificate_number = updates.certificateNumber;
+    if (updates.registrationDate) updateData.registration_date = updates.registrationDate;
+    if (updates.groomName) updateData.groom_name = updates.groomName;
+    if (updates.brideName) updateData.bride_name = updates.brideName;
+    if (updates.canDownload !== undefined) updateData.can_download = updates.canDownload;
+
+    // We do NOT spread ...updates here to avoid sending camelCase keys (like brideName) 
+    // that don't exist as columns in the database.
+
+    const { data, error } = await supabase
+      .from('certificates')
+      .update(updateData)
+      .eq('id', certificateId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return {
+      id: data.id,
+      userId: data.user_id,
+      applicationId: data.application_id,
+      verificationId: data.verification_id,
+      name: data.name,
+      issuedOn: data.issued_on,
+      pdfUrl: data.pdf_url,
+      verified: data.verified || true,
+      expiresAt: data.expires_at,
+      certificateNumber: data.certificate_number,
+      registrationDate: data.registration_date,
+      groomName: data.groom_name,
+      brideName: data.bride_name,
+      canDownload: data.can_download || false,
+    };
+  },
+
+  async deleteCertificateFile(pdfUrl: string): Promise<void> {
+    try {
+      // Extract file path from URL
+      // URL format: .../storage/v1/object/public/certificates/path/to/file.pdf
+      const url = new URL(pdfUrl);
+      const parts = url.pathname.split('/certificates/');
+
+      if (parts.length < 2) return; // Invalid URL format
+
+      const filePath = parts[1]; // Get everything after /certificates/
+
+      if (!filePath) return;
+
+      const { error } = await supabase.storage
+        .from('certificates')
+        .remove([filePath]);
+
+      if (error) {
+        console.error('Failed to delete old certificate file:', error);
+      }
+    } catch (error) {
+      console.error('Error parsing PDF URL for deletion:', error);
+    }
+  },
 };

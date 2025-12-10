@@ -9,6 +9,50 @@ import { Application } from '../types';
 import { generateAndUploadCertificate } from '../utils/certificateGenerator';
 
 export const adminService = {
+  async checkCertificateNumber(certificateNumber: string, currentApplicationId?: string): Promise<boolean> {
+    // Check applications table
+    let appQuery = supabase
+      .from('applications')
+      .select('id')
+      .eq('certificate_number', certificateNumber)
+      .eq('verified', true);
+
+    if (currentApplicationId) {
+      appQuery = appQuery.neq('id', currentApplicationId);
+    }
+
+    const { data: appData, error: appError } = await appQuery;
+
+    if (appError) {
+      console.error('Error checking certificate number in applications:', appError);
+      throw new Error('Failed to check certificate number uniqueness');
+    }
+
+    if (appData && appData.length > 0) {
+      return true;
+    }
+
+    // Check certificates table
+    let certQuery = supabase
+      .from('certificates')
+      .select('id')
+      .eq('certificate_number', certificateNumber);
+
+    // If we have currentApplicationId, we should exclude the certificate associated with this application
+    if (currentApplicationId) {
+      certQuery = certQuery.neq('application_id', currentApplicationId);
+    }
+
+    const { data: certData, error: certError } = await certQuery;
+
+    if (certError) {
+      console.error('Error checking certificate number in certificates:', certError);
+      throw new Error('Failed to check certificate number uniqueness in certificates');
+    }
+
+    return certData && certData.length > 0;
+  },
+
   async getAllApplications(): Promise<Application[]> {
     return applicationService.getAllApplications();
   },
@@ -303,22 +347,47 @@ export const adminService = {
       // Check if certificate already exists
       const existingCert = await certificateService.getCertificateByApplicationId(applicationId);
 
-      if (!existingCert) {
+      // Map application data for generator
+      const mappedApplication = applicationService.mapApplication(data);
+
+      // Extract user names from application data
+      const userDetails = data.user_details as any;
+      const partnerDetails = (data.partner_form || data.partner_details) as any;
+
+      const groomName = userDetails?.firstName && userDetails?.lastName
+        ? `${userDetails.firstName} ${userDetails.lastName}`.trim()
+        : userDetails?.firstName || 'N/A';
+
+      const brideName = partnerDetails?.firstName && partnerDetails?.lastName
+        ? `${partnerDetails.firstName} ${partnerDetails.lastName}`.trim()
+        : partnerDetails?.firstName || 'N/A';
+
+      if (existingCert) {
+        // Certificate exists - REGENERATE and UPDATE
+
+        // 1. Generate new PDF
+        const { pdfUrl } = await generateAndUploadCertificate(mappedApplication, supabase);
+
+        // 2. Update certificate record
+        await certificateService.updateCertificate(existingCert.id, {
+          pdfUrl,
+          certificateNumber,
+          registrationDate,
+          groomName,
+          brideName,
+        });
+
+        // 3. Delete old file if URL has changed
+        if (existingCert.pdfUrl && existingCert.pdfUrl !== pdfUrl) {
+          await certificateService.deleteCertificateFile(existingCert.pdfUrl);
+        }
+
+        console.log(`Certificate updated for application ${applicationId}`);
+      } else {
+        // Certificate doesn't exist - CREATE new
+
         // Generate and upload certificate PDF
-        const mappedApplication = applicationService.mapApplication(data);
-        const { pdfUrl, certificateData } = await generateAndUploadCertificate(mappedApplication, supabase);
-
-        // Extract user names from application data
-        const userDetails = data.user_details as any;
-        const partnerDetails = (data.partner_form || data.partner_details) as any;
-
-        const groomName = userDetails?.firstName && userDetails?.lastName
-          ? `${userDetails.firstName} ${userDetails.lastName}`.trim()
-          : userDetails?.firstName || 'N/A';
-
-        const brideName = partnerDetails?.firstName && partnerDetails?.lastName
-          ? `${partnerDetails.firstName} ${partnerDetails.lastName}`.trim()
-          : partnerDetails?.firstName || 'N/A';
+        const { pdfUrl } = await generateAndUploadCertificate(mappedApplication, supabase);
 
         // Create certificate record in database (canDownload defaults to false)
         await certificateService.issueCertificate(
@@ -333,8 +402,29 @@ export const adminService = {
         );
       }
     } catch (certError: any) {
-      // Log error but don't fail the verification - certificate generation can be retried
+      // Re-throw the error so the UI handles it and the user knows something went wrong.
+      // This is crucial for data consistency - we don't want "verified" application without correct certificate.
       console.error('Failed to auto-generate certificate during verification:', certError);
+
+      // Rollback application update to prevent inconsistent state
+      try {
+        await supabase
+          .from('applications')
+          .update({
+            verified: false,
+            verified_at: null,
+            verified_by: null,
+            certificate_number: null,
+            registration_date: null,
+          })
+          .eq('id', applicationId);
+
+        console.log('Rolled back application verification status');
+      } catch (rollbackError) {
+        console.error('Failed to rollback application verification:', rollbackError);
+      }
+
+      throw new Error(`Certificate generation failed: ${certError.message || 'Unknown error'}. verification has been cancelled. Please try again.`);
     }
 
     return applicationService.mapApplication(data);
@@ -569,7 +659,7 @@ export const adminService = {
       // Step 1: Call edge function to create user account
       // Ensure we have a valid session before calling the function
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError || !session) {
         throw new Error('Authentication required. Please log in again.');
       }
@@ -577,9 +667,9 @@ export const adminService = {
       // Use fetch directly to have better control over error handling
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const functionUrl = `${supabaseUrl}/functions/v1/create-proxy-user`;
-      
+
       let functionData: any = null;
-      
+
       try {
         const response = await fetch(functionUrl, {
           method: 'POST',
@@ -609,23 +699,23 @@ export const adminService = {
         if (!response.ok) {
           const errorMessage = functionData?.error || functionData?.message || 'Failed to create user account';
           const errorCode = functionData?.code || '';
-          
+
           console.error('Edge function returned error:', {
             status: response.status,
             error: errorMessage,
             code: errorCode,
             fullResponse: functionData,
           });
-          
+
           // Check if it's a user already exists error (409 Conflict)
-          if (response.status === 409 || 
-              errorCode === 'USER_ALREADY_EXISTS' || 
-              errorMessage.toLowerCase().includes('already exists') ||
-              errorMessage.toLowerCase().includes('already registered') ||
-              errorMessage.toLowerCase().includes('email address is already')) {
+          if (response.status === 409 ||
+            errorCode === 'USER_ALREADY_EXISTS' ||
+            errorMessage.toLowerCase().includes('already exists') ||
+            errorMessage.toLowerCase().includes('already registered') ||
+            errorMessage.toLowerCase().includes('email address is already')) {
             throw new Error('A user with this email address already exists. Please use a different email.');
           }
-          
+
           throw new Error(errorMessage);
         }
 
@@ -633,19 +723,19 @@ export const adminService = {
         if (!functionData || !functionData.success) {
           const errorMessage = functionData?.error || functionData?.message || 'Failed to create user account';
           const errorCode = functionData?.code || '';
-          
+
           // Check if it's a user already exists error
-          if (errorCode === 'USER_ALREADY_EXISTS' || 
-              errorMessage.toLowerCase().includes('already exists') ||
-              errorMessage.toLowerCase().includes('already registered')) {
+          if (errorCode === 'USER_ALREADY_EXISTS' ||
+            errorMessage.toLowerCase().includes('already exists') ||
+            errorMessage.toLowerCase().includes('already registered')) {
             throw new Error('A user with this email address already exists. Please use a different email.');
           }
-          
+
           throw new Error(errorMessage);
         }
       } catch (fetchError: any) {
         console.error('Error calling edge function:', fetchError);
-        
+
         // If it's already our custom error, re-throw it
         if (fetchError.message && (
           fetchError.message.includes('already exists') ||
@@ -653,7 +743,7 @@ export const adminService = {
         )) {
           throw fetchError;
         }
-        
+
         // Otherwise, wrap it in a user-friendly message
         throw new Error(fetchError.message || 'Failed to create user account. Please try again.');
       }
@@ -692,38 +782,38 @@ export const adminService = {
 
       // Calculate progress based on actual data filled
       let progress = 0;
-      
+
       // Check if user details are actually filled (not just empty object)
-      const hasUserDetails = updatedData.user_details && 
+      const hasUserDetails = updatedData.user_details &&
         updatedData.user_details.firstName &&
         updatedData.user_details.dateOfBirth &&
         updatedData.user_details.aadhaarNumber &&
         updatedData.user_details.mobileNumber;
       if (hasUserDetails) progress += 20;
-      
+
       // Check if partner details are actually filled
-      const hasPartnerDetails = updatedData.partner_form && 
+      const hasPartnerDetails = updatedData.partner_form &&
         updatedData.partner_form.firstName &&
         updatedData.partner_form.dateOfBirth &&
         (updatedData.partner_form.aadhaarNumber || updatedData.partner_form.idNumber);
       if (hasPartnerDetails) progress += 20;
-      
+
       // Check if addresses are actually filled
-      const hasUserAddress = updatedData.user_address && 
+      const hasUserAddress = updatedData.user_address &&
         ((updatedData.user_address as any)?.villageStreet || updatedData.user_address?.street) &&
         updatedData.user_address?.state;
-      const hasPartnerAddress = updatedData.partner_address && 
+      const hasPartnerAddress = updatedData.partner_address &&
         ((updatedData.partner_address as any)?.villageStreet || updatedData.partner_address?.street) &&
         updatedData.partner_address?.state;
       if (hasUserAddress || hasPartnerAddress) progress += 20;
-      
+
       // Check if declarations are actually filled (not just empty object)
-      const hasDeclarations = updatedData.declarations && 
+      const hasDeclarations = updatedData.declarations &&
         (updatedData.declarations.consent === true || updatedData.declarations.consent === false) &&
         (updatedData.declarations.accuracy === true || updatedData.declarations.accuracy === false) &&
         (updatedData.declarations.legal === true || updatedData.declarations.legal === false);
       if (hasDeclarations) progress += 20;
-      
+
       // Documents will add remaining 20% (checked separately when documents are uploaded)
       updatedData.progress = Math.min(progress, 80);
 
