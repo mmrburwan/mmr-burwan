@@ -15,6 +15,7 @@ import VerifyApplicationModal from '../../components/admin/VerifyApplicationModa
 import RejectDocumentModal from '../../components/admin/RejectDocumentModal';
 import { ArrowLeft, FileText, CheckCircle, X, Eye, Edit2, Save, XCircle, Download, Copy, Check, Upload } from 'lucide-react';
 import { safeFormatDate } from '../../utils/dateUtils';
+import ImageCropModal from '../../components/ui/ImageCropModal';
 
 const ApplicationDetailsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -38,6 +39,8 @@ const ApplicationDetailsPage: React.FC = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [reuploadingDoc, setReuploadingDoc] = useState<string | null>(null);
   const reuploadFileInputsRef = React.useRef<Map<string, HTMLInputElement>>(new Map());
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [pendingCropFile, setPendingCropFile] = useState<{ file: File; documentId: string } | null>(null);
 
   // Edit form state
   const [editForm, setEditForm] = useState<any>({});
@@ -138,10 +141,45 @@ const ApplicationDetailsPage: React.FC = () => {
         event.target.value = '';
         return;
       }
+
+      // Check if this is a joint photo
+      const doc = documents.find(d => d.id === documentId);
+      if (doc && doc.type === 'photo' && doc.belongsTo === 'joint') {
+        setPendingCropFile({ file, documentId });
+        setCropModalOpen(true);
+        event.target.value = '';
+        return;
+      }
+
       handleReuploadDocument(documentId, file);
     }
     // Reset input
     event.target.value = '';
+  };
+
+  const handleCropComplete = async (croppedFile: File) => {
+    if (!pendingCropFile) return;
+
+    // Check file size again after cropping
+    const MAX_FILE_SIZE = 500 * 1024;
+    if (croppedFile.size > MAX_FILE_SIZE) {
+      showToast('Cropped file size exceeds 500KB limit. Please try again with a smaller image.', 'error');
+      setPendingCropFile(null);
+      setCropModalOpen(false);
+      return;
+    }
+
+    await handleReuploadDocument(pendingCropFile.documentId, croppedFile);
+    setPendingCropFile(null);
+    setCropModalOpen(false);
+  };
+
+  const handleCropSkip = async () => {
+    if (!pendingCropFile) return;
+
+    await handleReuploadDocument(pendingCropFile.documentId, pendingCropFile.file);
+    setPendingCropFile(null);
+    setCropModalOpen(false);
   };
 
   const handleConfirmReject = async (reason: string, sendEmail: boolean) => {
@@ -1790,6 +1828,18 @@ const ApplicationDetailsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        onClose={() => {
+          setCropModalOpen(false);
+          setPendingCropFile(null);
+        }}
+        imageFile={pendingCropFile?.file || null}
+        onCropComplete={handleCropComplete}
+        onSkip={handleCropSkip}
+      />
     </div>
   );
 };

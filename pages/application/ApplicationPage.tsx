@@ -20,6 +20,7 @@ import Modal from '../../components/ui/Modal';
 import ApplicationSuccessModal from '../../components/ApplicationSuccessModal';
 import StateDistrictSelector from '../../components/StateDistrictSelector';
 import { ArrowRight, ArrowLeft, Save, Upload, X, FileText, Edit, CheckCircle, Eye, Download, LogOut } from 'lucide-react';
+import ImageCropModal from '../../components/ui/ImageCropModal';
 
 // Groom Details Schema (User personal + address)
 const groomSchema = z.object({
@@ -115,6 +116,8 @@ const ApplicationFormContent: React.FC = () => {
   const [previewDocument, setPreviewDocument] = useState<DocumentFile | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [pendingCropFile, setPendingCropFile] = useState<{ file: File; type: 'aadhaar' | 'tenth_certificate' | 'voter_id' | 'photo'; belongsTo: 'user' | 'partner' | 'joint' } | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   
@@ -852,6 +855,13 @@ const ApplicationFormContent: React.FC = () => {
       return;
     }
 
+    // Show crop modal for joint photos
+    if (type === 'photo' && belongsTo === 'joint') {
+      setPendingCropFile({ file, type, belongsTo });
+      setCropModalOpen(true);
+      return;
+    }
+
     const newDoc: DocumentFile = {
       id: `doc-${Date.now()}-${Math.random()}`,
       file,
@@ -859,6 +869,46 @@ const ApplicationFormContent: React.FC = () => {
       belongsTo,
     };
     setDocuments([...documents.filter(d => !(d.belongsTo === belongsTo && d.type === type)), newDoc]);
+  };
+
+  const handleCropComplete = (croppedFile: File) => {
+    if (!pendingCropFile) return;
+
+    // Check file size again after cropping
+    if (croppedFile.size > MAX_FILE_SIZE) {
+      showToast(`Cropped file size exceeds 500KB limit. Please try again with a smaller image.`, 'error');
+      setPendingCropFile(null);
+      setCropModalOpen(false);
+      return;
+    }
+
+    // Create document with cropped file
+    const newDoc: DocumentFile = {
+      id: `doc-${Date.now()}-${Math.random()}`,
+      file: croppedFile,
+      type: pendingCropFile.type,
+      belongsTo: pendingCropFile.belongsTo,
+    };
+    setDocuments([...documents.filter(d => !(d.belongsTo === pendingCropFile.belongsTo && d.type === pendingCropFile.type)), newDoc]);
+
+    setPendingCropFile(null);
+    setCropModalOpen(false);
+  };
+
+  const handleCropSkip = () => {
+    if (!pendingCropFile) return;
+
+    // Use original file
+    const newDoc: DocumentFile = {
+      id: `doc-${Date.now()}-${Math.random()}`,
+      file: pendingCropFile.file,
+      type: pendingCropFile.type,
+      belongsTo: pendingCropFile.belongsTo,
+    };
+    setDocuments([...documents.filter(d => !(d.belongsTo === pendingCropFile.belongsTo && d.type === pendingCropFile.type)), newDoc]);
+
+    setPendingCropFile(null);
+    setCropModalOpen(false);
   };
 
   const handleRemoveDocument = (id: string) => {
@@ -2895,6 +2945,18 @@ const ApplicationFormContent: React.FC = () => {
         </div>
       </Card>
       </div>
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        onClose={() => {
+          setCropModalOpen(false);
+          setPendingCropFile(null);
+        }}
+        imageFile={pendingCropFile?.file || null}
+        onCropComplete={handleCropComplete}
+        onSkip={handleCropSkip}
+      />
 
       {/* Application Success Modal */}
       <ApplicationSuccessModal

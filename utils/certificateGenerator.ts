@@ -299,7 +299,7 @@ const generateCertificatePDFBlob = async (application: Application): Promise<{ b
       width: 68,
       margin: 1,
       color: {
-        dark: '#000000',
+        dark: '#874313', // Golden color matching the intro text
         light: '#FFFFFF',
       },
     });

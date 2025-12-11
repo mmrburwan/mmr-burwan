@@ -441,8 +441,8 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   couplePhotoBox: {
-    width: 150,
-    height: 90,
+    width: 127.5, // 4.5 cm (matches 4.5:3 crop aspect ratio)
+    height: 85, // 3 cm (matches 4.5:3 crop aspect ratio)
     border: `1.5 solid ${GOLD}`,
     backgroundColor: '#f5f5f5',
   },

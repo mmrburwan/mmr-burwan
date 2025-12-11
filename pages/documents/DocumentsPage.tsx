@@ -12,6 +12,7 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import { Upload, FileText, AlertCircle, ArrowLeft, XCircle, Info, UploadCloud, Eye, Download, X } from 'lucide-react';
 import { safeFormatDate } from '../../utils/dateUtils';
+import ImageCropModal from '../../components/ui/ImageCropModal';
 
 const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +33,8 @@ const DocumentsPage: React.FC = () => {
   const [selectedReuploadFiles, setSelectedReuploadFiles] = useState<Map<string, File>>(new Map()); // For rejected doc re-uploads
   const [isUploading, setIsUploading] = useState(false);
   const [isReuploadingAll, setIsReuploadingAll] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [pendingCropFile, setPendingCropFile] = useState<{ file: File; type: string; belongsTo: 'user' | 'partner' | 'joint'; docType: 'aadhaar' | 'tenth_certificate' | 'voter_id' | 'photo' } | null>(null);
 
   // Document type keys for tracking selected files
   const documentTypes = {
@@ -101,12 +104,55 @@ const DocumentsPage: React.FC = () => {
       return;
     }
 
+    // Show crop modal for joint photos
+    if (docType === 'photo' && belongsTo === 'joint') {
+      setPendingCropFile({ file, type, belongsTo, docType });
+      setCropModalOpen(true);
+      return;
+    }
+
     // Store the selected file with its type key
     setSelectedFiles(prev => {
       const newMap = new Map(prev);
       newMap.set(type, file);
       return newMap;
     });
+  };
+
+  const handleCropComplete = (croppedFile: File) => {
+    if (!pendingCropFile) return;
+
+    // Check file size again after cropping
+    if (croppedFile.size > MAX_FILE_SIZE) {
+      showToast(`Cropped file size exceeds 500KB limit. Please try again with a smaller image.`, 'error');
+      setPendingCropFile(null);
+      setCropModalOpen(false);
+      return;
+    }
+
+    // Store the cropped file
+    setSelectedFiles(prev => {
+      const newMap = new Map(prev);
+      newMap.set(pendingCropFile.type, croppedFile);
+      return newMap;
+    });
+
+    setPendingCropFile(null);
+    setCropModalOpen(false);
+  };
+
+  const handleCropSkip = () => {
+    if (!pendingCropFile) return;
+
+    // Use original file
+    setSelectedFiles(prev => {
+      const newMap = new Map(prev);
+      newMap.set(pendingCropFile.type, pendingCropFile.file);
+      return newMap;
+    });
+
+    setPendingCropFile(null);
+    setCropModalOpen(false);
   };
 
   const handleRemoveSelectedFile = (type: string) => {
@@ -873,6 +919,18 @@ const DocumentsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        onClose={() => {
+          setCropModalOpen(false);
+          setPendingCropFile(null);
+        }}
+        imageFile={pendingCropFile?.file || null}
+        onCropComplete={handleCropComplete}
+        onSkip={handleCropSkip}
+      />
     </div>
   );
 };
