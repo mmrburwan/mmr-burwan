@@ -17,6 +17,8 @@ const OnboardingPage = lazy(() => import('./pages/onboarding/OnboardingPage'));
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 const ApplicationPage = lazy(() => import('./pages/application/ApplicationPage'));
 const ViewApplicationPage = lazy(() => import('./pages/application/ViewApplicationPage'));
+const AcknowledgementSlipPage = lazy(() => import('./pages/application/AcknowledgementSlipPage'));
+const PrintAcknowledgementSlipPage = lazy(() => import('./pages/application/PrintAcknowledgementSlipPage'));
 const DocumentsPage = lazy(() => import('./pages/documents/DocumentsPage'));
 const ChatPage = lazy(() => import('./pages/chat/ChatPage'));
 const AdminChatPage = lazy(() => import('./pages/admin/AdminChatPage'));
@@ -80,6 +82,14 @@ const router = createBrowserRouter(
           ),
         },
       ],
+    },
+    {
+      path: '/print/application/:id/acknowledgement',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <PrintAcknowledgementSlipPage />
+        </Suspense>
+      )
     },
     {
       path: '/auth',
@@ -156,6 +166,14 @@ const router = createBrowserRouter(
       element: (
         <Suspense fallback={<LoadingSpinner />}>
           <ApplicationPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/application/:id/acknowledgement',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <AcknowledgementSlipPage />
         </Suspense>
       ),
     },

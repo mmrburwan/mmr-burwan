@@ -9,7 +9,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { adminService } from '../../services/admin';
 import { applicationService } from '../../services/application';
 import { supabase } from '../../lib/supabase';
-import { ApplicationFormContent } from '../application/ApplicationPage';
+import ApplicationFormContent from '../../components/application/ApplicationFormContent';
 import AdminApplicationSuccessModal from '../../components/admin/AdminApplicationSuccessModal';
 import SelectCertificateNumberModal from '../../components/admin/SelectCertificateNumberModal';
 import Card from '../../components/ui/Card';
@@ -60,12 +60,12 @@ const BasicInfoForm: React.FC<{
   // This runs on mount AND when certificateEmailTrigger changes (when certificate modal closes)
   useEffect(() => {
     const pendingCertificateEmail = sessionStorage.getItem('pendingCertificateEmail');
-    
+
     if (pendingCertificateEmail) {
       setIsLoadingCertificateEmail(true);
       // Use requestAnimationFrame to ensure DOM is ready, then update
       requestAnimationFrame(() => {
-        setValue('email', pendingCertificateEmail, { 
+        setValue('email', pendingCertificateEmail, {
           shouldValidate: true,
           shouldDirty: true,
           shouldTouch: false,
@@ -92,7 +92,7 @@ const BasicInfoForm: React.FC<{
         const pendingCertificateEmail = sessionStorage.getItem('pendingCertificateEmail');
         if (pendingCertificateEmail) {
           setIsLoadingCertificateEmail(true);
-          setValue('email', pendingCertificateEmail, { 
+          setValue('email', pendingCertificateEmail, {
             shouldValidate: true,
             shouldDirty: true,
             shouldTouch: false,
@@ -171,7 +171,7 @@ const BasicInfoForm: React.FC<{
           />
         </div>
         <p className="mt-1.5 text-xs text-gray-500">
-          {emailValue && emailValue.includes('@mmrburwan.com') 
+          {emailValue && emailValue.includes('@mmrburwan.com')
             ? 'Username will be set from certificate number'
             : 'This email will be used for the user account'}
         </p>
@@ -256,7 +256,7 @@ const ApplicationFormPhase: React.FC<{
       <div className="mb-4 px-3 sm:px-6 pt-4">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
           <p className="text-xs sm:text-sm text-blue-800">
-            <strong>Note:</strong> You are filling the application on behalf of an offline user. 
+            <strong>Note:</strong> You are filling the application on behalf of an offline user.
             The account has been created. Please complete all steps below.
           </p>
         </div>
@@ -270,7 +270,7 @@ const CreateApplicationPage: React.FC = () => {
   const { user: adminUser } = useAuth();
   const { showToast } = useNotification();
   const navigate = useNavigate();
-  
+
   const [phase, setPhase] = useState<'pending-list' | 'basic-info' | 'application-form'>('pending-list');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
@@ -303,15 +303,15 @@ const CreateApplicationPage: React.FC = () => {
 
   const loadPendingApplications = async () => {
     if (!adminUser) return;
-    
+
     setIsLoadingPending(true);
     try {
       const allApplications = await applicationService.getAllApplications();
       // Filter for admin-created applications that are still in draft or under_review status
       const pending = allApplications
-        .filter(app => 
-          app.isProxyApplication && 
-          app.createdByAdminId === adminUser.id && 
+        .filter(app =>
+          app.isProxyApplication &&
+          app.createdByAdminId === adminUser.id &&
           (app.status === 'draft' || app.status === 'under_review')
         )
         .map(app => ({
@@ -328,7 +328,7 @@ const CreateApplicationPage: React.FC = () => {
 
   const handleContinueApplication = async (application: Application) => {
     if (!adminUser) return;
-    
+
     try {
       // Fetch credentials from database
       const { data: credData, error: credError } = await supabase
@@ -340,7 +340,7 @@ const CreateApplicationPage: React.FC = () => {
       // Set the application ID and user ID to continue
       setCreatedUserId(application.userId);
       setCreatedApplicationId(application.id);
-      
+
       // Set credentials if available, otherwise use proxy email
       if (credData && !credError) {
         setCredentials({
@@ -354,7 +354,7 @@ const CreateApplicationPage: React.FC = () => {
           password: '', // Password not available - admin can view from details page
         });
       }
-      
+
       setShowCreateForm(false);
       setPhase('application-form');
       showToast('Continuing application...', 'success');
@@ -494,7 +494,7 @@ const CreateApplicationPage: React.FC = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge 
+                      <Badge
                         variant={app.status === 'draft' ? 'outline' : 'default'}
                         className="!text-[10px] sm:!text-xs"
                       >
@@ -503,7 +503,7 @@ const CreateApplicationPage: React.FC = () => {
                       {app.progress > 0 && (
                         <div className="flex items-center gap-1.5">
                           <div className="w-16 sm:w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
+                            <div
                               className="h-full bg-gold-500 transition-all duration-300"
                               style={{ width: `${app.progress}%` }}
                             />
@@ -515,7 +515,7 @@ const CreateApplicationPage: React.FC = () => {
                       )}
                     </div>
                     <p className="text-[10px] sm:text-xs text-gray-500">
-                      {safeFormatDate(app.lastUpdated || app.submittedAt || new Date().toISOString())}
+                      {safeFormatDate(app.lastUpdated || app.submittedAt || new Date().toISOString(), 'dd MMM yyyy')}
                     </p>
                   </div>
                   <ChevronRight size={18} className="sm:w-5 sm:h-5 text-gray-400 group-hover:text-gold-600 transition-colors flex-shrink-0 ml-3" />
@@ -539,7 +539,7 @@ const CreateApplicationPage: React.FC = () => {
 
         {/* Email/Password Form Modal/Overlay */}
         {showCreateForm && (
-          <div 
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
@@ -547,7 +547,7 @@ const CreateApplicationPage: React.FC = () => {
               }
             }}
           >
-            <div 
+            <div
               className="relative z-10 w-full max-w-md sm:max-w-lg my-auto bg-white rounded-xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
@@ -670,13 +670,13 @@ const CreateApplicationPage: React.FC = () => {
             // Store in sessionStorage first
             const certificateEmail = `${certificateNumber}@mmrburwan.com`;
             sessionStorage.setItem('pendingCertificateEmail', certificateEmail);
-            
+
             // Update state
             setSelectedCertificateNumber(certificateNumber);
-            
+
             // Trigger re-check of sessionStorage in BasicInfoForm
             setCertificateEmailTrigger(prev => prev + 1);
-            
+
             // Close modal after a brief delay to ensure sessionStorage is set
             setTimeout(() => {
               setShowCertificateModal(false);

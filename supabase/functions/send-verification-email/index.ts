@@ -11,61 +11,67 @@ const SITE_URL = Deno.env.get("SITE_URL") || "https://mmrburwan.com";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 serve(async (req) => {
-    try {
-        // 1. Parse the Webhook Payload
-        const payload = await req.json();
+  try {
+    // 1. Parse the Webhook Payload
+    const payload = await req.json();
 
-        // The payload structure from a Supabase Webhook
-        const { record, old_record, type, table } = payload;
+    // The payload structure from a Supabase Webhook
+    const { record, old_record, type, table } = payload;
 
-        // 2. Security & Logic Gates
-        // Gate A: Ensure this is an UPDATE event on the right table
-        if (type !== 'UPDATE' || table !== 'applications') {
-            return new Response("Ignored: Not an application update", { status: 200 });
-        }
+    // 2. Security & Logic Gates
+    // Gate A: Ensure this is an UPDATE event on the right table
+    if (type !== 'UPDATE' || table !== 'applications') {
+      return new Response("Ignored: Not an application update", { status: 200 });
+    }
 
-        // Gate B: Check if verified status changed TO true FROM false/null
-        // The 'verified' column is a boolean in the applications table
-        if (record.verified === true && old_record.verified !== true) {
+    // Gate B: Check if verified status changed TO true FROM false/null
+    // The 'verified' column is a boolean in the applications table
+    if (record.verified === true && old_record.verified !== true) {
 
-            console.log(`Processing verification email for Application ID: ${record.id}`);
+      console.log(`Processing verification email for Application ID: ${record.id}`);
 
-            // 3. Fetch User Email
-            // The applications table has user_id, but not email. We need to fetch it.
-            const { data: userData, error: userError } = await supabase.auth.admin.getUserById(record.user_id);
+      // 3. Fetch User Email
+      // The applications table has user_id, but not email. We need to fetch it.
+      const { data: userData, error: userError } = await supabase.auth.admin.getUserById(record.user_id);
 
-            if (userError || !userData.user) {
-                console.error(`Failed to fetch user for ID: ${record.user_id}`, userError);
-                return new Response("Failed to fetch user email", { status: 500 });
-            }
+      if (userError || !userData.user) {
+        console.error(`Failed to fetch user for ID: ${record.user_id}`, userError);
+        return new Response("Failed to fetch user email", { status: 500 });
+      }
 
-            const userEmail = userData.user.email;
+      const userEmail = userData.user.email;
 
-            if (!userEmail) {
-                console.error(`No email found for user ID: ${record.user_id}`);
-                return new Response("User has no email", { status: 200 });
-            }
+      if (!userEmail) {
+        console.error(`No email found for user ID: ${record.user_id}`);
+        return new Response("User has no email", { status: 200 });
+      }
 
-            // Extract user name for personalization
-            const userDetails = record.user_details || {};
-            const firstName = userDetails.firstName || "";
-            const lastName = userDetails.lastName || "";
-            const fullName = `${firstName} ${lastName}`.trim() || "Applicant";
+      // Skip email for internal domain
+      if (userEmail.toLowerCase().endsWith("@mmrburwan.com")) {
+        console.log(`Skipping verification email for internal domain: ${userEmail}`);
+        return new Response("Skipped email for internal domain", { status: 200 });
+      }
 
-            console.log(`Sending email to ${userEmail} for Application ID: ${record.id}`);
+      // Extract user name for personalization
+      const userDetails = record.user_details || {};
+      const firstName = userDetails.firstName || "";
+      const lastName = userDetails.lastName || "";
+      const fullName = `${firstName} ${lastName}`.trim() || "Applicant";
 
-            // 4. Call Resend API with Official Template
-            const res = await fetch("https://api.resend.com/emails", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${RESEND_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    from: `Marriage Registrar <${FROM_EMAIL}>`,
-                    to: [userEmail],
-                    subject: "Marriage Registration Application Verified",
-                    html: `<!DOCTYPE html>
+      console.log(`Sending email to ${userEmail} for Application ID: ${record.id}`);
+
+      // 4. Call Resend API with Official Template
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: `Marriage Registrar <${FROM_EMAIL}>`,
+          to: [userEmail],
+          subject: "Marriage Registration Application Verified",
+          html: `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -174,23 +180,23 @@ serve(async (req) => {
     </table>
   </body>
 </html>`,
-                }),
-            });
+        }),
+      });
 
-            if (!res.ok) {
-                const errorText = await res.text();
-                console.error("Resend API Error:", errorText);
-                return new Response(`Resend API Error: ${errorText}`, { status: 500 });
-            }
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Resend API Error:", errorText);
+        return new Response(`Resend API Error: ${errorText}`, { status: 500 });
+      }
 
-            const data = await res.json();
-            return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
-        }
-
-        return new Response("Status did not change to verified. No email sent.", { status: 200 });
-
-    } catch (error) {
-        console.error("Edge Function Error:", error);
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+      const data = await res.json();
+      return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
     }
+
+    return new Response("Status did not change to verified. No email sent.", { status: 200 });
+
+  } catch (error) {
+    console.error("Edge Function Error:", error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
 });

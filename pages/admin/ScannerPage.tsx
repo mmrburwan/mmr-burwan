@@ -36,16 +36,16 @@ const ScannerPage: React.FC = () => {
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
     }
-    
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-    
+
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    
+
     setIsCameraActive(false);
     // Reset last scanned QR when stopping camera
     lastScannedQrRef.current = null;
@@ -59,7 +59,7 @@ const ScannerPage: React.FC = () => {
         stopAlternativeCamera();
         return;
       }
-      
+
       if (html5QrCodeRef.current && isCameraActive) {
         await html5QrCodeRef.current.stop();
         html5QrCodeRef.current.clear();
@@ -90,7 +90,7 @@ const ScannerPage: React.FC = () => {
 
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      
+
       if (!video) {
         setIsCameraStarting(false);
         const errorMsg = 'Video element not ready. Please refresh the page.';
@@ -118,7 +118,7 @@ const ScannerPage: React.FC = () => {
 
       // Get user media - try directly, Chrome definitely supports this
       let stream: MediaStream;
-      
+
       try {
         // Direct call - Chrome supports this
         if (!navigator.mediaDevices) {
@@ -147,7 +147,7 @@ const ScannerPage: React.FC = () => {
           stack: apiError?.stack,
           error: apiError
         });
-        
+
         // Provide helpful error message
         if (apiError?.name === 'NotAllowedError' || apiError?.name === 'PermissionDeniedError') {
           throw new Error('Camera permission denied. Please click the camera icon in the address bar and allow access.');
@@ -159,13 +159,13 @@ const ScannerPage: React.FC = () => {
           throw new Error(`Camera access failed: ${apiError?.message || apiError?.name || 'Unknown error'}. Check browser console (F12) for details.`);
         }
       }
-      
+
       console.log('Camera stream obtained successfully');
 
       streamRef.current = stream;
       video.srcObject = stream;
       video.setAttribute('playsinline', 'true'); // Important for iOS
-      
+
       await video.play();
 
       const context = canvas.getContext('2d');
@@ -181,10 +181,10 @@ const ScannerPage: React.FC = () => {
           canvas.height = video.videoHeight;
           canvas.width = video.videoWidth;
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          
+
           const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
           const code = jsQR(imageData.data, imageData.width, imageData.height);
-          
+
           if (code) {
             processScannedData(code.data);
           }
@@ -203,7 +203,7 @@ const ScannerPage: React.FC = () => {
         message: error?.message,
         stack: error?.stack
       });
-      
+
       let errorMsg = 'Failed to start camera. ';
       if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
         errorMsg = 'Camera permission denied. Please click the camera icon in the address bar and allow camera access, then refresh the page.';
@@ -216,7 +216,7 @@ const ScannerPage: React.FC = () => {
       } else {
         errorMsg = `Camera error: ${error?.message || error?.name || 'Unknown error'}. Please check browser console (F12) for details.`;
       }
-      
+
       setCameraError(errorMsg);
       showToast(errorMsg, 'error');
     }
@@ -233,7 +233,47 @@ const ScannerPage: React.FC = () => {
     try {
       // Parse QR code data
       const data = JSON.parse(qrData);
-      
+
+      // Handle Acknowledgement Slip QR
+      if (data.type === 'acknowledgement' || (data.applicationId && !data.appointmentId)) {
+        lastScannedQrRef.current = qrData;
+
+        // Validate Application Exists
+        try {
+          const app = await applicationService.getApplicationById(data.applicationId);
+          if (app) {
+            setScannedData({
+              type: 'acknowledgement',
+              valid: true,
+              applicationId: app.id,
+              date: new Date(app.submitted_at || Date.now()).toLocaleDateString(),
+              time: new Date(app.submitted_at || Date.now()).toLocaleTimeString(),
+              details: app
+            });
+            showToast('Application found', 'success');
+
+            // Audit Log
+            await auditService.createLog({
+              actorId: user?.id || 'admin-1',
+              actorName: user?.name || 'Admin User',
+              actorRole: 'admin',
+              action: 'qr_code_scanned',
+              resourceType: 'application',
+              resourceId: app.id,
+              details: { type: 'acknowledgement' },
+            });
+
+          } else {
+            setScannedData({ valid: false });
+            showToast('Application not found', 'error');
+          }
+        } catch (e) {
+          setScannedData({ valid: false });
+          showToast('Error fetching application', 'error');
+        }
+        return;
+      }
+
       // Validate appointment
       if (data.appointmentId && data.userId) {
         // Mark this QR code as processed
@@ -253,6 +293,7 @@ const ScannerPage: React.FC = () => {
 
         setScannedData({
           ...data,
+          type: 'appointment',
           valid: true,
           checkedIn: false,
           applicationId,
@@ -270,7 +311,7 @@ const ScannerPage: React.FC = () => {
         });
 
         showToast('QR code scanned successfully', 'success');
-        
+
         // Don't stop camera - keep it running for next scan
       } else {
         // Mark invalid QR codes too to prevent repeated error notifications
@@ -291,17 +332,17 @@ const ScannerPage: React.FC = () => {
   // Start camera scanning
   const startCamera = async () => {
     if (isCameraStarting || isCameraActive) return;
-    
+
     setIsCameraStarting(true);
     setCameraError(null);
     try {
       // Check for camera API support - Chrome definitely has this
       if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
         // Try legacy API
-        const legacyGetUserMedia = (navigator as any).getUserMedia || 
-                                   (navigator as any).webkitGetUserMedia || 
-                                   (navigator as any).mozGetUserMedia;
-        
+        const legacyGetUserMedia = (navigator as any).getUserMedia ||
+          (navigator as any).webkitGetUserMedia ||
+          (navigator as any).mozGetUserMedia;
+
         if (!legacyGetUserMedia) {
           setIsCameraStarting(false);
           const errorMsg = 'Camera API not available. Please ensure you are using HTTPS or localhost.';
@@ -398,7 +439,7 @@ const ScannerPage: React.FC = () => {
         } catch (startError: any) {
           setIsCameraStarting(false);
           console.error('Error starting camera:', startError);
-          
+
           // Clean up on error
           if (html5QrCodeRef.current) {
             try {
@@ -433,7 +474,7 @@ const ScannerPage: React.FC = () => {
       console.error('Camera initialization error:', error);
       const errorMessage = error?.message || error?.toString() || 'Unknown error';
       let userMessage = '';
-      
+
       if (errorMessage.includes('Permission denied') || error?.name === 'NotAllowedError') {
         userMessage = 'Camera permission denied. Please allow camera access in your browser settings.';
       } else if (errorMessage.includes('not found') || error?.name === 'NotFoundError') {
@@ -441,10 +482,10 @@ const ScannerPage: React.FC = () => {
       } else {
         userMessage = `Failed to start camera: ${errorMessage}. Trying alternative method...`;
       }
-      
+
       setCameraError(userMessage);
       showToast(userMessage, 'error');
-      
+
       // Try alternative method as fallback
       console.log('Html5Qrcode failed, trying alternative scanner...');
       try {
@@ -459,13 +500,13 @@ const ScannerPage: React.FC = () => {
   useEffect(() => {
     // Set up alternative scanner by default
     setUseAlternativeScanner(true);
-    
+
     // Cleanup camera on unmount
     return () => {
       if (useAlternativeScanner) {
         stopAlternativeCamera();
       } else if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().catch(() => {});
+        html5QrCodeRef.current.stop().catch(() => { });
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -518,10 +559,10 @@ const ScannerPage: React.FC = () => {
                       style={{ minHeight: '250px', maxHeight: '400px' }}
                     ></div>
                   )}
-                  
+
                   {/* Alternative jsQR scanner - Always render but conditionally show */}
-                  <div 
-                    className={`relative w-full rounded-lg overflow-hidden bg-black ${useAlternativeScanner ? '' : 'hidden'}`} 
+                  <div
+                    className={`relative w-full rounded-lg overflow-hidden bg-black ${useAlternativeScanner ? '' : 'hidden'}`}
                     style={{ minHeight: '250px', maxHeight: '400px' }}
                   >
                     <video
@@ -533,7 +574,7 @@ const ScannerPage: React.FC = () => {
                     />
                     <canvas ref={canvasRef} className="hidden" />
                   </div>
-                  
+
                   {!isCameraActive && !isCameraStarting && (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 rounded-lg">
                       <div className="text-center text-white px-4">
@@ -599,17 +640,23 @@ const ScannerPage: React.FC = () => {
                   </div>
                   <div className="bg-gray-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 space-y-1.5 sm:space-y-2">
                     <div>
-                      <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Appointment ID</p>
-                      <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">{scannedData.appointmentId}</p>
+                      <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">
+                        {scannedData.type === 'acknowledgement' ? 'Application ID' : 'Appointment ID'}
+                      </p>
+                      <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">
+                        {scannedData.type === 'acknowledgement' ? scannedData.applicationId : scannedData.appointmentId}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Date</p>
+                      <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">{scannedData.type === 'acknowledgement' ? 'Submitted Date' : 'Date'}</p>
                       <p className="font-medium text-xs sm:text-sm text-gray-900">{scannedData.date}</p>
                     </div>
-                    <div>
-                      <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Time</p>
-                      <p className="font-medium text-xs sm:text-sm text-gray-900">{scannedData.time}</p>
-                    </div>
+                    {scannedData.time && (
+                      <div>
+                        <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">Time</p>
+                        <p className="font-medium text-xs sm:text-sm text-gray-900">{scannedData.time}</p>
+                      </div>
+                    )}
                   </div>
                   {scannedData.applicationId ? (
                     <Button

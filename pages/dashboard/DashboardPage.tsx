@@ -5,22 +5,19 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { profileService } from '../../services/profile';
 import { applicationService } from '../../services/application';
-// HIDDEN: Appointment feature temporarily disabled for client dashboard
-// import { appointmentService } from '../../services/appointments';
+import { appointmentService } from '../../services/appointments';
 import { certificateService } from '../../services/certificates';
 import { messageService } from '../../services/messages';
-import { Profile, Application, Certificate } from '../../types';
-// HIDDEN: Appointment type temporarily disabled
-// import { Appointment } from '../../types';
+import { Profile, Application, Certificate, Appointment } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Stepper from '../../components/ui/Stepper';
-import { 
-  FileText, 
-  Upload, 
-  Calendar, 
-  MessageSquare, 
+import {
+  FileText,
+  Upload,
+  Calendar,
+  MessageSquare,
   Award,
   ArrowRight,
   User,
@@ -40,8 +37,7 @@ const DashboardPage: React.FC = () => {
   const { t } = useTranslation('dashboard');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [application, setApplication] = useState<Application | null>(null);
-  // HIDDEN: Appointment state temporarily disabled
-  // const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,11 +50,10 @@ const DashboardPage: React.FC = () => {
     }
 
     try {
-      // HIDDEN: Appointment service call temporarily disabled
-      const [profileData, appData, certData, conversations] = await Promise.all([
+      const [profileData, appData, aptData, certData, conversations] = await Promise.all([
         profileService.getProfile(user.id),
         applicationService.getApplication(user.id),
-        // appointmentService.getUserAppointment(user.id),
+        appointmentService.getUserAppointment(user.id).catch(() => null),
         certificateService.getCertificate(user.id),
         messageService.getConversations(user.id),
       ]);
@@ -74,8 +69,7 @@ const DashboardPage: React.FC = () => {
       }
 
       setApplication(appData);
-      // HIDDEN: Appointment state setter temporarily disabled
-      // setAppointment(aptData);
+      setAppointment(aptData);
       setCertificate(certData);
       setUnreadMessages(conversations.reduce((sum, c) => sum + c.unreadCount, 0));
     } catch (error) {
@@ -108,35 +102,35 @@ const DashboardPage: React.FC = () => {
   // Calculate current step based on actual data filled
   const getCurrentStep = () => {
     if (!application) return 0;
-    
+
     // Check if groom details are filled (lastName is optional)
-    const hasGroomDetails = application.userDetails?.firstName && 
-                            application.userDetails?.dateOfBirth &&
-                            application.userDetails?.aadhaarNumber &&
-                            application.userDetails?.mobileNumber;
-    const hasGroomAddress = (application.userAddress as any)?.villageStreet || 
-                            application.userAddress?.street;
-    const hasGroomCurrentAddress = (application.userCurrentAddress as any)?.villageStreet || 
-                                   application.userCurrentAddress?.street;
+    const hasGroomDetails = application.userDetails?.firstName &&
+      application.userDetails?.dateOfBirth &&
+      application.userDetails?.aadhaarNumber &&
+      application.userDetails?.mobileNumber;
+    const hasGroomAddress = (application.userAddress as any)?.villageStreet ||
+      application.userAddress?.street;
+    const hasGroomCurrentAddress = (application.userCurrentAddress as any)?.villageStreet ||
+      application.userCurrentAddress?.street;
     const hasMarriageDate = (application.declarations as any)?.marriageDate;
-    
+
     if (!hasGroomDetails || !hasGroomAddress || !hasGroomCurrentAddress || !hasMarriageDate) {
       return 0; // Still on groom details step
     }
-    
+
     // Check if bride details are filled (lastName is optional)
-    const hasBrideDetails = application.partnerForm?.firstName && 
-                            application.partnerForm?.dateOfBirth &&
-                            ((application.partnerForm as any)?.aadhaarNumber || (application.partnerForm as any)?.idNumber);
-    const hasBrideAddress = (application.partnerAddress as any)?.villageStreet || 
-                            application.partnerAddress?.street;
-    const hasBrideCurrentAddress = (application.partnerCurrentAddress as any)?.villageStreet || 
-                                   application.partnerCurrentAddress?.street;
-    
+    const hasBrideDetails = application.partnerForm?.firstName &&
+      application.partnerForm?.dateOfBirth &&
+      ((application.partnerForm as any)?.aadhaarNumber || (application.partnerForm as any)?.idNumber);
+    const hasBrideAddress = (application.partnerAddress as any)?.villageStreet ||
+      application.partnerAddress?.street;
+    const hasBrideCurrentAddress = (application.partnerCurrentAddress as any)?.villageStreet ||
+      application.partnerCurrentAddress?.street;
+
     if (!hasBrideDetails || !hasBrideAddress || !hasBrideCurrentAddress) {
       return 1; // Still on bride details step
     }
-    
+
     // Check if documents are uploaded (need 5 documents: groom aadhaar, groom 2nd doc, bride aadhaar, bride 2nd doc, joint photo)
     const documents = application.documents || [];
     const userAadhaar = documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
@@ -144,20 +138,20 @@ const DashboardPage: React.FC = () => {
     const partnerAadhaar = documents.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar');
     const partnerSecondDoc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
     const jointPhotograph = documents.find(d => d.belongsTo === 'joint' && d.type === 'photo');
-    
+
     if (!userAadhaar || !userSecondDoc || !partnerAadhaar || !partnerSecondDoc || !jointPhotograph) {
       return 2; // Still on documents step
     }
-    
+
     // Check if declarations are filled
-    const hasDeclarations = application.declarations?.consent && 
-                            application.declarations?.accuracy && 
-                            application.declarations?.legal;
-    
+    const hasDeclarations = application.declarations?.consent &&
+      application.declarations?.accuracy &&
+      application.declarations?.legal;
+
     if (!hasDeclarations) {
       return 3; // Still on confirmation step
     }
-    
+
     return 4; // All steps completed, on review step
   };
 
@@ -261,15 +255,15 @@ const DashboardPage: React.FC = () => {
           )}
           {application?.status === 'submitted' || application?.status === 'under_review' || application?.status === 'approved' ? (
             <div className="flex flex-col gap-2">
-            <Button
+              <Button
                 variant="primary"
-              size="sm"
-              className="w-full !text-xs sm:!text-sm"
+                size="sm"
+                className="w-full !text-xs sm:!text-sm"
                 onClick={() => navigate('/application/view')}
-            >
+              >
                 <Eye size={14} className="sm:w-4 sm:h-4 mr-1.5" />
                 {t('cards.application.viewApplication')}
-            </Button>
+              </Button>
               <p className="text-[10px] sm:text-xs text-gray-500 text-center">
                 {t('cards.application.applicationSubmitted')}
                 <CheckCircle size={12} className="inline ml-1 sm:w-3 sm:h-3" />
@@ -320,62 +314,85 @@ const DashboardPage: React.FC = () => {
 
       {/* Secondary Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-        {/* HIDDEN: Upcoming Appointment card temporarily disabled
+        {/* Appointment / Acknowledgment Card */}
         <Card className="p-3 sm:p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm sm:text-base text-gray-900 flex items-center gap-1.5 sm:gap-2">
               <Calendar size={16} className="sm:w-5 sm:h-5 text-gold-600" />
-              {t('cards.appointment.title')}
+              Appointment / Acknowledgment
             </h3>
             {appointment && (
               <Badge variant={appointment.status === 'confirmed' ? 'success' : 'warning'}>
-                {t(`status.${appointment.status}`)}
+                {appointment.status.toUpperCase()}
               </Badge>
             )}
           </div>
-          {appointment ? (
-            <div className="space-y-2 sm:space-y-3">
-              <div>
-                <p className="text-[11px] sm:text-xs text-gray-500">{t('cards.appointment.dateTime')}</p>
-                <p className="font-medium text-xs sm:text-sm text-gray-900">
-                  {safeFormatDate(appointment.date, 'MMM d, yyyy')} at {appointment.time}
-                </p>
+
+          <div className="space-y-3">
+            {/* Acknowledgment Section */}
+            {application ? (
+              <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                <p className="text-[11px] sm:text-xs text-gray-500 mb-2">Application Acknowledgment</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full !text-xs sm:!text-sm justify-center"
+                  onClick={() => navigate(`/application/${application.id}/acknowledgement`)}
+                >
+                  <FileText size={14} className="mr-1.5 sm:w-4 sm:h-4" />
+                  View/Download Slip
+                </Button>
               </div>
-              <div className="flex gap-2">
+            ) : (
+              <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                <p className="text-[10px] sm:text-xs text-center text-gray-500">Submit application to view acknowledgment</p>
+              </div>
+            )}
+
+            {/* Appointment Section */}
+            <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+              <p className="text-[11px] sm:text-xs text-gray-500 mb-2">Appointment</p>
+              {appointment ? (
+                <div className="space-y-2">
+                  {appointment.date && (
+                    <p className="font-medium text-xs sm:text-sm text-gray-900">
+                      {safeFormatDate(appointment.date, 'MMM d, yyyy')} at {appointment.time}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="flex-1 !text-xs sm:!text-sm"
+                      onClick={() => navigate('/pass')}
+                    >
+                      View Pass
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 !text-xs sm:!text-sm"
+                      onClick={() => navigate('/appointments')}
+                    >
+                      Reschedule
+                    </Button>
+                  </div>
+                </div>
+              ) : (
                 <Button
                   variant="primary"
                   size="sm"
-                  className="!text-xs sm:!text-sm flex-1"
-                  onClick={() => navigate('/pass')}
-                >
-                  {t('cards.appointment.viewPass')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="!text-xs sm:!text-sm"
+                  className="w-full !text-xs sm:!text-sm justify-center"
                   onClick={() => navigate('/appointments')}
+                  disabled={!application || application.status === 'draft'}
                 >
-                  {t('cards.appointment.reschedule')}
+                  <Calendar size={14} className="mr-1.5 sm:w-4 sm:h-4" />
+                  Book Appointment
                 </Button>
-              </div>
+              )}
             </div>
-          ) : (
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500 mb-3">{t('cards.appointment.noAppointment')}</p>
-              <Button
-                variant="primary"
-                size="sm"
-                className="!text-xs sm:!text-sm"
-                onClick={() => navigate('/appointments')}
-              >
-                {t('cards.appointment.bookAppointment')}
-                <ArrowRight size={14} className="ml-1.5 sm:w-4 sm:h-4" />
-              </Button>
-            </div>
-          )}
+          </div>
         </Card>
-        */}
 
         {/* Latest Certificate */}
         <Card className="p-3 sm:p-4">
@@ -404,65 +421,65 @@ const DashboardPage: React.FC = () => {
                   </p>
                 )}
               </div>
-                {certificate ? (
-                 <div className="flex flex-col gap-2">
-                 <div className="flex flex-col sm:flex-row gap-2">
-                   <Button
-                     variant="primary"
-                     size="sm"
-                     className="!text-xs sm:!text-sm flex-1"
-                     onClick={() => {
-                       const certNumber = certificate.certificateNumber || application?.certificateNumber;
-                       if (certNumber) {
-                         navigate(`/verify/${certNumber}`);
-                       } else {
-                         showToast('Certificate number not available', 'error');
-                       }
-                     }}
-                   >
-                     <Award size={14} className="mr-1 sm:w-4 sm:h-4" />
-                     {t('cards.certificate.view')}
-                   </Button>
-                     {certificate.canDownload ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="!text-xs sm:!text-sm flex-1"
-                    onClick={async () => {
-                      if (application && certificate) {
-                        try {
-                               // Verify certificate still exists and check download permission
-                          const { certificateService } = await import('../../services/certificates');
-                          const certCheck = await certificateService.getCertificateByApplicationId(application.id);
-                          if (!certCheck) {
-                            showToast(t('common:errors.notFound'), 'error');
-                            return;
-                          }
-                               // Check if download is enabled by admin (double-check)
-                               if (!certCheck.canDownload) {
-                                 showToast(t('cards.certificate.downloadDisabled'), 'error');
-                                 return;
-                               }
-                          await downloadCertificate(application);
-                          showToast(t('common:success.downloaded'), 'success');
-                        } catch (error: any) {
-                          console.error('Failed to download certificate:', error);
-                          showToast(error.message || t('common:errors.generic'), 'error');
+              {certificate ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="!text-xs sm:!text-sm flex-1"
+                      onClick={() => {
+                        const certNumber = certificate.certificateNumber || application?.certificateNumber;
+                        if (certNumber) {
+                          navigate(`/verify/${certNumber}`);
+                        } else {
+                          showToast('Certificate number not available', 'error');
                         }
-                      }
-                    }}
-                  >
-                    {t('cards.certificate.downloadPDF')}
-                  </Button>
-                     ) : null}
-                   </div>
-                   {!certificate.canDownload && (
-                     <div className="p-2 sm:p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                       <p className="text-[10px] sm:text-xs text-gray-600 text-center">
-                         {t('cards.certificate.downloadDisabled')}
-                       </p>
-                     </div>
-                   )}
+                      }}
+                    >
+                      <Award size={14} className="mr-1 sm:w-4 sm:h-4" />
+                      {t('cards.certificate.view')}
+                    </Button>
+                    {certificate.canDownload ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="!text-xs sm:!text-sm flex-1"
+                        onClick={async () => {
+                          if (application && certificate) {
+                            try {
+                              // Verify certificate still exists and check download permission
+                              const { certificateService } = await import('../../services/certificates');
+                              const certCheck = await certificateService.getCertificateByApplicationId(application.id);
+                              if (!certCheck) {
+                                showToast(t('common:errors.notFound'), 'error');
+                                return;
+                              }
+                              // Check if download is enabled by admin (double-check)
+                              if (!certCheck.canDownload) {
+                                showToast(t('cards.certificate.downloadDisabled'), 'error');
+                                return;
+                              }
+                              await downloadCertificate(application);
+                              showToast(t('common:success.downloaded'), 'success');
+                            } catch (error: any) {
+                              console.error('Failed to download certificate:', error);
+                              showToast(error.message || t('common:errors.generic'), 'error');
+                            }
+                          }
+                        }}
+                      >
+                        {t('cards.certificate.downloadPDF')}
+                      </Button>
+                    ) : null}
+                  </div>
+                  {!certificate.canDownload && (
+                    <div className="p-2 sm:p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <p className="text-[10px] sm:text-xs text-gray-600 text-center">
+                        {t('cards.certificate.downloadDisabled')}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="p-2 sm:p-3 bg-gold-50 border border-gold-200 rounded-lg">
@@ -479,15 +496,15 @@ const DashboardPage: React.FC = () => {
                 {application?.status === 'submitted' || application?.status === 'under_review'
                   ? t('cards.certificate.underReview')
                   : application
-                  ? t('cards.certificate.pendingVerification')
-                  : t('cards.certificate.noApplication')}
+                    ? t('cards.certificate.pendingVerification')
+                    : t('cards.certificate.noApplication')}
               </p>
               <p className="text-[10px] sm:text-xs text-gray-500 mt-1 leading-relaxed">
                 {application?.status === 'submitted' || application?.status === 'under_review'
                   ? t('cards.certificate.willBeAvailable')
                   : application
-                  ? t('cards.certificate.completeAndSubmit')
-                  : t('cards.certificate.startApplication')}
+                    ? t('cards.certificate.completeAndSubmit')
+                    : t('cards.certificate.startApplication')}
               </p>
             </div>
           )}

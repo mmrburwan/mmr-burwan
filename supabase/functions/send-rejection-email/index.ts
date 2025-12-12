@@ -10,73 +10,79 @@ const SITE_URL = Deno.env.get("SITE_URL") || "https://mmrburwan.com";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const getDocumentTypeLabel = (type: string): string => {
-  const labels: Record<string, string> = {
-    aadhaar: 'Aadhaar Card',
-    tenth_certificate: '10th Certificate',
-    voter_id: 'Voter ID',
-    id: 'ID Document',
-    photo: 'Photo',
-    certificate: 'Certificate',
-    other: 'Other',
-  };
-  return labels[type] || type;
+    const labels: Record<string, string> = {
+        aadhaar: 'Aadhaar Card',
+        tenth_certificate: '10th Certificate',
+        voter_id: 'Voter ID',
+        id: 'ID Document',
+        photo: 'Photo',
+        certificate: 'Certificate',
+        other: 'Other',
+    };
+    return labels[type] || type;
 };
 
 serve(async (req) => {
-  try {
-    const payload = await req.json();
-    const { record, type, table } = payload;
+    try {
+        const payload = await req.json();
+        const { record, type, table } = payload;
 
-    // 1. Gate: Listen for INSERT on notifications table
-    if (type !== 'INSERT' || table !== 'notifications') {
-      return new Response("Ignored: Not a notification insert", { status: 200 });
-    }
+        // 1. Gate: Listen for INSERT on notifications table
+        if (type !== 'INSERT' || table !== 'notifications') {
+            return new Response("Ignored: Not a notification insert", { status: 200 });
+        }
 
-    // 2. Gate: Check if it's a document rejection
-    if (record.type !== 'document_rejected') {
-      return new Response("Ignored: Not a document rejection", { status: 200 });
-    }
+        // 2. Gate: Check if it's a document rejection
+        if (record.type !== 'document_rejected') {
+            return new Response("Ignored: Not a document rejection", { status: 200 });
+        }
 
-    console.log(`Processing rejection email for Notification ID: ${record.id}`);
+        console.log(`Processing rejection email for Notification ID: ${record.id}`);
 
-    // 3. Fetch User Email
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(record.user_id);
+        // 3. Fetch User Email
+        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(record.user_id);
 
-    if (userError || !userData.user) {
-      console.error(`Failed to fetch user for ID: ${record.user_id}`, userError);
-      return new Response("Failed to fetch user email", { status: 500 });
-    }
+        if (userError || !userData.user) {
+            console.error(`Failed to fetch user for ID: ${record.user_id}`, userError);
+            return new Response("Failed to fetch user email", { status: 500 });
+        }
 
-    const userEmail = userData.user.email;
-    if (!userEmail) {
-      console.error(`No email found for user ID: ${record.user_id}`);
-      return new Response("User has no email", { status: 200 });
-    }
+        const userEmail = userData.user.email;
+        if (!userEmail) {
+            console.error(`No email found for user ID: ${record.user_id}`);
+            return new Response("User has no email", { status: 200 });
+        }
 
-    // 4. Fetch Document Details (Optional but good for context)
-    let documentName = "Document";
-    let documentTypeLabel = "Document";
+        // Skip email for internal domain
+        if (userEmail.toLowerCase().endsWith("@mmrburwan.com")) {
+            console.log(`Skipping rejection email for internal domain: ${userEmail}`);
+            return new Response("Skipped email for internal domain", { status: 200 });
+        }
 
-    if (record.document_id) {
-      const { data: docData, error: docError } = await supabase
-        .from('documents')
-        .select('name, type')
-        .eq('id', record.document_id)
-        .single();
+        // 4. Fetch Document Details (Optional but good for context)
+        let documentName = "Document";
+        let documentTypeLabel = "Document";
 
-      if (!docError && docData) {
-        documentName = docData.name;
-        documentTypeLabel = getDocumentTypeLabel(docData.type);
-      }
-    }
+        if (record.document_id) {
+            const { data: docData, error: docError } = await supabase
+                .from('documents')
+                .select('name, type')
+                .eq('id', record.document_id)
+                .single();
 
-    // 5. Prepare Email
-    const rejectionReason = record.message;
-    // Try to get user name from metadata if possible, or just use "Applicant"
-    const displayName = "Applicant";
+            if (!docError && docData) {
+                documentName = docData.name;
+                documentTypeLabel = getDocumentTypeLabel(docData.type);
+            }
+        }
 
-    const emailSubject = `Document Rejection Notice - ${documentTypeLabel}`;
-    const emailHtml = `
+        // 5. Prepare Email
+        const rejectionReason = record.message;
+        // Try to get user name from metadata if possible, or just use "Applicant"
+        const displayName = "Applicant";
+
+        const emailSubject = `Document Rejection Notice - ${documentTypeLabel}`;
+        const emailHtml = `
     <!DOCTYPE html>
 <html>
 <head>
@@ -205,32 +211,32 @@ serve(async (req) => {
 </html>
     `;
 
-    // 6. Send Email
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: `Marriage Registrar <${FROM_EMAIL}>`,
-        to: [userEmail],
-        subject: emailSubject,
-        html: emailHtml,
-      }),
-    });
+        // 6. Send Email
+        const res = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${RESEND_API_KEY}`,
+            },
+            body: JSON.stringify({
+                from: `Marriage Registrar <${FROM_EMAIL}>`,
+                to: [userEmail],
+                subject: emailSubject,
+                html: emailHtml,
+            }),
+        });
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("Resend API Error:", errorText);
-      return new Response(`Resend API Error: ${errorText}`, { status: 500 });
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error("Resend API Error:", errorText);
+            return new Response(`Resend API Error: ${errorText}`, { status: 500 });
+        }
+
+        const data = await res.json();
+        return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
+
+    } catch (error) {
+        console.error("Edge Function Error:", error);
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
-
-    const data = await res.json();
-    return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
-
-  } catch (error) {
-    console.error("Edge Function Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
-  }
 });

@@ -274,6 +274,12 @@ const VerifyPage: React.FC = () => {
                     <p className="font-semibold text-gray-900">
                       Office of the Muhammadan Marriage Registrar & Qaazi
                     </p>
+                    <p className="font-semibold text-gray-900">
+                      Name: MINHAJUL ISLAM KHAN
+                    </p>
+                    <p className="font-semibold text-gray-900">
+                      Licence No: 04L(St.)/LW/O/St./4M-123/2019
+                    </p>
                     <p className="text-gray-700">
                       Vill. & P.O. Gramshalika, P.S. Burwan, Dist. Murshidabad, PIN- 742132
                     </p>

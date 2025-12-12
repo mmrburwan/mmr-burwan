@@ -131,13 +131,13 @@ const ViewApplicationPage: React.FC = () => {
             <p className="text-[10px] sm:text-sm text-gray-600 truncate">Application ID: {application.id}</p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-3">
-            <Badge 
+            <Badge
               variant={
-                application.status === 'submitted' ? 'info' : 
-                application.status === 'approved' ? 'success' : 
-                application.status === 'rejected' ? 'error' : 
-                'default'
-              } 
+                application.status === 'submitted' ? 'info' :
+                  application.status === 'approved' ? 'success' :
+                    application.status === 'rejected' ? 'error' :
+                      'default'
+              }
               className="!text-[10px] sm:!text-xs"
             >
               {application.status}
@@ -235,15 +235,15 @@ const ViewApplicationPage: React.FC = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4 lg:gap-6">
             <div>
-              <p className="text-[11px] sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Groom Permanent Address</p>
-              <div className="text-[11px] sm:text-sm text-gray-600 space-y-1 break-words">
-                <p className="break-words">{formatAddress(userAddress)}</p>
-              </div>
-            </div>
-            <div>
               <p className="text-[11px] sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Groom Current Address</p>
               <div className="text-[11px] sm:text-sm text-gray-600 space-y-1 break-words">
                 <p className="break-words">{formatAddress(userCurrentAddress)}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Groom Permanent Address</p>
+              <div className="text-[11px] sm:text-sm text-gray-600 space-y-1 break-words">
+                <p className="break-words">{formatAddress(userAddress)}</p>
               </div>
             </div>
           </div>
@@ -256,15 +256,15 @@ const ViewApplicationPage: React.FC = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4 lg:gap-6">
             <div>
-              <p className="text-[11px] sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Bride Permanent Address</p>
-              <div className="text-[11px] sm:text-sm text-gray-600 space-y-1 break-words">
-                <p className="break-words">{formatAddress(partnerAddress)}</p>
-              </div>
-            </div>
-            <div>
               <p className="text-[11px] sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Bride Current Address</p>
               <div className="text-[11px] sm:text-sm text-gray-600 space-y-1 break-words">
                 <p className="break-words">{formatAddress(partnerCurrentAddress)}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Bride Permanent Address</p>
+              <div className="text-[11px] sm:text-sm text-gray-600 space-y-1 break-words">
+                <p className="break-words">{formatAddress(partnerAddress)}</p>
               </div>
             </div>
           </div>
@@ -287,8 +287,8 @@ const ViewApplicationPage: React.FC = () => {
                     <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
                       <FileText size={12} className="sm:w-4 sm:h-5 text-gold-600 flex-shrink-0" />
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <p 
-                          className="font-medium text-[11px] sm:text-sm text-gray-900 truncate block" 
+                        <p
+                          className="font-medium text-[11px] sm:text-sm text-gray-900 truncate block"
                           title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}
                         >
                           <span className="text-gray-500">{getDocumentTypeLabel(doc.type)}:</span> {doc.name}
@@ -344,8 +344,8 @@ const ViewApplicationPage: React.FC = () => {
                     <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
                       <FileText size={12} className="sm:w-4 sm:h-5 text-gold-600 flex-shrink-0" />
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <p 
-                          className="font-medium text-[11px] sm:text-sm text-gray-900 truncate block" 
+                        <p
+                          className="font-medium text-[11px] sm:text-sm text-gray-900 truncate block"
                           title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}
                         >
                           <span className="text-gray-500">{getDocumentTypeLabel(doc.type)}:</span> {doc.name}
@@ -401,8 +401,8 @@ const ViewApplicationPage: React.FC = () => {
                     <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
                       <FileText size={12} className="sm:w-4 sm:h-5 text-gold-600 flex-shrink-0" />
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <p 
-                          className="font-medium text-[11px] sm:text-sm text-gray-900 truncate block" 
+                        <p
+                          className="font-medium text-[11px] sm:text-sm text-gray-900 truncate block"
                           title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}
                         >
                           <span className="text-gray-500">{getDocumentTypeLabel(doc.type)}:</span> {doc.name}
@@ -461,10 +461,10 @@ const ViewApplicationPage: React.FC = () => {
               <p className="font-medium text-gray-900">
                 {((declarations as any)?.marriageDate || (declarations as any)?.marriageRegistrationDate)
                   ? safeFormatDate(
-                      (declarations as any).marriageDate || (declarations as any).marriageRegistrationDate,
-                      'MMMM d, yyyy',
-                      'Invalid date'
-                    )
+                    (declarations as any).marriageDate || (declarations as any).marriageRegistrationDate,
+                    'MMMM d, yyyy',
+                    'Invalid date'
+                  )
                   : 'Not provided'}
               </p>
             </div>

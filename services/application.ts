@@ -26,6 +26,25 @@ export const applicationService = {
     return this.mapApplication(data);
   },
 
+  async getApplicationById(applicationId: string): Promise<Application | null> {
+    const { data, error } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        documents (*)
+      `)
+      .eq('id', applicationId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw new Error(error.message);
+    }
+
+    if (!data) return null;
+    return this.mapApplication(data);
+  },
+
   async createDraft(userId: string): Promise<Application> {
     // Check if application already exists
     const existing = await this.getApplication(userId);
@@ -72,12 +91,12 @@ export const applicationService = {
 
     // Calculate progress
     let progress = 0;
-    
+
     // Merge declarations to preserve existing fields like marriageDate
-    const mergedDeclarations = updates.declarations 
+    const mergedDeclarations = updates.declarations
       ? { ...(application.declarations || {}), ...updates.declarations }
       : application.declarations;
-    
+
     const updatedData: any = {
       user_details: updates.userDetails || application.userDetails,
       partner_form: updates.partnerForm || application.partnerForm,
@@ -91,34 +110,34 @@ export const applicationService = {
     };
 
     // Check if user details are actually filled (not just empty object)
-    const hasUserDetails = updatedData.user_details && 
+    const hasUserDetails = updatedData.user_details &&
       updatedData.user_details.firstName &&
       updatedData.user_details.dateOfBirth &&
       updatedData.user_details.aadhaarNumber &&
       updatedData.user_details.mobileNumber;
     if (hasUserDetails) progress += 20;
-    
+
     // Check if partner details are actually filled
-    const hasPartnerDetails = updatedData.partner_form && 
+    const hasPartnerDetails = updatedData.partner_form &&
       updatedData.partner_form.firstName &&
       updatedData.partner_form.dateOfBirth &&
       (updatedData.partner_form.aadhaarNumber || updatedData.partner_form.idNumber);
     if (hasPartnerDetails) progress += 20;
-    
+
     // Check if addresses are actually filled
-    const hasUserAddress = updatedData.user_address && 
+    const hasUserAddress = updatedData.user_address &&
       ((updatedData.user_address as any)?.villageStreet || updatedData.user_address?.street) &&
       updatedData.user_address?.state;
-    const hasPartnerAddress = updatedData.partner_address && 
+    const hasPartnerAddress = updatedData.partner_address &&
       ((updatedData.partner_address as any)?.villageStreet || updatedData.partner_address?.street) &&
       updatedData.partner_address?.state;
     if (hasUserAddress || hasPartnerAddress) progress += 20;
-    
+
     // Check documents (need at least 4: user aadhaar, user 2nd doc, partner aadhaar, partner 2nd doc)
     if (application.documents.length >= 4) progress += 20;
-    
+
     // Check if declarations are actually filled (not just empty object)
-    const hasDeclarations = updatedData.declarations && 
+    const hasDeclarations = updatedData.declarations &&
       (updatedData.declarations.consent === true || updatedData.declarations.consent === false) &&
       (updatedData.declarations.accuracy === true || updatedData.declarations.accuracy === false) &&
       (updatedData.declarations.legal === true || updatedData.declarations.legal === false);
@@ -167,6 +186,15 @@ export const applicationService = {
       throw new Error(error.message);
     }
 
+    // Trigger Admin Notification (non-blocking)
+    supabase.functions.invoke('send-admin-notification', {
+      body: { record: data }
+    }).then(({ error }) => {
+      if (error) console.error('Failed to send admin notification:', error);
+    }).catch(err => {
+      console.error('Failed to invoke admin notification function:', err);
+    });
+
     return this.mapApplication(data);
   },
 
@@ -189,41 +217,41 @@ export const applicationService = {
   // Helper function to calculate actual progress based on filled data
   calculateActualProgress(application: Application): number {
     let progress = 0;
-    
+
     // Check if user details are actually filled
-    const hasUserDetails = application.userDetails && 
+    const hasUserDetails = application.userDetails &&
       application.userDetails.firstName &&
       application.userDetails.dateOfBirth &&
       application.userDetails.aadhaarNumber &&
       application.userDetails.mobileNumber;
     if (hasUserDetails) progress += 20;
-    
+
     // Check if partner details are actually filled
-    const hasPartnerDetails = application.partnerForm && 
+    const hasPartnerDetails = application.partnerForm &&
       application.partnerForm.firstName &&
       application.partnerForm.dateOfBirth &&
       (application.partnerForm.aadhaarNumber || application.partnerForm.idNumber);
     if (hasPartnerDetails) progress += 20;
-    
+
     // Check if addresses are actually filled
-    const hasUserAddress = application.userAddress && 
+    const hasUserAddress = application.userAddress &&
       ((application.userAddress as any)?.villageStreet || application.userAddress?.street) &&
       application.userAddress?.state;
-    const hasPartnerAddress = application.partnerAddress && 
+    const hasPartnerAddress = application.partnerAddress &&
       ((application.partnerAddress as any)?.villageStreet || application.partnerAddress?.street) &&
       application.partnerAddress?.state;
     if (hasUserAddress || hasPartnerAddress) progress += 20;
-    
+
     // Check documents (need at least 4: user aadhaar, user 2nd doc, partner aadhaar, partner 2nd doc)
     if (application.documents && application.documents.length >= 4) progress += 20;
-    
+
     // Check if declarations are actually filled
-    const hasDeclarations = application.declarations && 
+    const hasDeclarations = application.declarations &&
       (application.declarations.consent === true || application.declarations.consent === false) &&
       (application.declarations.accuracy === true || application.declarations.accuracy === false) &&
       (application.declarations.legal === true || application.declarations.legal === false);
     if (hasDeclarations) progress += 20;
-    
+
     return Math.min(progress, 100);
   },
 

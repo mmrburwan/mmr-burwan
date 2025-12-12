@@ -7,11 +7,13 @@ import { CheckCircle, Calendar } from 'lucide-react';
 interface ApplicationSuccessModalProps {
   isOpen: boolean;
   onClose: () => void;
+  applicationId?: string;
 }
 
 const ApplicationSuccessModal: React.FC<ApplicationSuccessModalProps> = ({
   isOpen,
   onClose,
+  applicationId,
 }) => {
   const navigate = useNavigate();
 
@@ -64,7 +66,7 @@ const ApplicationSuccessModal: React.FC<ApplicationSuccessModalProps> = ({
     >
       {/* Darker backdrop to indicate screen is blocked */}
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-      
+
       {/* Modal - Compact for mobile */}
       <div
         className="relative z-10 w-full max-w-xs sm:max-w-md my-auto bg-white rounded-xl sm:rounded-2xl shadow-2xl animate-fade-up"
@@ -80,7 +82,7 @@ const ApplicationSuccessModal: React.FC<ApplicationSuccessModalProps> = ({
             <X size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
-        
+
         {/* Content - Compact for mobile */}
         <div className="p-4 sm:p-6 text-center">
           {/* Success Icon - Compact for mobile */}
@@ -97,7 +99,7 @@ const ApplicationSuccessModal: React.FC<ApplicationSuccessModalProps> = ({
 
           {/* Message - Compact for mobile */}
           <p className="text-gray-600 text-xs sm:text-sm mb-4 sm:mb-6 leading-relaxed px-1">
-            Your marriage registration application has been submitted successfully. 
+            Your marriage registration application has been submitted successfully.
             To proceed with the next steps, please book an appointment in the appointments section.
           </p>
 
@@ -119,6 +121,24 @@ const ApplicationSuccessModal: React.FC<ApplicationSuccessModalProps> = ({
             >
               <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               Go to Appointments
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (applicationId) {
+                  navigate(`/application/${applicationId}/acknowledgement`);
+                  onClose();
+                } else {
+                  console.error("No application ID found for redirect");
+                  navigate('/dashboard');
+                  onClose();
+                }
+              }}
+              className="w-full sm:w-auto sm:min-w-[160px] text-xs sm:text-sm"
+              disabled={!applicationId}
+            >
+              View Acknowledgement Slip
             </Button>
           </div>
         </div>

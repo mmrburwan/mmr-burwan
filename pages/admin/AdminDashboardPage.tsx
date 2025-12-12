@@ -52,8 +52,13 @@ const AdminDashboardPage: React.FC = () => {
         filtered = filtered.filter((app) => app.verified === true);
       } else if (verifiedFilter === 'unverified') {
         // Show only submitted applications that are not verified (exclude draft)
-        filtered = filtered.filter((app) => 
+        filtered = filtered.filter((app) =>
           (app.status === 'submitted' || app.status === 'under_review') &&
+          (app.verified === false || app.verified === undefined)
+        );
+      } else if (verifiedFilter === 'submitted') {
+        filtered = filtered.filter((app) =>
+          app.status === 'submitted' &&
           (app.verified === false || app.verified === undefined)
         );
       } else if (verifiedFilter === 'draft') {
@@ -102,7 +107,7 @@ const AdminDashboardPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
-        <Card 
+        <Card
           className="p-3 sm:p-4 lg:p-6 cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02]"
           onClick={() => {
             setVerifiedFilter('all');
@@ -117,7 +122,7 @@ const AdminDashboardPage: React.FC = () => {
             <FileText size={20} className="sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-gold-600 flex-shrink-0" />
           </div>
         </Card>
-        <Card 
+        <Card
           className="p-3 sm:p-4 lg:p-6 cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02]"
           onClick={() => {
             setVerifiedFilter('all');
@@ -134,7 +139,7 @@ const AdminDashboardPage: React.FC = () => {
             <Users size={20} className="sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-blue-600 flex-shrink-0" />
           </div>
         </Card>
-        <Card 
+        <Card
           className="p-3 sm:p-4 lg:p-6 cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02]"
           onClick={() => {
             setVerifiedFilter('verified');
@@ -152,7 +157,7 @@ const AdminDashboardPage: React.FC = () => {
             <CheckCircle size={20} className="sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-green-600 flex-shrink-0" />
           </div>
         </Card>
-        <Card 
+        <Card
           className="p-3 sm:p-4 lg:p-6 cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02]"
           onClick={() => {
             setVerifiedFilter('unverified');
@@ -190,6 +195,7 @@ const AdminDashboardPage: React.FC = () => {
             <option value="all">All Verification</option>
             <option value="verified">Verified</option>
             <option value="unverified">Unverified</option>
+            <option value="submitted">Submitted</option>
             <option value="draft">Draft</option>
           </select>
         </div>

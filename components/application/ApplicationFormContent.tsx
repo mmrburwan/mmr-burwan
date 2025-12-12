@@ -20,6 +20,7 @@ import Modal from '../../components/ui/Modal';
 import ApplicationSuccessModal from '../../components/ApplicationSuccessModal';
 import StateDistrictSelector from '../../components/StateDistrictSelector';
 import { ArrowRight, ArrowLeft, Save, Upload, X, FileText, Edit, CheckCircle, Eye, Download, LogOut } from 'lucide-react';
+import ImageCropModal from '../../components/ui/ImageCropModal';
 
 // Groom Details Schema (User personal + address)
 const groomSchema = z.object({
@@ -96,10 +97,10 @@ const ApplicationFormContent: React.FC = () => {
   const { application, updateDraft, submitApplication, isLoading, refreshApplication } = useApplication();
   const { showToast } = useNotification();
   const { t } = useTranslation('application');
-  
+
   // Detect if we're in admin context by checking the current route
   const isAdminContext = location.pathname.startsWith('/admin');
-  
+
   const applicationSteps = [
     { id: 'groom', label: t('steps.groom') },
     { id: 'bride', label: t('steps.bride') },
@@ -115,9 +116,11 @@ const ApplicationFormContent: React.FC = () => {
   const [previewDocument, setPreviewDocument] = useState<DocumentFile | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [pendingCropFile, setPendingCropFile] = useState<{ file: File; type: 'aadhaar' | 'tenth_certificate' | 'voter_id' | 'photo'; belongsTo: 'user' | 'partner' | 'joint' } | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  
+
   // Redirect to dashboard if application is submitted and user tries to edit
   useEffect(() => {
     if (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review') {
@@ -210,27 +213,27 @@ const ApplicationFormContent: React.FC = () => {
 
   useEffect(() => {
     if (groomSameAsPermanent) {
-      const permanent = groomForm.getValues();
-      groomForm.setValue('currentVillageStreet', permanent.permanentVillageStreet);
-      groomForm.setValue('currentPostOffice', permanent.permanentPostOffice);
-      groomForm.setValue('currentPoliceStation', permanent.permanentPoliceStation);
-      groomForm.setValue('currentDistrict', permanent.permanentDistrict);
-      groomForm.setValue('currentState', permanent.permanentState);
-      groomForm.setValue('currentZipCode', permanent.permanentZipCode);
-      groomForm.setValue('currentCountry', permanent.permanentCountry);
+      const current = groomForm.getValues();
+      groomForm.setValue('permanentVillageStreet', current.currentVillageStreet);
+      groomForm.setValue('permanentPostOffice', current.currentPostOffice);
+      groomForm.setValue('permanentPoliceStation', current.currentPoliceStation);
+      groomForm.setValue('permanentDistrict', current.currentDistrict);
+      groomForm.setValue('permanentState', current.currentState);
+      groomForm.setValue('permanentZipCode', current.currentZipCode);
+      groomForm.setValue('permanentCountry', current.currentCountry);
     }
   }, [groomSameAsPermanent, groomForm]);
 
   useEffect(() => {
     if (brideSameAsPermanent) {
-      const permanent = brideForm.getValues();
-      brideForm.setValue('currentVillageStreet', permanent.permanentVillageStreet);
-      brideForm.setValue('currentPostOffice', permanent.permanentPostOffice);
-      brideForm.setValue('currentPoliceStation', permanent.permanentPoliceStation);
-      brideForm.setValue('currentDistrict', permanent.permanentDistrict);
-      brideForm.setValue('currentState', permanent.permanentState);
-      brideForm.setValue('currentZipCode', permanent.permanentZipCode);
-      brideForm.setValue('currentCountry', permanent.permanentCountry);
+      const current = brideForm.getValues();
+      brideForm.setValue('permanentVillageStreet', current.currentVillageStreet);
+      brideForm.setValue('permanentPostOffice', current.currentPostOffice);
+      brideForm.setValue('permanentPoliceStation', current.currentPoliceStation);
+      brideForm.setValue('permanentDistrict', current.currentDistrict);
+      brideForm.setValue('permanentState', current.currentState);
+      brideForm.setValue('permanentZipCode', current.currentZipCode);
+      brideForm.setValue('permanentCountry', current.currentCountry);
     }
   }, [brideSameAsPermanent, brideForm]);
 
@@ -302,10 +305,14 @@ const ApplicationFormContent: React.FC = () => {
   }, [application, isLoading]);
 
   // Load documents when application loads or when on documents/review step
+  // Only reload if we don't already have documents loaded to avoid clearing unsaved documents
   useEffect(() => {
     if (application && (currentStep === 2 || currentStep === 4)) {
       const loadDocuments = async () => {
-        setIsLoadingDocuments(true);
+        // Only show loading if we don't have any documents loaded yet
+        if (applicationDocuments.length === 0) {
+          setIsLoadingDocuments(true);
+        }
         try {
           const docs = await documentService.getDocuments(application.id);
           setApplicationDocuments(docs);
@@ -324,27 +331,27 @@ const ApplicationFormContent: React.FC = () => {
     if (application && !isLoading && currentStep === 0) {
       // Calculate current step based on filled data (same logic as dashboard)
       let calculatedStep = 0;
-      
+
       // Check if groom details are filled (lastName is optional)
       const groomDetailsFilled = application.userDetails?.firstName && application.userDetails?.fatherName &&
-                                 application.userDetails?.dateOfBirth && application.userDetails?.aadhaarNumber && application.userDetails?.mobileNumber &&
-                                 (application.userAddress?.villageStreet || application.userAddress?.street) && application.userAddress?.postOffice && application.userAddress?.policeStation &&
-                                 (application.userAddress?.district || application.userAddress?.city) && application.userAddress?.state && application.userAddress?.zipCode && application.userAddress?.country &&
-                                 (application.userCurrentAddress?.villageStreet || application.userCurrentAddress?.street) && application.userCurrentAddress?.postOffice && application.userCurrentAddress?.policeStation &&
-                                 (application.userCurrentAddress?.district || application.userCurrentAddress?.city) && application.userCurrentAddress?.state && application.userCurrentAddress?.zipCode && application.userCurrentAddress?.country &&
-                                 application.declarations?.marriageDate;
-      
+        application.userDetails?.dateOfBirth && application.userDetails?.aadhaarNumber && application.userDetails?.mobileNumber &&
+        (application.userAddress?.villageStreet || application.userAddress?.street) && application.userAddress?.postOffice && application.userAddress?.policeStation &&
+        (application.userAddress?.district || application.userAddress?.city) && application.userAddress?.state && application.userAddress?.zipCode && application.userAddress?.country &&
+        (application.userCurrentAddress?.villageStreet || application.userCurrentAddress?.street) && application.userCurrentAddress?.postOffice && application.userCurrentAddress?.policeStation &&
+        (application.userCurrentAddress?.district || application.userCurrentAddress?.city) && application.userCurrentAddress?.state && application.userCurrentAddress?.zipCode && application.userCurrentAddress?.country &&
+        application.declarations?.marriageDate;
+
       if (!groomDetailsFilled) {
         calculatedStep = 0;
       } else {
         // Check if bride details are filled (lastName is optional)
         const brideDetailsFilled = application.partnerForm?.firstName && application.partnerForm?.fatherName &&
-                                   application.partnerForm?.dateOfBirth && (application.partnerForm?.aadhaarNumber || (application.partnerForm as any)?.idNumber) && (application.partnerForm as any)?.mobileNumber &&
-                                   (application.partnerAddress?.villageStreet || application.partnerAddress?.street) && application.partnerAddress?.postOffice && application.partnerAddress?.policeStation &&
-                                   (application.partnerAddress?.district || application.partnerAddress?.city) && application.partnerAddress?.state && application.partnerAddress?.zipCode && application.partnerAddress?.country &&
-                                   (application.partnerCurrentAddress?.villageStreet || application.partnerCurrentAddress?.street) && application.partnerCurrentAddress?.postOffice && application.partnerCurrentAddress?.policeStation &&
-                                   (application.partnerCurrentAddress?.district || application.partnerCurrentAddress?.city) && application.partnerCurrentAddress?.state && application.partnerCurrentAddress?.zipCode && application.partnerCurrentAddress?.country;
-        
+          application.partnerForm?.dateOfBirth && (application.partnerForm?.aadhaarNumber || (application.partnerForm as any)?.idNumber) && (application.partnerForm as any)?.mobileNumber &&
+          (application.partnerAddress?.villageStreet || application.partnerAddress?.street) && application.partnerAddress?.postOffice && application.partnerAddress?.policeStation &&
+          (application.partnerAddress?.district || application.partnerAddress?.city) && application.partnerAddress?.state && application.partnerAddress?.zipCode && application.partnerAddress?.country &&
+          (application.partnerCurrentAddress?.villageStreet || application.partnerCurrentAddress?.street) && application.partnerCurrentAddress?.postOffice && application.partnerCurrentAddress?.policeStation &&
+          (application.partnerCurrentAddress?.district || application.partnerCurrentAddress?.city) && application.partnerCurrentAddress?.state && application.partnerCurrentAddress?.zipCode && application.partnerCurrentAddress?.country;
+
         if (!brideDetailsFilled) {
           calculatedStep = 1;
         } else {
@@ -355,15 +362,15 @@ const ApplicationFormContent: React.FC = () => {
           const partnerAadhaar = documents.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar');
           const partnerSecondDoc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
           const jointPhotograph = documents.find(d => d.belongsTo === 'joint' && d.type === 'photo');
-          
+
           if (!userAadhaar || !userSecondDoc || !partnerAadhaar || !partnerSecondDoc || !jointPhotograph) {
             calculatedStep = 2;
           } else {
             // Check if declarations are filled
-            const hasDeclarations = application.declarations?.consent && 
-                                    application.declarations?.accuracy && 
-                                    application.declarations?.legal;
-            
+            const hasDeclarations = application.declarations?.consent &&
+              application.declarations?.accuracy &&
+              application.declarations?.legal;
+
             if (!hasDeclarations) {
               calculatedStep = 3;
             } else {
@@ -372,7 +379,7 @@ const ApplicationFormContent: React.FC = () => {
           }
         }
       }
-      
+
       // Only set step if it's different from current (to avoid unnecessary re-renders)
       if (calculatedStep !== currentStep) {
         setCurrentStep(calculatedStep);
@@ -386,7 +393,7 @@ const ApplicationFormContent: React.FC = () => {
   // Check for unsaved changes - MUST be before any early returns
   const hasUnsavedChanges = useMemo(() => {
     if (!application) return false;
-    
+
     if (currentStep === 0) {
       const values = groomFormValues;
       const saved = application;
@@ -453,29 +460,29 @@ const ApplicationFormContent: React.FC = () => {
   // Check if current step is valid - memoized to update when form values change
   const isCurrentStepValid = useMemo(() => {
     if (isSubmitted) return true; // Allow navigation if already submitted
-    
+
     if (currentStep === 0) {
       // Check if all required groom form fields are filled (lastName is optional)
       const values = groomFormValues;
       return !!(
-        values.firstName?.trim() && 
-        values.fatherName?.trim() && 
-        values.dateOfBirth && 
-        values.aadhaarNumber?.trim() && 
+        values.firstName?.trim() &&
+        values.fatherName?.trim() &&
+        values.dateOfBirth &&
+        values.aadhaarNumber?.trim() &&
         values.mobileNumber?.trim() &&
-        values.permanentVillageStreet?.trim() && 
-        values.permanentPostOffice?.trim() && 
-        values.permanentPoliceStation?.trim() && 
-        values.permanentDistrict?.trim() && 
-        values.permanentState?.trim() && 
-        values.permanentZipCode?.trim() && 
+        values.permanentVillageStreet?.trim() &&
+        values.permanentPostOffice?.trim() &&
+        values.permanentPoliceStation?.trim() &&
+        values.permanentDistrict?.trim() &&
+        values.permanentState?.trim() &&
+        values.permanentZipCode?.trim() &&
         values.permanentCountry?.trim() &&
-        values.currentVillageStreet?.trim() && 
-        values.currentPostOffice?.trim() && 
-        values.currentPoliceStation?.trim() && 
-        values.currentDistrict?.trim() && 
-        values.currentState?.trim() && 
-        values.currentZipCode?.trim() && 
+        values.currentVillageStreet?.trim() &&
+        values.currentPostOffice?.trim() &&
+        values.currentPoliceStation?.trim() &&
+        values.currentDistrict?.trim() &&
+        values.currentState?.trim() &&
+        values.currentZipCode?.trim() &&
         values.currentCountry?.trim() &&
         values.marriageDate
       );
@@ -483,24 +490,24 @@ const ApplicationFormContent: React.FC = () => {
       // Check if all required bride form fields are filled (lastName is optional)
       const values = brideFormValues;
       return !!(
-        values.firstName?.trim() && 
-        values.fatherName?.trim() && 
-        values.dateOfBirth && 
-        values.aadhaarNumber?.trim() && 
+        values.firstName?.trim() &&
+        values.fatherName?.trim() &&
+        values.dateOfBirth &&
+        values.aadhaarNumber?.trim() &&
         values.mobileNumber?.trim() &&
-        values.permanentVillageStreet?.trim() && 
-        values.permanentPostOffice?.trim() && 
-        values.permanentPoliceStation?.trim() && 
-        values.permanentDistrict?.trim() && 
-        values.permanentState?.trim() && 
-        values.permanentZipCode?.trim() && 
+        values.permanentVillageStreet?.trim() &&
+        values.permanentPostOffice?.trim() &&
+        values.permanentPoliceStation?.trim() &&
+        values.permanentDistrict?.trim() &&
+        values.permanentState?.trim() &&
+        values.permanentZipCode?.trim() &&
         values.permanentCountry?.trim() &&
-        values.currentVillageStreet?.trim() && 
-        values.currentPostOffice?.trim() && 
-        values.currentPoliceStation?.trim() && 
-        values.currentDistrict?.trim() && 
-        values.currentState?.trim() && 
-        values.currentZipCode?.trim() && 
+        values.currentVillageStreet?.trim() &&
+        values.currentPostOffice?.trim() &&
+        values.currentPoliceStation?.trim() &&
+        values.currentDistrict?.trim() &&
+        values.currentState?.trim() &&
+        values.currentZipCode?.trim() &&
         values.currentCountry?.trim()
       );
     } else if (currentStep === 2) {
@@ -511,14 +518,14 @@ const ApplicationFormContent: React.FC = () => {
       const partnerAadhaar = documents.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar');
       const partnerSecondDoc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
       const jointPhotograph = documents.find(d => d.belongsTo === 'joint' && d.type === 'photo');
-      
+
       // Check previously saved documents
       const savedUserAadhaar = applicationDocuments.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
       const savedUserSecondDoc = applicationDocuments.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
       const savedPartnerAadhaar = applicationDocuments.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar');
       const savedPartnerSecondDoc = applicationDocuments.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
       const savedJointPhotograph = applicationDocuments.find(d => d.belongsTo === 'joint' && d.type === 'photo');
-      
+
       // Document is valid if it exists in either current session or saved documents
       return !!(
         (userAadhaar || savedUserAadhaar) &&
@@ -572,14 +579,14 @@ const ApplicationFormContent: React.FC = () => {
         const partnerAadhaar = documents.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar') || applicationDocuments.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar');
         const partnerSecondDoc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) || applicationDocuments.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
         const jointPhotograph = documents.find(d => d.belongsTo === 'joint' && d.type === 'photo') || applicationDocuments.find(d => d.belongsTo === 'joint' && d.type === 'photo');
-        
+
         const missingDocs = [];
         if (!userAadhaar) missingDocs.push("Groom's Aadhaar Card");
         if (!userSecondDoc) missingDocs.push("Groom's 10th Certificate or Voter ID");
         if (!partnerAadhaar) missingDocs.push("Bride's Aadhaar Card");
         if (!partnerSecondDoc) missingDocs.push("Bride's 10th Certificate or Voter ID");
         if (!jointPhotograph) missingDocs.push("Joint Photograph");
-        
+
         showToast(`Please upload all required documents: ${missingDocs.join(', ')}`, 'error');
       } else if (currentStep === 3) {
         await declarationsForm.trigger();
@@ -597,7 +604,7 @@ const ApplicationFormContent: React.FC = () => {
       }
       return;
     }
-    
+
     // If valid, proceed with normal handleNext
     await handleNext();
   };
@@ -739,14 +746,16 @@ const ApplicationFormContent: React.FC = () => {
         if (application) {
           // Only upload documents that haven't been saved yet
           if (documents.length > 0) {
+            const uploadedDocs: string[] = [];
             for (const doc of documents) {
               await documentService.uploadDocument(application.id, doc.file, doc.type, doc.belongsTo);
+              uploadedDocs.push(doc.id);
             }
             showToast('Documents uploaded successfully!', 'success');
-            
-            // Clear local documents state after successful upload to prevent re-uploads
-            setDocuments([]);
-            
+
+            // Only clear documents that were successfully uploaded
+            setDocuments(prevDocs => prevDocs.filter(doc => !uploadedDocs.includes(doc.id)));
+
             // Reload documents from database to ensure state is in sync
             const updatedDocs = await documentService.getDocuments(application.id);
             setApplicationDocuments(updatedDocs);
@@ -770,7 +779,7 @@ const ApplicationFormContent: React.FC = () => {
         const data = declarationsForm.getValues();
         setIsSaving(true);
         try {
-          await updateDraft({ 
+          await updateDraft({
             declarations: {
               ...(application?.declarations || {}), // Preserve existing fields like marriageDate
               consent: data.consent,
@@ -816,10 +825,10 @@ const ApplicationFormContent: React.FC = () => {
   const documentExists = (type: 'aadhaar' | 'tenth_certificate' | 'voter_id' | 'photo', belongsTo: 'user' | 'partner' | 'joint') => {
     // Check if document exists in unsaved documents
     const existsInUnsaved = documents.some(d => d.belongsTo === belongsTo && d.type === type);
-    
+
     // Check if document exists in saved documents
     const existsInSaved = applicationDocuments.some(d => d.belongsTo === belongsTo && d.type === type);
-    
+
     return existsInUnsaved || existsInSaved;
   };
 
@@ -846,6 +855,13 @@ const ApplicationFormContent: React.FC = () => {
       return;
     }
 
+    // Show crop modal for joint photos
+    if (type === 'photo' && belongsTo === 'joint') {
+      setPendingCropFile({ file, type, belongsTo });
+      setCropModalOpen(true);
+      return;
+    }
+
     const newDoc: DocumentFile = {
       id: `doc-${Date.now()}-${Math.random()}`,
       file,
@@ -855,6 +871,46 @@ const ApplicationFormContent: React.FC = () => {
     setDocuments([...documents.filter(d => !(d.belongsTo === belongsTo && d.type === type)), newDoc]);
   };
 
+  const handleCropComplete = (croppedFile: File) => {
+    if (!pendingCropFile) return;
+
+    // Check file size again after cropping
+    if (croppedFile.size > MAX_FILE_SIZE) {
+      showToast(`Cropped file size exceeds 500KB limit. Please try again with a smaller image.`, 'error');
+      setPendingCropFile(null);
+      setCropModalOpen(false);
+      return;
+    }
+
+    // Create document with cropped file
+    const newDoc: DocumentFile = {
+      id: `doc-${Date.now()}-${Math.random()}`,
+      file: croppedFile,
+      type: pendingCropFile.type,
+      belongsTo: pendingCropFile.belongsTo,
+    };
+    setDocuments([...documents.filter(d => !(d.belongsTo === pendingCropFile.belongsTo && d.type === pendingCropFile.type)), newDoc]);
+
+    setPendingCropFile(null);
+    setCropModalOpen(false);
+  };
+
+  const handleCropSkip = () => {
+    if (!pendingCropFile) return;
+
+    // Use original file
+    const newDoc: DocumentFile = {
+      id: `doc-${Date.now()}-${Math.random()}`,
+      file: pendingCropFile.file,
+      type: pendingCropFile.type,
+      belongsTo: pendingCropFile.belongsTo,
+    };
+    setDocuments([...documents.filter(d => !(d.belongsTo === pendingCropFile.belongsTo && d.type === pendingCropFile.type)), newDoc]);
+
+    setPendingCropFile(null);
+    setCropModalOpen(false);
+  };
+
   const handleRemoveDocument = (id: string) => {
     setDocuments(documents.filter(d => d.id !== id));
   };
@@ -862,7 +918,7 @@ const ApplicationFormContent: React.FC = () => {
   // Handle removing saved documents (from applicationDocuments)
   const handleRemoveSavedDocument = async (type: 'aadhaar' | 'tenth_certificate' | 'voter_id' | 'photo', belongsTo: 'user' | 'partner' | 'joint') => {
     if (!application) return;
-    
+
     try {
       const docToRemove = applicationDocuments.find(d => d.belongsTo === belongsTo && d.type === type);
       if (docToRemove && docToRemove.id) {
@@ -881,7 +937,7 @@ const ApplicationFormContent: React.FC = () => {
     setPreviewDocument(doc);
     setIsLoadingPreview(true);
     setPreviewUrl(null);
-    
+
     try {
       if ('file' in doc && doc.file instanceof File) {
         // For local files (not yet uploaded)
@@ -1031,40 +1087,40 @@ const ApplicationFormContent: React.FC = () => {
             </div>
 
             <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom Permanent Address</h3>
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom Current Address</h3>
               <div className="space-y-3 sm:space-y-4">
                 <Input
                   label="Village/Street"
-                  {...groomForm.register('permanentVillageStreet')}
+                  {...groomForm.register('currentVillageStreet')}
                   disabled={isSubmitted}
-                  error={groomForm.formState.errors.permanentVillageStreet?.message}
+                  error={groomForm.formState.errors.currentVillageStreet?.message}
                   required
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <Input
                     label="Post Office"
-                    {...groomForm.register('permanentPostOffice')}
+                    {...groomForm.register('currentPostOffice')}
                     disabled={isSubmitted}
-                    error={groomForm.formState.errors.permanentPostOffice?.message}
+                    error={groomForm.formState.errors.currentPostOffice?.message}
                     required
                   />
                   <Input
                     label="Police Station"
-                    {...groomForm.register('permanentPoliceStation')}
+                    {...groomForm.register('currentPoliceStation')}
                     disabled={isSubmitted}
-                    error={groomForm.formState.errors.permanentPoliceStation?.message}
+                    error={groomForm.formState.errors.currentPoliceStation?.message}
                     required
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <StateDistrictSelector
-                    stateValue={groomForm.watch('permanentState') || ''}
-                    districtValue={groomForm.watch('permanentDistrict') || ''}
-                    stateRegister={groomForm.register('permanentState')}
-                    districtRegister={groomForm.register('permanentDistrict')}
+                    stateValue={groomForm.watch('currentState') || ''}
+                    districtValue={groomForm.watch('currentDistrict') || ''}
+                    stateRegister={groomForm.register('currentState')}
+                    districtRegister={groomForm.register('currentDistrict')}
                     setValue={groomForm.setValue}
-                    stateError={groomForm.formState.errors.permanentState?.message}
-                    districtError={groomForm.formState.errors.permanentDistrict?.message}
+                    stateError={groomForm.formState.errors.currentState?.message}
+                    districtError={groomForm.formState.errors.currentDistrict?.message}
                     disabled={isSubmitted}
                     stateLabel="State"
                     districtLabel="District"
@@ -1075,20 +1131,20 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="ZIP Code"
                     maxLength={6}
-                    {...groomForm.register('permanentZipCode', {
+                    {...groomForm.register('currentZipCode', {
                       onChange: (e) => {
                         e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
                       },
                     })}
                     disabled={isSubmitted}
-                    error={groomForm.formState.errors.permanentZipCode?.message}
+                    error={groomForm.formState.errors.currentZipCode?.message}
                     required
                   />
                   <Input
                     label="Country"
-                    {...groomForm.register('permanentCountry')}
+                    {...groomForm.register('currentCountry')}
                     disabled={isSubmitted}
-                    error={groomForm.formState.errors.permanentCountry?.message}
+                    error={groomForm.formState.errors.currentCountry?.message}
                     defaultValue="India"
                     required
                   />
@@ -1096,10 +1152,10 @@ const ApplicationFormContent: React.FC = () => {
               </div>
 
               <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200 mt-4 sm:mt-5 lg:mt-6">
-                <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom Current Address</h3>
+                <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom Permanent Address</h3>
                 <div className="mb-3 sm:mb-4">
                   <Checkbox
-                    label="Same as permanent address"
+                    label="Same as current address"
                     checked={groomSameAsPermanent || false}
                     onChange={(e) => groomForm.setValue('sameAsPermanent', e.target.checked)}
                   />
@@ -1107,36 +1163,36 @@ const ApplicationFormContent: React.FC = () => {
                 <div className="space-y-3 sm:space-y-4">
                   <Input
                     label="Village/Street"
-                    {...groomForm.register('currentVillageStreet')}
+                    {...groomForm.register('permanentVillageStreet')}
                     disabled={isSubmitted || groomSameAsPermanent}
-                    error={groomForm.formState.errors.currentVillageStreet?.message}
+                    error={groomForm.formState.errors.permanentVillageStreet?.message}
                     required
                   />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                     <Input
                       label="Post Office"
-                      {...groomForm.register('currentPostOffice')}
+                      {...groomForm.register('permanentPostOffice')}
                       disabled={isSubmitted || groomSameAsPermanent}
-                      error={groomForm.formState.errors.currentPostOffice?.message}
+                      error={groomForm.formState.errors.permanentPostOffice?.message}
                       required
                     />
                     <Input
                       label="Police Station"
-                      {...groomForm.register('currentPoliceStation')}
+                      {...groomForm.register('permanentPoliceStation')}
                       disabled={isSubmitted || groomSameAsPermanent}
-                      error={groomForm.formState.errors.currentPoliceStation?.message}
+                      error={groomForm.formState.errors.permanentPoliceStation?.message}
                       required
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                     <StateDistrictSelector
-                      stateValue={groomForm.watch('currentState') || ''}
-                      districtValue={groomForm.watch('currentDistrict') || ''}
-                      stateRegister={groomForm.register('currentState')}
-                      districtRegister={groomForm.register('currentDistrict')}
+                      stateValue={groomForm.watch('permanentState') || ''}
+                      districtValue={groomForm.watch('permanentDistrict') || ''}
+                      stateRegister={groomForm.register('permanentState')}
+                      districtRegister={groomForm.register('permanentDistrict')}
                       setValue={groomForm.setValue}
-                      stateError={groomForm.formState.errors.currentState?.message}
-                      districtError={groomForm.formState.errors.currentDistrict?.message}
+                      stateError={groomForm.formState.errors.permanentState?.message}
+                      districtError={groomForm.formState.errors.permanentDistrict?.message}
                       disabled={isSubmitted || groomSameAsPermanent}
                       stateLabel="State"
                       districtLabel="District"
@@ -1147,20 +1203,20 @@ const ApplicationFormContent: React.FC = () => {
                     <Input
                       label="ZIP Code"
                       maxLength={6}
-                      {...groomForm.register('currentZipCode', {
+                      {...groomForm.register('permanentZipCode', {
                         onChange: (e) => {
                           e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
                         },
                       })}
                       disabled={isSubmitted || groomSameAsPermanent}
-                      error={groomForm.formState.errors.currentZipCode?.message}
+                      error={groomForm.formState.errors.permanentZipCode?.message}
                       required
                     />
                     <Input
                       label="Country"
-                      {...groomForm.register('currentCountry')}
+                      {...groomForm.register('permanentCountry')}
                       disabled={isSubmitted || groomSameAsPermanent}
-                      error={groomForm.formState.errors.currentCountry?.message}
+                      error={groomForm.formState.errors.permanentCountry?.message}
                       defaultValue="India"
                       required
                     />
@@ -1250,40 +1306,40 @@ const ApplicationFormContent: React.FC = () => {
             </div>
 
             <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Permanent Address</h3>
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Current Address</h3>
               <div className="space-y-3 sm:space-y-4">
                 <Input
                   label="Village/Street"
-                  {...brideForm.register('permanentVillageStreet')}
+                  {...brideForm.register('currentVillageStreet')}
                   disabled={isSubmitted}
-                  error={brideForm.formState.errors.permanentVillageStreet?.message}
+                  error={brideForm.formState.errors.currentVillageStreet?.message}
                   required
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <Input
                     label="Post Office"
-                    {...brideForm.register('permanentPostOffice')}
+                    {...brideForm.register('currentPostOffice')}
                     disabled={isSubmitted}
-                    error={brideForm.formState.errors.permanentPostOffice?.message}
+                    error={brideForm.formState.errors.currentPostOffice?.message}
                     required
                   />
                   <Input
                     label="Police Station"
-                    {...brideForm.register('permanentPoliceStation')}
+                    {...brideForm.register('currentPoliceStation')}
                     disabled={isSubmitted}
-                    error={brideForm.formState.errors.permanentPoliceStation?.message}
+                    error={brideForm.formState.errors.currentPoliceStation?.message}
                     required
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                   <StateDistrictSelector
-                    stateValue={brideForm.watch('permanentState') || ''}
-                    districtValue={brideForm.watch('permanentDistrict') || ''}
-                    stateRegister={brideForm.register('permanentState')}
-                    districtRegister={brideForm.register('permanentDistrict')}
+                    stateValue={brideForm.watch('currentState') || ''}
+                    districtValue={brideForm.watch('currentDistrict') || ''}
+                    stateRegister={brideForm.register('currentState')}
+                    districtRegister={brideForm.register('currentDistrict')}
                     setValue={brideForm.setValue}
-                    stateError={brideForm.formState.errors.permanentState?.message}
-                    districtError={brideForm.formState.errors.permanentDistrict?.message}
+                    stateError={brideForm.formState.errors.currentState?.message}
+                    districtError={brideForm.formState.errors.currentDistrict?.message}
                     disabled={isSubmitted}
                     stateLabel="State"
                     districtLabel="District"
@@ -1294,20 +1350,20 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="ZIP Code"
                     maxLength={6}
-                    {...brideForm.register('permanentZipCode', {
+                    {...brideForm.register('currentZipCode', {
                       onChange: (e) => {
                         e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
                       },
                     })}
                     disabled={isSubmitted}
-                    error={brideForm.formState.errors.permanentZipCode?.message}
+                    error={brideForm.formState.errors.currentZipCode?.message}
                     required
                   />
                   <Input
                     label="Country"
-                    {...brideForm.register('permanentCountry')}
+                    {...brideForm.register('currentCountry')}
                     disabled={isSubmitted}
-                    error={brideForm.formState.errors.permanentCountry?.message}
+                    error={brideForm.formState.errors.currentCountry?.message}
                     defaultValue="India"
                     required
                   />
@@ -1315,10 +1371,10 @@ const ApplicationFormContent: React.FC = () => {
               </div>
 
               <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200 mt-4 sm:mt-5 lg:mt-6">
-                <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Current Address</h3>
+                <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Permanent Address</h3>
                 <div className="mb-3 sm:mb-4">
                   <Checkbox
-                    label="Same as permanent address"
+                    label="Same as current address"
                     checked={brideSameAsPermanent || false}
                     onChange={(e) => brideForm.setValue('sameAsPermanent', e.target.checked)}
                   />
@@ -1326,36 +1382,36 @@ const ApplicationFormContent: React.FC = () => {
                 <div className="space-y-3 sm:space-y-4">
                   <Input
                     label="Village/Street"
-                    {...brideForm.register('currentVillageStreet')}
+                    {...brideForm.register('permanentVillageStreet')}
                     disabled={isSubmitted || brideSameAsPermanent}
-                    error={brideForm.formState.errors.currentVillageStreet?.message}
+                    error={brideForm.formState.errors.permanentVillageStreet?.message}
                     required
                   />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                     <Input
                       label="Post Office"
-                      {...brideForm.register('currentPostOffice')}
+                      {...brideForm.register('permanentPostOffice')}
                       disabled={isSubmitted || brideSameAsPermanent}
-                      error={brideForm.formState.errors.currentPostOffice?.message}
+                      error={brideForm.formState.errors.permanentPostOffice?.message}
                       required
                     />
                     <Input
                       label="Police Station"
-                      {...brideForm.register('currentPoliceStation')}
+                      {...brideForm.register('permanentPoliceStation')}
                       disabled={isSubmitted || brideSameAsPermanent}
-                      error={brideForm.formState.errors.currentPoliceStation?.message}
+                      error={brideForm.formState.errors.permanentPoliceStation?.message}
                       required
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                     <StateDistrictSelector
-                      stateValue={brideForm.watch('currentState') || ''}
-                      districtValue={brideForm.watch('currentDistrict') || ''}
-                      stateRegister={brideForm.register('currentState')}
-                      districtRegister={brideForm.register('currentDistrict')}
+                      stateValue={brideForm.watch('permanentState') || ''}
+                      districtValue={brideForm.watch('permanentDistrict') || ''}
+                      stateRegister={brideForm.register('permanentState')}
+                      districtRegister={brideForm.register('permanentDistrict')}
                       setValue={brideForm.setValue}
-                      stateError={brideForm.formState.errors.currentState?.message}
-                      districtError={brideForm.formState.errors.currentDistrict?.message}
+                      stateError={brideForm.formState.errors.permanentState?.message}
+                      districtError={brideForm.formState.errors.permanentDistrict?.message}
                       disabled={isSubmitted || brideSameAsPermanent}
                       stateLabel="State"
                       districtLabel="District"
@@ -1366,20 +1422,20 @@ const ApplicationFormContent: React.FC = () => {
                     <Input
                       label="ZIP Code"
                       maxLength={6}
-                      {...brideForm.register('currentZipCode', {
+                      {...brideForm.register('permanentZipCode', {
                         onChange: (e) => {
                           e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
                         },
                       })}
                       disabled={isSubmitted || brideSameAsPermanent}
-                      error={brideForm.formState.errors.currentZipCode?.message}
+                      error={brideForm.formState.errors.permanentZipCode?.message}
                       required
                     />
                     <Input
                       label="Country"
-                      {...brideForm.register('currentCountry')}
+                      {...brideForm.register('permanentCountry')}
                       disabled={isSubmitted || brideSameAsPermanent}
-                      error={brideForm.formState.errors.currentCountry?.message}
+                      error={brideForm.formState.errors.permanentCountry?.message}
                       defaultValue="India"
                       required
                     />
@@ -1398,14 +1454,14 @@ const ApplicationFormContent: React.FC = () => {
               <p className="text-[10px] sm:text-xs text-gray-500 mb-3 sm:mb-4 lg:mb-6">
                 <span className="text-gold-600 font-medium">Max file size: 500KB</span> per document
               </p>
-              
+
               {isLoadingDocuments && (
                 <div className="flex items-center justify-center py-3 sm:py-4 mb-3 sm:mb-4 bg-gray-50 rounded-lg">
                   <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-t-2 border-b-2 border-gold-500"></div>
                   <span className="ml-2 text-[10px] sm:text-xs text-gray-500">Loading...</span>
                 </div>
               )}
-              
+
               {/* Show saved documents from database */}
               {!isLoadingDocuments && applicationDocuments.filter(d => d.belongsTo === 'user').length > 0 && (
                 <div className="mb-3 sm:mb-4 p-2.5 sm:p-4 bg-gray-50 rounded-lg">
@@ -1440,7 +1496,7 @@ const ApplicationFormContent: React.FC = () => {
                   </div>
                 </div>
               )}
-              
+
               <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
@@ -1620,14 +1676,14 @@ const ApplicationFormContent: React.FC = () => {
               <p className="text-[10px] sm:text-xs text-gray-500 mb-3 sm:mb-4 lg:mb-6">
                 <span className="text-gold-600 font-medium">Max file size: 500KB</span> per document
               </p>
-              
+
               {isLoadingDocuments && (
                 <div className="flex items-center justify-center py-3 sm:py-4 mb-3 sm:mb-4 bg-gray-50 rounded-lg">
                   <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-t-2 border-b-2 border-gold-500"></div>
                   <span className="ml-2 text-[10px] sm:text-xs text-gray-500">Loading...</span>
                 </div>
               )}
-              
+
               {/* Show saved documents from database */}
               {!isLoadingDocuments && applicationDocuments.filter(d => d.belongsTo === 'partner').length > 0 && (
                 <div className="mb-3 sm:mb-4 p-2.5 sm:p-4 bg-gray-50 rounded-lg">
@@ -1662,7 +1718,7 @@ const ApplicationFormContent: React.FC = () => {
                   </div>
                 </div>
               )}
-              
+
               <div className="space-y-3 sm:space-y-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
@@ -1842,14 +1898,14 @@ const ApplicationFormContent: React.FC = () => {
               <p className="text-[10px] sm:text-xs text-gray-500 mb-3 sm:mb-4 lg:mb-6">
                 <span className="text-gold-600 font-medium">Max file size: 500KB</span>
               </p>
-              
+
               {isLoadingDocuments && (
                 <div className="flex items-center justify-center py-3 sm:py-4 mb-3 sm:mb-4 bg-gray-50 rounded-lg">
                   <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-t-2 border-b-2 border-gold-500"></div>
                   <span className="ml-2 text-[10px] sm:text-xs text-gray-500">Loading...</span>
                 </div>
               )}
-              
+
               {/* Show saved documents from database */}
               {!isLoadingDocuments && applicationDocuments.filter(d => d.belongsTo === 'joint' && d.type === 'photo').length > 0 && (
                 <div className="mb-3 sm:mb-4 p-2.5 sm:p-4 bg-gray-50 rounded-lg">
@@ -1881,7 +1937,7 @@ const ApplicationFormContent: React.FC = () => {
                   </div>
                 </div>
               )}
-              
+
               <div className="space-y-3 sm:space-y-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
@@ -1999,13 +2055,13 @@ const ApplicationFormContent: React.FC = () => {
         const groomData = groomForm.getValues();
         const brideData = brideForm.getValues();
         const declarationsData = declarationsForm.getValues();
-        
+
         // Get marriage date from form or saved application data
         // Check form first, then saved application, with fallback to empty string
         const formMarriageDate = groomForm.watch('marriageDate');
         const savedMarriageDate = (application?.declarations as any)?.marriageDate || (application?.declarations as any)?.marriageRegistrationDate;
         const marriageDate = formMarriageDate || savedMarriageDate || '';
-        
+
         // Debug: Log the date values to help troubleshoot
         if (process.env.NODE_ENV === 'development') {
           console.log('Marriage Date Debug:', {
@@ -2018,7 +2074,7 @@ const ApplicationFormContent: React.FC = () => {
           });
           console.log('Full application object:', JSON.stringify(application, null, 2));
         }
-        
+
         return (
           <div className="space-y-3 sm:space-y-4 lg:space-y-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4 lg:mb-6 gap-2">
@@ -2050,8 +2106,8 @@ const ApplicationFormContent: React.FC = () => {
                 <div>
                   <p className="text-gray-500 mb-1">Marriage Date</p>
                   <p className="font-medium text-gray-900">
-                    {marriageDate && marriageDate.trim() !== '' 
-                      ? safeFormatDate(marriageDate, 'MMMM d, yyyy', 'Invalid date format') 
+                    {marriageDate && marriageDate.trim() !== ''
+                      ? safeFormatDate(marriageDate, 'MMMM d, yyyy', 'Invalid date format')
                       : 'Not provided'}
                   </p>
                 </div>
@@ -2098,21 +2154,21 @@ const ApplicationFormContent: React.FC = () => {
               <div className="pt-4 border-t border-gray-200">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Permanent Address</p>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>{groomData.permanentVillageStreet}</p>
-                      <p>P.O: {groomData.permanentPostOffice}, P.S: {groomData.permanentPoliceStation}</p>
-                      <p>Dist: {groomData.permanentDistrict}, {groomData.permanentState}</p>
-                      <p>PIN: {groomData.permanentZipCode}, {groomData.permanentCountry}</p>
-                    </div>
-                  </div>
-                  <div>
                     <p className="text-sm font-medium text-gray-700 mb-2">Current Address</p>
                     <div className="text-sm text-gray-600 space-y-1">
                       <p>{groomData.currentVillageStreet}</p>
                       <p>P.O: {groomData.currentPostOffice}, P.S: {groomData.currentPoliceStation}</p>
                       <p>Dist: {groomData.currentDistrict}, {groomData.currentState}</p>
                       <p>PIN: {groomData.currentZipCode}, {groomData.currentCountry}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Permanent Address</p>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <p>{groomData.permanentVillageStreet}</p>
+                      <p>P.O: {groomData.permanentPostOffice}, P.S: {groomData.permanentPoliceStation}</p>
+                      <p>Dist: {groomData.permanentDistrict}, {groomData.permanentState}</p>
+                      <p>PIN: {groomData.permanentZipCode}, {groomData.permanentCountry}</p>
                     </div>
                   </div>
                 </div>
@@ -2162,21 +2218,21 @@ const ApplicationFormContent: React.FC = () => {
               <div className="pt-4 border-t border-gray-200">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Permanent Address</p>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>{brideData.permanentVillageStreet}</p>
-                      <p>P.O: {brideData.permanentPostOffice}, P.S: {brideData.permanentPoliceStation}</p>
-                      <p>Dist: {brideData.permanentDistrict}, {brideData.permanentState}</p>
-                      <p>PIN: {brideData.permanentZipCode}, {brideData.permanentCountry}</p>
-                    </div>
-                  </div>
-                  <div>
                     <p className="text-sm font-medium text-gray-700 mb-2">Current Address</p>
                     <div className="text-sm text-gray-600 space-y-1">
                       <p>{brideData.currentVillageStreet}</p>
                       <p>P.O: {brideData.currentPostOffice}, P.S: {brideData.currentPoliceStation}</p>
                       <p>Dist: {brideData.currentDistrict}, {brideData.currentState}</p>
                       <p>PIN: {brideData.currentZipCode}, {brideData.currentCountry}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Permanent Address</p>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <p>{brideData.permanentVillageStreet}</p>
+                      <p>P.O: {brideData.permanentPostOffice}, P.S: {brideData.permanentPoliceStation}</p>
+                      <p>Dist: {brideData.permanentDistrict}, {brideData.permanentState}</p>
+                      <p>PIN: {brideData.permanentZipCode}, {brideData.permanentCountry}</p>
                     </div>
                   </div>
                 </div>
@@ -2216,67 +2272,67 @@ const ApplicationFormContent: React.FC = () => {
                         {applicationDocuments
                           .filter(d => d.belongsTo === 'user')
                           .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
-                          <FileText size={16} className="flex-shrink-0" />
-                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.name}`}>
-                            {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                            {doc.type === 'tenth_certificate' && '10th Certificate'}
-                            {doc.type === 'voter_id' && 'Voter ID'}
-                            : {doc.name}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handlePreviewDocument(doc);
-                            }}
-                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
-                            title="Preview"
-                            type="button"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
-                        </div>
-                      ))}
-                    {/* Show unsaved documents from current session (only if not already in applicationDocuments) */}
-                    {documents
-                      .filter(d => {
-                        if (d.belongsTo !== 'user') return false;
-                        // Only show if not already saved
-                        const isAlreadySaved = applicationDocuments.some(
-                          ad => ad.belongsTo === d.belongsTo && ad.type === d.type
-                        );
-                        return !isAlreadySaved;
-                      })
-                      .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
-                          <FileText size={16} className="flex-shrink-0" />
-                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.file.name}`}>
-                            {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                            {doc.type === 'tenth_certificate' && '10th Certificate'}
-                            {doc.type === 'voter_id' && 'Voter ID'}
-                            : {doc.file.name}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handlePreviewDocument(doc);
-                            }}
-                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
-                            title="Preview"
-                            type="button"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
-                        </div>
-                      ))}
-                        {applicationDocuments.filter(d => d.belongsTo === 'user').length === 0 && 
-                         documents.filter(d => d.belongsTo === 'user').length === 0 && (
-                          <p className="text-sm text-gray-400 italic">No documents uploaded yet</p>
-                        )}
+                            <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                              <FileText size={16} className="flex-shrink-0" />
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.name}`}>
+                                {doc.type === 'aadhaar' && 'Aadhaar Card'}
+                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'voter_id' && 'Voter ID'}
+                                : {doc.name}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handlePreviewDocument(doc);
+                                }}
+                                className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
+                                title="Preview"
+                                type="button"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
+                            </div>
+                          ))}
+                        {/* Show unsaved documents from current session (only if not already in applicationDocuments) */}
+                        {documents
+                          .filter(d => {
+                            if (d.belongsTo !== 'user') return false;
+                            // Only show if not already saved
+                            const isAlreadySaved = applicationDocuments.some(
+                              ad => ad.belongsTo === d.belongsTo && ad.type === d.type
+                            );
+                            return !isAlreadySaved;
+                          })
+                          .map(doc => (
+                            <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                              <FileText size={16} className="flex-shrink-0" />
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.file.name}`}>
+                                {doc.type === 'aadhaar' && 'Aadhaar Card'}
+                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'voter_id' && 'Voter ID'}
+                                : {doc.file.name}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handlePreviewDocument(doc);
+                                }}
+                                className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
+                                title="Preview"
+                                type="button"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
+                            </div>
+                          ))}
+                        {applicationDocuments.filter(d => d.belongsTo === 'user').length === 0 &&
+                          documents.filter(d => d.belongsTo === 'user').length === 0 && (
+                            <p className="text-sm text-gray-400 italic">No documents uploaded yet</p>
+                          )}
                       </>
                     )}
                   </div>
@@ -2295,67 +2351,67 @@ const ApplicationFormContent: React.FC = () => {
                         {applicationDocuments
                           .filter(d => d.belongsTo === 'partner')
                           .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
-                          <FileText size={16} className="flex-shrink-0" />
-                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.name}`}>
-                            {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                            {doc.type === 'tenth_certificate' && '10th Certificate'}
-                            {doc.type === 'voter_id' && 'Voter ID'}
-                            : {doc.name}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handlePreviewDocument(doc);
-                            }}
-                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
-                            title="Preview"
-                            type="button"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
-                        </div>
-                      ))}
-                    {/* Show unsaved documents from current session (only if not already in applicationDocuments) */}
-                    {documents
-                      .filter(d => {
-                        if (d.belongsTo !== 'partner') return false;
-                        // Only show if not already saved
-                        const isAlreadySaved = applicationDocuments.some(
-                          ad => ad.belongsTo === d.belongsTo && ad.type === d.type
-                        );
-                        return !isAlreadySaved;
-                      })
-                      .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
-                          <FileText size={16} className="flex-shrink-0" />
-                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.file.name}`}>
-                            {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                            {doc.type === 'tenth_certificate' && '10th Certificate'}
-                            {doc.type === 'voter_id' && 'Voter ID'}
-                            : {doc.file.name}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handlePreviewDocument(doc);
-                            }}
-                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
-                            title="Preview"
-                            type="button"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
-                        </div>
-                      ))}
-                        {applicationDocuments.filter(d => d.belongsTo === 'partner').length === 0 && 
-                         documents.filter(d => d.belongsTo === 'partner').length === 0 && (
-                          <p className="text-sm text-gray-400 italic">No documents uploaded yet</p>
-                        )}
+                            <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                              <FileText size={16} className="flex-shrink-0" />
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.name}`}>
+                                {doc.type === 'aadhaar' && 'Aadhaar Card'}
+                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'voter_id' && 'Voter ID'}
+                                : {doc.name}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handlePreviewDocument(doc);
+                                }}
+                                className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
+                                title="Preview"
+                                type="button"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
+                            </div>
+                          ))}
+                        {/* Show unsaved documents from current session (only if not already in applicationDocuments) */}
+                        {documents
+                          .filter(d => {
+                            if (d.belongsTo !== 'partner') return false;
+                            // Only show if not already saved
+                            const isAlreadySaved = applicationDocuments.some(
+                              ad => ad.belongsTo === d.belongsTo && ad.type === d.type
+                            );
+                            return !isAlreadySaved;
+                          })
+                          .map(doc => (
+                            <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                              <FileText size={16} className="flex-shrink-0" />
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.file.name}`}>
+                                {doc.type === 'aadhaar' && 'Aadhaar Card'}
+                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'voter_id' && 'Voter ID'}
+                                : {doc.file.name}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handlePreviewDocument(doc);
+                                }}
+                                className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
+                                title="Preview"
+                                type="button"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
+                            </div>
+                          ))}
+                        {applicationDocuments.filter(d => d.belongsTo === 'partner').length === 0 &&
+                          documents.filter(d => d.belongsTo === 'partner').length === 0 && (
+                            <p className="text-sm text-gray-400 italic">No documents uploaded yet</p>
+                          )}
                       </>
                     )}
                   </div>
@@ -2374,60 +2430,60 @@ const ApplicationFormContent: React.FC = () => {
                         {applicationDocuments
                           .filter(d => d.belongsTo === 'joint' && d.type === 'photo')
                           .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
-                          <FileText size={16} className="flex-shrink-0" />
-                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`Joint Photograph: ${doc.name}`}>
-                            Joint Photograph: {doc.name}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handlePreviewDocument(doc);
-                            }}
-                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
-                            title="Preview"
-                            type="button"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
-                        </div>
-                      ))}
-                    {/* Show unsaved documents from current session */}
-                    {documents
-                      .filter(d => {
-                        if (d.belongsTo !== 'joint' || d.type !== 'photo') return false;
-                        const isAlreadySaved = applicationDocuments.some(
-                          ad => ad.belongsTo === d.belongsTo && ad.type === d.type
-                        );
-                        return !isAlreadySaved;
-                      })
-                      .map(doc => (
-                        <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
-                          <FileText size={16} className="flex-shrink-0" />
-                          <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`Joint Photograph: ${doc.file.name}`}>
-                            Joint Photograph: {doc.file.name}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handlePreviewDocument(doc);
-                            }}
-                            className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
-                            title="Preview"
-                            type="button"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
-                        </div>
-                      ))}
-                        {applicationDocuments.filter(d => d.belongsTo === 'joint' && d.type === 'photo').length === 0 && 
-                         documents.filter(d => d.belongsTo === 'joint' && d.type === 'photo').length === 0 && (
-                          <p className="text-sm text-gray-400 italic">No joint photograph uploaded yet</p>
-                        )}
+                            <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                              <FileText size={16} className="flex-shrink-0" />
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`Joint Photograph: ${doc.name}`}>
+                                Joint Photograph: {doc.name}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handlePreviewDocument(doc);
+                                }}
+                                className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
+                                title="Preview"
+                                type="button"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
+                            </div>
+                          ))}
+                        {/* Show unsaved documents from current session */}
+                        {documents
+                          .filter(d => {
+                            if (d.belongsTo !== 'joint' || d.type !== 'photo') return false;
+                            const isAlreadySaved = applicationDocuments.some(
+                              ad => ad.belongsTo === d.belongsTo && ad.type === d.type
+                            );
+                            return !isAlreadySaved;
+                          })
+                          .map(doc => (
+                            <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
+                              <FileText size={16} className="flex-shrink-0" />
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`Joint Photograph: ${doc.file.name}`}>
+                                Joint Photograph: {doc.file.name}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handlePreviewDocument(doc);
+                                }}
+                                className="text-blue-600 hover:text-blue-700 p-1 flex-shrink-0"
+                                title="Preview"
+                                type="button"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
+                            </div>
+                          ))}
+                        {applicationDocuments.filter(d => d.belongsTo === 'joint' && d.type === 'photo').length === 0 &&
+                          documents.filter(d => d.belongsTo === 'joint' && d.type === 'photo').length === 0 && (
+                            <p className="text-sm text-gray-400 italic">No joint photograph uploaded yet</p>
+                          )}
                       </>
                     )}
                   </div>
@@ -2587,14 +2643,17 @@ const ApplicationFormContent: React.FC = () => {
         // Documents step - upload any documents that haven't been saved yet
         if (application && documents.length > 0) {
           try {
+            const uploadedDocs: string[] = [];
             // Upload all documents that are in the documents array (unsaved ones)
             for (const doc of documents) {
               await documentService.uploadDocument(application.id, doc.file, doc.type, doc.belongsTo);
+              uploadedDocs.push(doc.id);
             }
-            // Clear the documents array after successful upload
-            setDocuments([]);
-            // Refresh application to get updated documents list
-            await refreshApplication();
+            // Only clear documents that were successfully uploaded
+            setDocuments(prevDocs => prevDocs.filter(doc => !uploadedDocs.includes(doc.id)));
+            // Reload documents from database to update applicationDocuments state
+            const updatedDocs = await documentService.getDocuments(application.id);
+            setApplicationDocuments(updatedDocs);
             showToast('Draft saved. Documents uploaded successfully.', 'success');
           } catch (error: any) {
             console.error('Failed to upload documents:', error);
@@ -2698,200 +2757,215 @@ const ApplicationFormContent: React.FC = () => {
           </div>
         </div>
       )}
-      
+
       <div className={`max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 ${showExitConfirm ? 'pt-40' : ''}`}>
         <div className="mb-4 sm:mb-6 flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <h1 className="font-serif text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-0.5 sm:mb-1">Marriage Registration</h1>
-          <p className="text-[10px] sm:text-xs text-gray-600">Complete all steps to submit</p>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleExit}
-          className="flex items-center gap-1.5 text-gray-700 hover:text-gray-900 !px-2 sm:!px-3"
-        >
-          <LogOut size={14} className="sm:w-4 sm:h-4" />
-          <span className="text-xs sm:text-sm">Exit</span>
-        </Button>
-      </div>
-
-      <Stepper
-        steps={applicationSteps}
-        currentStep={currentStep}
-        completedSteps={Array.from({ length: currentStep }, (_, i) => i)}
-        className="mb-4 sm:mb-6"
-      />
-
-      <Card className="p-3 sm:p-5 lg:p-6">
-        {renderStep()}
-
-        {/* Document Preview Modal */}
-        {previewDocument && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-2 sm:p-4" 
-            onClick={closePreview}
-            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
-          >
-            <div 
-              className="bg-white rounded-lg sm:rounded-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-auto" 
-              onClick={(e) => e.stopPropagation()}
-              style={{ zIndex: 101 }}
-            >
-              <div className="sticky top-0 bg-white border-b border-gray-200 p-2.5 sm:p-4 flex items-center justify-between z-10 gap-2">
-                <h3 className="font-semibold text-xs sm:text-sm text-gray-900 truncate flex-1">
-                  {getDocumentTypeLabel(previewDocument.type)}: {previewDocument.file?.name || (previewDocument as any).name || 'Document'}
-                </h3>
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="!px-2 sm:!px-3 !text-xs"
-                    onClick={() => {
-                      const urlToDownload = previewUrl || (previewDocument as any).url;
-                      if (urlToDownload) {
-                        window.open(urlToDownload, '_blank');
-                      }
-                    }}
-                  >
-                    <Download size={14} className="sm:w-4 sm:h-4 mr-1" />
-                    <span className="hidden sm:inline">Download</span>
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={closePreview} className="!p-1.5 sm:!p-2">
-                    <X size={16} className="sm:w-[18px] sm:h-[18px]" />
-                  </Button>
-                </div>
-              </div>
-              <div className="p-2 sm:p-3 lg:p-6 overflow-y-auto max-h-[calc(95vh-80px)] sm:max-h-[calc(90vh-100px)]">
-                {isLoadingPreview ? (
-                  <div className="flex flex-col items-center justify-center py-8 sm:py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 border-t-2 border-b-2 border-gold-500"></div>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-3">Loading preview...</p>
-                  </div>
-                ) : previewUrl ? (
-                  <>
-                    {isImage(previewDocument.file?.type || (previewDocument as any).mimeType) ? (
-                      <div className="flex items-center justify-center min-h-[200px] sm:min-h-[300px] w-full">
-                        <img
-                          src={previewUrl}
-                          alt={previewDocument.file?.name || (previewDocument as any).name || 'Document'}
-                          className="max-w-full max-h-[calc(95vh-120px)] sm:max-h-[calc(90vh-140px)] w-auto h-auto rounded-lg shadow-lg mx-auto object-contain"
-                          onLoad={() => console.log('Image loaded successfully')}
-                          onError={(e) => {
-                            console.error('Failed to load image:', e);
-                            const fallbackUrl = (previewDocument as any).url;
-                            if (fallbackUrl) {
-                              console.log('Trying fallback URL:', fallbackUrl);
-                              (e.target as HTMLImageElement).src = fallbackUrl;
-                            } else {
-                              console.error('No fallback URL available');
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : isPDF(previewDocument.file?.type || (previewDocument as any).mimeType) || 
-                         (previewDocument.file?.name || (previewDocument as any).name || '').toLowerCase().endsWith('.pdf') ? (
-                      <div className="w-full">
-                        <iframe
-                          src={previewUrl}
-                          className="w-full h-[calc(95vh-120px)] sm:h-[calc(90vh-140px)] lg:h-[70vh] rounded-lg border border-gray-200"
-                          title={previewDocument.file?.name || (previewDocument as any).name || 'Document'}
-                          onLoad={() => console.log('PDF iframe loaded')}
-                          onError={() => {
-                            console.error('Failed to load PDF');
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 sm:py-12">
-                        <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                        <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Preview not available</p>
-                        <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => window.open(previewUrl, '_blank')}>
-                          <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
-                          Download to View
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-8 sm:py-12">
-                    <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                    <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Failed to load preview</p>
-                    <div className="space-y-2">
-                      {(previewDocument as any).url && (
-                        <Button variant="primary" size="sm" className="!text-xs sm:!text-sm w-full sm:w-auto" onClick={() => window.open((previewDocument as any).url, '_blank')}>
-                          <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
-                          Open in New Tab
-                        </Button>
-                      )}
-                      {previewDocument.file && (
-                        <Button variant="outline" size="sm" className="!text-xs sm:!text-sm w-full sm:w-auto" onClick={() => {
-                          const url = URL.createObjectURL(previewDocument.file);
-                          window.open(url, '_blank');
-                        }}>
-                          <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
-                          Open File
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-serif text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-0.5 sm:mb-1">Marriage Registration</h1>
+            <p className="text-[10px] sm:text-xs text-gray-600">Complete all steps to submit</p>
           </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-gray-200">
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleBack}
-            disabled={currentStep === 0 || (currentStep === applicationSteps.length - 1 && (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review'))}
-            className="!text-xs sm:!text-sm order-2 sm:order-1"
+            onClick={handleExit}
+            className="flex items-center gap-1.5 text-gray-700 hover:text-gray-900 !px-2 sm:!px-3"
           >
-            <ArrowLeft size={14} className="sm:w-4 sm:h-4 mr-1.5" />
-            {t('buttons.previous')}
+            <LogOut size={14} className="sm:w-4 sm:h-4" />
+            <span className="text-xs sm:text-sm">Exit</span>
           </Button>
-          <div className="flex gap-2 sm:gap-3 order-1 sm:order-2">
+        </div>
+
+        <Stepper
+          steps={applicationSteps}
+          currentStep={currentStep}
+          completedSteps={Array.from({ length: currentStep }, (_, i) => i)}
+          className="mb-4 sm:mb-6"
+        />
+
+        <Card className="p-3 sm:p-5 lg:p-6">
+          {renderStep()}
+
+          {/* Document Preview Modal */}
+          {previewDocument && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-2 sm:p-4"
+              onClick={closePreview}
+              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+            >
+              <div
+                className="bg-white rounded-lg sm:rounded-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-auto"
+                onClick={(e) => e.stopPropagation()}
+                style={{ zIndex: 101 }}
+              >
+                <div className="sticky top-0 bg-white border-b border-gray-200 p-2.5 sm:p-4 flex items-center justify-between z-10 gap-2">
+                  <h3 className="font-semibold text-xs sm:text-sm text-gray-900 truncate flex-1">
+                    {getDocumentTypeLabel(previewDocument.type)}: {previewDocument.file?.name || (previewDocument as any).name || 'Document'}
+                  </h3>
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="!px-2 sm:!px-3 !text-xs"
+                      onClick={() => {
+                        const urlToDownload = previewUrl || (previewDocument as any).url;
+                        if (urlToDownload) {
+                          window.open(urlToDownload, '_blank');
+                        }
+                      }}
+                    >
+                      <Download size={14} className="sm:w-4 sm:h-4 mr-1" />
+                      <span className="hidden sm:inline">Download</span>
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={closePreview} className="!p-1.5 sm:!p-2">
+                      <X size={16} className="sm:w-[18px] sm:h-[18px]" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="p-2 sm:p-3 lg:p-6 overflow-y-auto max-h-[calc(95vh-80px)] sm:max-h-[calc(90vh-100px)]">
+                  {isLoadingPreview ? (
+                    <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 border-t-2 border-b-2 border-gold-500"></div>
+                      <p className="text-xs sm:text-sm text-gray-500 mt-3">Loading preview...</p>
+                    </div>
+                  ) : previewUrl ? (
+                    <>
+                      {isImage(previewDocument.file?.type || (previewDocument as any).mimeType) ? (
+                        <div className="flex items-center justify-center min-h-[200px] sm:min-h-[300px] w-full">
+                          <img
+                            src={previewUrl}
+                            alt={previewDocument.file?.name || (previewDocument as any).name || 'Document'}
+                            className="max-w-full max-h-[calc(95vh-120px)] sm:max-h-[calc(90vh-140px)] w-auto h-auto rounded-lg shadow-lg mx-auto object-contain"
+                            onLoad={() => console.log('Image loaded successfully')}
+                            onError={(e) => {
+                              console.error('Failed to load image:', e);
+                              const fallbackUrl = (previewDocument as any).url;
+                              if (fallbackUrl) {
+                                console.log('Trying fallback URL:', fallbackUrl);
+                                (e.target as HTMLImageElement).src = fallbackUrl;
+                              } else {
+                                console.error('No fallback URL available');
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : isPDF(previewDocument.file?.type || (previewDocument as any).mimeType) ||
+                        (previewDocument.file?.name || (previewDocument as any).name || '').toLowerCase().endsWith('.pdf') ? (
+                        <div className="w-full">
+                          <iframe
+                            src={previewUrl}
+                            className="w-full h-[calc(95vh-120px)] sm:h-[calc(90vh-140px)] lg:h-[70vh] rounded-lg border border-gray-200"
+                            title={previewDocument.file?.name || (previewDocument as any).name || 'Document'}
+                            onLoad={() => console.log('PDF iframe loaded')}
+                            onError={() => {
+                              console.error('Failed to load PDF');
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 sm:py-12">
+                          <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                          <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Preview not available</p>
+                          <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => window.open(previewUrl, '_blank')}>
+                            <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                            Download to View
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-8 sm:py-12">
+                      <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                      <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Failed to load preview</p>
+                      <div className="space-y-2">
+                        {(previewDocument as any).url && (
+                          <Button variant="primary" size="sm" className="!text-xs sm:!text-sm w-full sm:w-auto" onClick={() => window.open((previewDocument as any).url, '_blank')}>
+                            <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                            Open in New Tab
+                          </Button>
+                        )}
+                        {previewDocument.file && (
+                          <Button variant="outline" size="sm" className="!text-xs sm:!text-sm w-full sm:w-auto" onClick={() => {
+                            const url = URL.createObjectURL(previewDocument.file);
+                            window.open(url, '_blank');
+                          }}>
+                            <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                            Open File
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-gray-200">
             <Button
               variant="ghost"
               size="sm"
-              disabled={isSubmitted}
-              onClick={saveDraftWithoutValidation}
-              isLoading={isSaving}
-              className="!text-xs sm:!text-sm flex-1 sm:flex-initial"
+              onClick={handleBack}
+              disabled={currentStep === 0 || (currentStep === applicationSteps.length - 1 && (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review'))}
+              className="!text-xs sm:!text-sm order-2 sm:order-1"
             >
-              <Save size={14} className="sm:w-4 sm:h-4 mr-1.5" />
-              <span className="hidden sm:inline">{t('buttons.save')}</span> {t('common:buttons.save')}
+              <ArrowLeft size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+              {t('buttons.previous')}
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleNextClick}
-              isLoading={isSaving}
-              disabled={
-                (currentStep === applicationSteps.length - 1 && (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review')) ||
-                (!isCurrentStepValid && !isSubmitted)
-              }
-              className={`!text-xs sm:!text-sm flex-1 sm:flex-initial ${!isCurrentStepValid && !isSubmitted ? 'opacity-40 cursor-not-allowed bg-gray-400 hover:bg-gray-400' : ''}`}
-            >
-              {currentStep === applicationSteps.length - 1 
-                ? (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review')
-                  ? t('review.submitted')
-                  : t('buttons.submit')
-                : t('buttons.next')}
-              {currentStep < applicationSteps.length - 1 && <ArrowRight size={14} className="sm:w-4 sm:h-4 ml-1.5" />}
-            </Button>
+            <div className="flex gap-2 sm:gap-3 order-1 sm:order-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={isSubmitted}
+                onClick={saveDraftWithoutValidation}
+                isLoading={isSaving}
+                className="!text-xs sm:!text-sm flex-1 sm:flex-initial"
+              >
+                <Save size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                {t('buttons.save')}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleNextClick}
+                isLoading={isSaving}
+                disabled={
+                  (currentStep === applicationSteps.length - 1 && (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review')) ||
+                  (!isCurrentStepValid && !isSubmitted)
+                }
+                className={`!text-xs sm:!text-sm flex-1 sm:flex-initial ${!isCurrentStepValid && !isSubmitted ? 'opacity-40 cursor-not-allowed bg-gray-400 hover:bg-gray-400' : ''}`}
+              >
+                {currentStep === applicationSteps.length - 1
+                  ? (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review')
+                    ? t('review.submitted')
+                    : t('buttons.submit')
+                  : t('buttons.next')}
+                {currentStep < applicationSteps.length - 1 && <ArrowRight size={14} className="sm:w-4 sm:h-4 ml-1.5" />}
+              </Button>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
       </div>
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        onClose={() => {
+          setCropModalOpen(false);
+          setPendingCropFile(null);
+        }}
+        imageFile={pendingCropFile?.file || null}
+        onCropComplete={handleCropComplete}
+        onSkip={handleCropSkip}
+      />
 
       {/* Application Success Modal */}
       <ApplicationSuccessModal
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
+        applicationId={application?.id}
       />
     </>
   );
 };
+
+export default ApplicationFormContent;

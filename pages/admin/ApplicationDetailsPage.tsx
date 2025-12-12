@@ -51,16 +51,16 @@ const ApplicationDetailsPage: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       if (!applicationId) return;
-      
+
       try {
         const allApplications = await applicationService.getAllApplications();
         const app = allApplications.find(a => a.id === applicationId);
-        
+
         if (app) {
           setApplication(app);
           const docs = await documentService.getDocuments(app.id);
           setDocuments(docs);
-          
+
           // Initialize edit form
           setEditForm({
             userDetails: app.userDetails || {},
@@ -89,7 +89,7 @@ const ApplicationDetailsPage: React.FC = () => {
 
   const handleApproveDocument = async (documentId: string) => {
     if (!user) return;
-    
+
     setIsProcessingDoc(documentId);
     try {
       await adminService.approveDocument(documentId, user.id, user.name || user.email);
@@ -110,15 +110,15 @@ const ApplicationDetailsPage: React.FC = () => {
 
   const handleReuploadDocument = async (documentId: string, file: File) => {
     if (!application) return;
-    
+
     setReuploadingDoc(documentId);
     try {
       // Use uploadDocument which will update existing document if it exists
-      await documentService.uploadDocument(application.id, file, 
+      await documentService.uploadDocument(application.id, file,
         documents.find(d => d.id === documentId)?.type || 'aadhaar',
         documents.find(d => d.id === documentId)?.belongsTo || 'user'
       );
-      
+
       // Refresh documents list
       const updated = await documentService.getDocuments(application.id);
       setDocuments(updated);
@@ -242,7 +242,7 @@ const ApplicationDetailsPage: React.FC = () => {
 
   const handleVerify = async (certificateNumber: string, registrationDate: string) => {
     if (!application || !user) return;
-    
+
     try {
       const updated = await adminService.verifyApplication(
         application.id,
@@ -684,107 +684,6 @@ const ApplicationDetailsPage: React.FC = () => {
           <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom Addresses</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Groom Permanent Address</p>
-              {isEditing ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Village/Street</label>
-                    <Input
-                      value={(userAddress as any).villageStreet || userAddress.street || ''}
-                      onChange={(e) => setEditForm({
-                        ...editForm,
-                        userAddress: { ...userAddress, villageStreet: e.target.value, street: e.target.value }
-                      })}
-                      placeholder="Enter village/street"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Post Office</label>
-                      <Input
-                        value={(userAddress as any).postOffice || ''}
-                        onChange={(e) => setEditForm({
-                          ...editForm,
-                          userAddress: { ...userAddress, postOffice: e.target.value }
-                        })}
-                        placeholder="Enter post office"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Police Station</label>
-                      <Input
-                        value={(userAddress as any).policeStation || ''}
-                        onChange={(e) => setEditForm({
-                          ...editForm,
-                          userAddress: { ...userAddress, policeStation: e.target.value }
-                        })}
-                        placeholder="Enter police station"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">District</label>
-                      <Input
-                        value={(userAddress as any).district || userAddress.city || ''}
-                        onChange={(e) => setEditForm({
-                          ...editForm,
-                          userAddress: { ...userAddress, district: e.target.value, city: e.target.value }
-                        })}
-                        placeholder="Enter district"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">State</label>
-                      <Input
-                        value={userAddress.state || ''}
-                        onChange={(e) => setEditForm({
-                          ...editForm,
-                          userAddress: { ...userAddress, state: e.target.value }
-                        })}
-                        placeholder="Enter state"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">ZIP Code</label>
-                      <Input
-                        value={userAddress.zipCode || ''}
-                        maxLength={6}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                          setEditForm({
-                            ...editForm,
-                            userAddress: { ...userAddress, zipCode: value }
-                          });
-                        }}
-                        placeholder="Enter ZIP code"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Country</label>
-                      <Input
-                        value={userAddress.country || ''}
-                        onChange={(e) => setEditForm({
-                          ...editForm,
-                          userAddress: { ...userAddress, country: e.target.value }
-                        })}
-                        placeholder="Enter country"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-600 space-y-1">
-                  <p>{(userAddress as any).villageStreet || userAddress.street || '-'}</p>
-                  <p>P.O: {(userAddress as any).postOffice || '-'}, P.S: {(userAddress as any).policeStation || '-'}</p>
-                  <p>Dist: {(userAddress as any).district || userAddress.city || '-'}, {userAddress.state || '-'}</p>
-                  <p>PIN: {userAddress.zipCode || '-'}, {userAddress.country || '-'}</p>
-                </div>
-              )}
-            </div>
-            <div>
               <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Groom Current Address</p>
               {isEditing ? (
                 <div className="space-y-3">
@@ -885,24 +784,17 @@ const ApplicationDetailsPage: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
-        </Card>
-
-        {/* Bride Addresses */}
-        <Card className="p-3 sm:p-4 lg:p-6">
-          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Addresses</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Bride Permanent Address</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Groom Permanent Address</p>
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Village/Street</label>
                     <Input
-                      value={(partnerAddress as any).villageStreet || partnerAddress.street || ''}
+                      value={(userAddress as any).villageStreet || userAddress.street || ''}
                       onChange={(e) => setEditForm({
                         ...editForm,
-                        partnerAddress: { ...partnerAddress, villageStreet: e.target.value, street: e.target.value }
+                        userAddress: { ...userAddress, villageStreet: e.target.value, street: e.target.value }
                       })}
                       placeholder="Enter village/street"
                     />
@@ -911,10 +803,10 @@ const ApplicationDetailsPage: React.FC = () => {
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Post Office</label>
                       <Input
-                        value={(partnerAddress as any).postOffice || ''}
+                        value={(userAddress as any).postOffice || ''}
                         onChange={(e) => setEditForm({
                           ...editForm,
-                          partnerAddress: { ...partnerAddress, postOffice: e.target.value }
+                          userAddress: { ...userAddress, postOffice: e.target.value }
                         })}
                         placeholder="Enter post office"
                       />
@@ -922,10 +814,10 @@ const ApplicationDetailsPage: React.FC = () => {
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Police Station</label>
                       <Input
-                        value={(partnerAddress as any).policeStation || ''}
+                        value={(userAddress as any).policeStation || ''}
                         onChange={(e) => setEditForm({
                           ...editForm,
-                          partnerAddress: { ...partnerAddress, policeStation: e.target.value }
+                          userAddress: { ...userAddress, policeStation: e.target.value }
                         })}
                         placeholder="Enter police station"
                       />
@@ -935,10 +827,10 @@ const ApplicationDetailsPage: React.FC = () => {
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">District</label>
                       <Input
-                        value={(partnerAddress as any).district || partnerAddress.city || ''}
+                        value={(userAddress as any).district || userAddress.city || ''}
                         onChange={(e) => setEditForm({
                           ...editForm,
-                          partnerAddress: { ...partnerAddress, district: e.target.value, city: e.target.value }
+                          userAddress: { ...userAddress, district: e.target.value, city: e.target.value }
                         })}
                         placeholder="Enter district"
                       />
@@ -946,10 +838,10 @@ const ApplicationDetailsPage: React.FC = () => {
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">State</label>
                       <Input
-                        value={partnerAddress.state || ''}
+                        value={userAddress.state || ''}
                         onChange={(e) => setEditForm({
                           ...editForm,
-                          partnerAddress: { ...partnerAddress, state: e.target.value }
+                          userAddress: { ...userAddress, state: e.target.value }
                         })}
                         placeholder="Enter state"
                       />
@@ -959,13 +851,13 @@ const ApplicationDetailsPage: React.FC = () => {
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">ZIP Code</label>
                       <Input
-                        value={partnerAddress.zipCode || ''}
+                        value={userAddress.zipCode || ''}
                         maxLength={6}
                         onChange={(e) => {
                           const value = e.target.value.replace(/\D/g, '').slice(0, 6);
                           setEditForm({
                             ...editForm,
-                            partnerAddress: { ...partnerAddress, zipCode: value }
+                            userAddress: { ...userAddress, zipCode: value }
                           });
                         }}
                         placeholder="Enter ZIP code"
@@ -974,10 +866,10 @@ const ApplicationDetailsPage: React.FC = () => {
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Country</label>
                       <Input
-                        value={partnerAddress.country || ''}
+                        value={userAddress.country || ''}
                         onChange={(e) => setEditForm({
                           ...editForm,
-                          partnerAddress: { ...partnerAddress, country: e.target.value }
+                          userAddress: { ...userAddress, country: e.target.value }
                         })}
                         placeholder="Enter country"
                       />
@@ -986,13 +878,20 @@ const ApplicationDetailsPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-sm text-gray-600 space-y-1">
-                  <p>{(partnerAddress as any).villageStreet || partnerAddress.street || '-'}</p>
-                  <p>P.O: {(partnerAddress as any).postOffice || '-'}, P.S: {(partnerAddress as any).policeStation || '-'}</p>
-                  <p>Dist: {(partnerAddress as any).district || partnerAddress.city || '-'}, {partnerAddress.state || '-'}</p>
-                  <p>PIN: {partnerAddress.zipCode || '-'}, {partnerAddress.country || '-'}</p>
+                  <p>{(userAddress as any).villageStreet || userAddress.street || '-'}</p>
+                  <p>P.O: {(userAddress as any).postOffice || '-'}, P.S: {(userAddress as any).policeStation || '-'}</p>
+                  <p>Dist: {(userAddress as any).district || userAddress.city || '-'}, {userAddress.state || '-'}</p>
+                  <p>PIN: {userAddress.zipCode || '-'}, {userAddress.country || '-'}</p>
                 </div>
               )}
             </div>
+          </div>
+        </Card>
+
+        {/* Bride Addresses */}
+        <Card className="p-3 sm:p-4 lg:p-6">
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Addresses</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
             <div>
               <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Bride Current Address</p>
               {isEditing ? (
@@ -1094,6 +993,107 @@ const ApplicationDetailsPage: React.FC = () => {
                 </div>
               )}
             </div>
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Bride Permanent Address</p>
+              {isEditing ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Village/Street</label>
+                    <Input
+                      value={(partnerAddress as any).villageStreet || partnerAddress.street || ''}
+                      onChange={(e) => setEditForm({
+                        ...editForm,
+                        partnerAddress: { ...partnerAddress, villageStreet: e.target.value, street: e.target.value }
+                      })}
+                      placeholder="Enter village/street"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Post Office</label>
+                      <Input
+                        value={(partnerAddress as any).postOffice || ''}
+                        onChange={(e) => setEditForm({
+                          ...editForm,
+                          partnerAddress: { ...partnerAddress, postOffice: e.target.value }
+                        })}
+                        placeholder="Enter post office"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Police Station</label>
+                      <Input
+                        value={(partnerAddress as any).policeStation || ''}
+                        onChange={(e) => setEditForm({
+                          ...editForm,
+                          partnerAddress: { ...partnerAddress, policeStation: e.target.value }
+                        })}
+                        placeholder="Enter police station"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">District</label>
+                      <Input
+                        value={(partnerAddress as any).district || partnerAddress.city || ''}
+                        onChange={(e) => setEditForm({
+                          ...editForm,
+                          partnerAddress: { ...partnerAddress, district: e.target.value, city: e.target.value }
+                        })}
+                        placeholder="Enter district"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">State</label>
+                      <Input
+                        value={partnerAddress.state || ''}
+                        onChange={(e) => setEditForm({
+                          ...editForm,
+                          partnerAddress: { ...partnerAddress, state: e.target.value }
+                        })}
+                        placeholder="Enter state"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">ZIP Code</label>
+                      <Input
+                        value={partnerAddress.zipCode || ''}
+                        maxLength={6}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                          setEditForm({
+                            ...editForm,
+                            partnerAddress: { ...partnerAddress, zipCode: value }
+                          });
+                        }}
+                        placeholder="Enter ZIP code"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Country</label>
+                      <Input
+                        value={partnerAddress.country || ''}
+                        onChange={(e) => setEditForm({
+                          ...editForm,
+                          partnerAddress: { ...partnerAddress, country: e.target.value }
+                        })}
+                        placeholder="Enter country"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-600 space-y-1">
+                  <p>{(partnerAddress as any).villageStreet || partnerAddress.street || '-'}</p>
+                  <p>P.O: {(partnerAddress as any).postOffice || '-'}, P.S: {(partnerAddress as any).policeStation || '-'}</p>
+                  <p>Dist: {(partnerAddress as any).district || partnerAddress.city || '-'}, {partnerAddress.state || '-'}</p>
+                  <p>PIN: {partnerAddress.zipCode || '-'}, {partnerAddress.country || '-'}</p>
+                </div>
+              )}
+            </div>
           </div>
         </Card>
 
@@ -1107,116 +1107,116 @@ const ApplicationDetailsPage: React.FC = () => {
                 {documents.filter(d => d.belongsTo === 'user').map(doc => {
                   const reuploaded = isReuploaded(doc);
                   return (
-                  <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600 p-2 sm:p-2.5 lg:p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'} min-w-0`}>
-                    {/* First Row: Document Name (Mobile) / Inline (Desktop) */}
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                      <FileText size={14} className="sm:w-4 sm:h-5 lg:w-[18px] lg:h-[18px] text-gold-600 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
-                          <p className="font-medium text-xs sm:text-sm text-gray-900 truncate" title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}>
-                            {getDocumentTypeLabel(doc.type)}: {doc.name}
-                          </p>
-                          {reuploaded && (
-                            <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300 !text-[10px] sm:!text-xs flex-shrink-0">
-                              Re-uploaded
-                            </Badge>
+                    <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600 p-2 sm:p-2.5 lg:p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'} min-w-0`}>
+                      {/* First Row: Document Name (Mobile) / Inline (Desktop) */}
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                        <FileText size={14} className="sm:w-4 sm:h-5 lg:w-[18px] lg:h-[18px] text-gold-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
+                            <p className="font-medium text-xs sm:text-sm text-gray-900 truncate" title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}>
+                              {getDocumentTypeLabel(doc.type)}: {doc.name}
+                            </p>
+                            {reuploaded && (
+                              <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300 !text-[10px] sm:!text-xs flex-shrink-0">
+                                Re-uploaded
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {/* Second Row: Status and Buttons (Mobile) / Inline (Desktop) */}
+                      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-shrink-0">
+                        <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0 !text-[10px] sm:!text-xs">
+                          {doc.status}
+                        </Badge>
+                        <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
+                            onClick={async () => {
+                              setPreviewDocument(doc);
+                              setIsLoadingPreview(true);
+                              setPreviewUrl(null);
+                              try {
+                                const signedUrl = await documentService.getSignedUrl(doc.id);
+                                setPreviewUrl(signedUrl);
+                              } catch (error: any) {
+                                console.error('Failed to get signed URL:', error);
+                                // Fallback to original URL
+                                setPreviewUrl(doc.url);
+                              } finally {
+                                setIsLoadingPreview(false);
+                              }
+                            }}
+                            title="Preview"
+                          >
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
+                          </Button>
+                          {isAdminCreatedApplication && (
+                            <>
+                              <input
+                                type="file"
+                                accept={doc.type === 'photo' ? 'image/*' : 'image/*,.pdf'}
+                                onChange={(e) => handleReuploadFileSelect(doc.id, e)}
+                                className="hidden"
+                                id={`reupload-user-${doc.id}`}
+                                ref={(el) => {
+                                  if (el) {
+                                    reuploadFileInputsRef.current.set(doc.id, el);
+                                  } else {
+                                    reuploadFileInputsRef.current.delete(doc.id);
+                                  }
+                                }}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={() => {
+                                  const input = reuploadFileInputsRef.current.get(doc.id);
+                                  if (input) {
+                                    input.click();
+                                  }
+                                }}
+                                disabled={reuploadingDoc === doc.id || isProcessingDoc === doc.id}
+                                title="Re-upload"
+                              >
+                                {reuploadingDoc === doc.id ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-b-2 border-blue-600"></div>
+                                ) : (
+                                  <Upload size={12} className="sm:w-4 sm:h-4" />
+                                )}
+                              </Button>
+                            </>
+                          )}
+                          {doc.status === 'pending' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => handleApproveDocument(doc.id)}
+                                disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
+                                title="Approve"
+                              >
+                                <CheckCircle size={12} className="sm:w-4 sm:h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleRejectDocument(doc)}
+                                disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
+                                title="Reject"
+                              >
+                                <XCircle size={12} className="sm:w-4 sm:h-4" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
                     </div>
-                    {/* Second Row: Status and Buttons (Mobile) / Inline (Desktop) */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-shrink-0">
-                      <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0 !text-[10px] sm:!text-xs">
-                        {doc.status}
-                      </Badge>
-                      <div className="flex gap-1 sm:gap-2 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
-                          onClick={async () => {
-                            setPreviewDocument(doc);
-                            setIsLoadingPreview(true);
-                            setPreviewUrl(null);
-                            try {
-                              const signedUrl = await documentService.getSignedUrl(doc.id);
-                              setPreviewUrl(signedUrl);
-                            } catch (error: any) {
-                              console.error('Failed to get signed URL:', error);
-                              // Fallback to original URL
-                              setPreviewUrl(doc.url);
-                            } finally {
-                              setIsLoadingPreview(false);
-                            }
-                          }}
-                          title="Preview"
-                        >
-                          <Eye size={12} className="sm:w-4 sm:h-4" />
-                        </Button>
-                        {isAdminCreatedApplication && (
-                          <>
-                            <input
-                              type="file"
-                              accept={doc.type === 'photo' ? 'image/*' : 'image/*,.pdf'}
-                              onChange={(e) => handleReuploadFileSelect(doc.id, e)}
-                              className="hidden"
-                              id={`reupload-user-${doc.id}`}
-                              ref={(el) => {
-                                if (el) {
-                                  reuploadFileInputsRef.current.set(doc.id, el);
-                                } else {
-                                  reuploadFileInputsRef.current.delete(doc.id);
-                                }
-                              }}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              onClick={() => {
-                                const input = reuploadFileInputsRef.current.get(doc.id);
-                                if (input) {
-                                  input.click();
-                                }
-                              }}
-                              disabled={reuploadingDoc === doc.id || isProcessingDoc === doc.id}
-                              title="Re-upload"
-                            >
-                              {reuploadingDoc === doc.id ? (
-                                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-b-2 border-blue-600"></div>
-                              ) : (
-                                <Upload size={12} className="sm:w-4 sm:h-4" />
-                              )}
-                            </Button>
-                          </>
-                        )}
-                        {doc.status === 'pending' && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={() => handleApproveDocument(doc.id)}
-                              disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
-                              title="Approve"
-                            >
-                              <CheckCircle size={12} className="sm:w-4 sm:h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleRejectDocument(doc)}
-                              disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
-                              title="Reject"
-                            >
-                              <XCircle size={12} className="sm:w-4 sm:h-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
                   );
                 })}
                 {documents.filter(d => d.belongsTo === 'user').length === 0 && (
@@ -1230,116 +1230,116 @@ const ApplicationDetailsPage: React.FC = () => {
                 {documents.filter(d => d.belongsTo === 'partner').map(doc => {
                   const reuploaded = isReuploaded(doc);
                   return (
-                  <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600 p-2 sm:p-2.5 lg:p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'} min-w-0`}>
-                    {/* First Row: Document Name (Mobile) / Inline (Desktop) */}
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                      <FileText size={14} className="sm:w-4 sm:h-5 lg:w-[18px] lg:h-[18px] text-gold-600 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
-                          <p className="font-medium text-xs sm:text-sm text-gray-900 truncate" title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}>
-                            {getDocumentTypeLabel(doc.type)}: {doc.name}
-                          </p>
-                          {reuploaded && (
-                            <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300 !text-[10px] sm:!text-xs flex-shrink-0">
-                              Re-uploaded
-                            </Badge>
+                    <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600 p-2 sm:p-2.5 lg:p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'} min-w-0`}>
+                      {/* First Row: Document Name (Mobile) / Inline (Desktop) */}
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                        <FileText size={14} className="sm:w-4 sm:h-5 lg:w-[18px] lg:h-[18px] text-gold-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
+                            <p className="font-medium text-xs sm:text-sm text-gray-900 truncate" title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}>
+                              {getDocumentTypeLabel(doc.type)}: {doc.name}
+                            </p>
+                            {reuploaded && (
+                              <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300 !text-[10px] sm:!text-xs flex-shrink-0">
+                                Re-uploaded
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {/* Second Row: Status and Buttons (Mobile) / Inline (Desktop) */}
+                      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-shrink-0">
+                        <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0 !text-[10px] sm:!text-xs">
+                          {doc.status}
+                        </Badge>
+                        <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
+                            onClick={async () => {
+                              setPreviewDocument(doc);
+                              setIsLoadingPreview(true);
+                              setPreviewUrl(null);
+                              try {
+                                const signedUrl = await documentService.getSignedUrl(doc.id);
+                                setPreviewUrl(signedUrl);
+                              } catch (error: any) {
+                                console.error('Failed to get signed URL:', error);
+                                // Fallback to original URL
+                                setPreviewUrl(doc.url);
+                              } finally {
+                                setIsLoadingPreview(false);
+                              }
+                            }}
+                            title="Preview"
+                          >
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
+                          </Button>
+                          {isAdminCreatedApplication && (
+                            <>
+                              <input
+                                type="file"
+                                accept={doc.type === 'photo' ? 'image/*' : 'image/*,.pdf'}
+                                onChange={(e) => handleReuploadFileSelect(doc.id, e)}
+                                className="hidden"
+                                id={`reupload-partner-${doc.id}`}
+                                ref={(el) => {
+                                  if (el) {
+                                    reuploadFileInputsRef.current.set(doc.id, el);
+                                  } else {
+                                    reuploadFileInputsRef.current.delete(doc.id);
+                                  }
+                                }}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={() => {
+                                  const input = reuploadFileInputsRef.current.get(doc.id);
+                                  if (input) {
+                                    input.click();
+                                  }
+                                }}
+                                disabled={reuploadingDoc === doc.id || isProcessingDoc === doc.id}
+                                title="Re-upload"
+                              >
+                                {reuploadingDoc === doc.id ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-b-2 border-blue-600"></div>
+                                ) : (
+                                  <Upload size={12} className="sm:w-4 sm:h-4" />
+                                )}
+                              </Button>
+                            </>
+                          )}
+                          {doc.status === 'pending' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => handleApproveDocument(doc.id)}
+                                disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
+                                title="Approve"
+                              >
+                                <CheckCircle size={12} className="sm:w-4 sm:h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleRejectDocument(doc)}
+                                disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
+                                title="Reject"
+                              >
+                                <XCircle size={12} className="sm:w-4 sm:h-4" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
                     </div>
-                    {/* Second Row: Status and Buttons (Mobile) / Inline (Desktop) */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-shrink-0">
-                      <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0 !text-[10px] sm:!text-xs">
-                        {doc.status}
-                      </Badge>
-                      <div className="flex gap-1 sm:gap-2 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
-                          onClick={async () => {
-                            setPreviewDocument(doc);
-                            setIsLoadingPreview(true);
-                            setPreviewUrl(null);
-                            try {
-                              const signedUrl = await documentService.getSignedUrl(doc.id);
-                              setPreviewUrl(signedUrl);
-                            } catch (error: any) {
-                              console.error('Failed to get signed URL:', error);
-                              // Fallback to original URL
-                              setPreviewUrl(doc.url);
-                            } finally {
-                              setIsLoadingPreview(false);
-                            }
-                          }}
-                          title="Preview"
-                        >
-                          <Eye size={12} className="sm:w-4 sm:h-4" />
-                        </Button>
-                        {isAdminCreatedApplication && (
-                          <>
-                            <input
-                              type="file"
-                              accept={doc.type === 'photo' ? 'image/*' : 'image/*,.pdf'}
-                              onChange={(e) => handleReuploadFileSelect(doc.id, e)}
-                              className="hidden"
-                              id={`reupload-partner-${doc.id}`}
-                              ref={(el) => {
-                                if (el) {
-                                  reuploadFileInputsRef.current.set(doc.id, el);
-                                } else {
-                                  reuploadFileInputsRef.current.delete(doc.id);
-                                }
-                              }}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              onClick={() => {
-                                const input = reuploadFileInputsRef.current.get(doc.id);
-                                if (input) {
-                                  input.click();
-                                }
-                              }}
-                              disabled={reuploadingDoc === doc.id || isProcessingDoc === doc.id}
-                              title="Re-upload"
-                            >
-                              {reuploadingDoc === doc.id ? (
-                                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-b-2 border-blue-600"></div>
-                              ) : (
-                                <Upload size={12} className="sm:w-4 sm:h-4" />
-                              )}
-                            </Button>
-                          </>
-                        )}
-                        {doc.status === 'pending' && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={() => handleApproveDocument(doc.id)}
-                              disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
-                              title="Approve"
-                            >
-                              <CheckCircle size={12} className="sm:w-4 sm:h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleRejectDocument(doc)}
-                              disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
-                              title="Reject"
-                            >
-                              <XCircle size={12} className="sm:w-4 sm:h-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
                   );
                 })}
                 {documents.filter(d => d.belongsTo === 'partner').length === 0 && (
@@ -1353,116 +1353,116 @@ const ApplicationDetailsPage: React.FC = () => {
                 {documents.filter(d => d.belongsTo === 'joint').map(doc => {
                   const reuploaded = isReuploaded(doc);
                   return (
-                  <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600 p-2 sm:p-2.5 lg:p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'} min-w-0`}>
-                    {/* First Row: Document Name (Mobile) / Inline (Desktop) */}
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                      <FileText size={14} className="sm:w-4 sm:h-5 lg:w-[18px] lg:h-[18px] text-gold-600 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
-                          <p className="font-medium text-xs sm:text-sm text-gray-900 truncate" title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}>
-                            {getDocumentTypeLabel(doc.type)}: {doc.name}
-                          </p>
-                          {reuploaded && (
-                            <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300 !text-[10px] sm:!text-xs flex-shrink-0">
-                              Re-uploaded
-                            </Badge>
+                    <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600 p-2 sm:p-2.5 lg:p-3 rounded-lg ${reuploaded ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'} min-w-0`}>
+                      {/* First Row: Document Name (Mobile) / Inline (Desktop) */}
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                        <FileText size={14} className="sm:w-4 sm:h-5 lg:w-[18px] lg:h-[18px] text-gold-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
+                            <p className="font-medium text-xs sm:text-sm text-gray-900 truncate" title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}>
+                              {getDocumentTypeLabel(doc.type)}: {doc.name}
+                            </p>
+                            {reuploaded && (
+                              <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300 !text-[10px] sm:!text-xs flex-shrink-0">
+                                Re-uploaded
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {/* Second Row: Status and Buttons (Mobile) / Inline (Desktop) */}
+                      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-shrink-0">
+                        <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0 !text-[10px] sm:!text-xs">
+                          {doc.status}
+                        </Badge>
+                        <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
+                            onClick={async () => {
+                              setPreviewDocument(doc);
+                              setIsLoadingPreview(true);
+                              setPreviewUrl(null);
+                              try {
+                                const signedUrl = await documentService.getSignedUrl(doc.id);
+                                setPreviewUrl(signedUrl);
+                              } catch (error: any) {
+                                console.error('Failed to get signed URL:', error);
+                                // Fallback to original URL
+                                setPreviewUrl(doc.url);
+                              } finally {
+                                setIsLoadingPreview(false);
+                              }
+                            }}
+                            title="Preview"
+                          >
+                            <Eye size={12} className="sm:w-4 sm:h-4" />
+                          </Button>
+                          {isAdminCreatedApplication && (
+                            <>
+                              <input
+                                type="file"
+                                accept={doc.type === 'photo' ? 'image/*' : 'image/*,.pdf'}
+                                onChange={(e) => handleReuploadFileSelect(doc.id, e)}
+                                className="hidden"
+                                id={`reupload-joint-${doc.id}`}
+                                ref={(el) => {
+                                  if (el) {
+                                    reuploadFileInputsRef.current.set(doc.id, el);
+                                  } else {
+                                    reuploadFileInputsRef.current.delete(doc.id);
+                                  }
+                                }}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={() => {
+                                  const input = reuploadFileInputsRef.current.get(doc.id);
+                                  if (input) {
+                                    input.click();
+                                  }
+                                }}
+                                disabled={reuploadingDoc === doc.id || isProcessingDoc === doc.id}
+                                title="Re-upload"
+                              >
+                                {reuploadingDoc === doc.id ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-b-2 border-blue-600"></div>
+                                ) : (
+                                  <Upload size={12} className="sm:w-4 sm:h-4" />
+                                )}
+                              </Button>
+                            </>
+                          )}
+                          {doc.status === 'pending' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => handleApproveDocument(doc.id)}
+                                disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
+                                title="Approve"
+                              >
+                                <CheckCircle size={12} className="sm:w-4 sm:h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleRejectDocument(doc)}
+                                disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
+                                title="Reject"
+                              >
+                                <XCircle size={12} className="sm:w-4 sm:h-4" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
                     </div>
-                    {/* Second Row: Status and Buttons (Mobile) / Inline (Desktop) */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-shrink-0">
-                      <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'} className="flex-shrink-0 !text-[10px] sm:!text-xs">
-                        {doc.status}
-                      </Badge>
-                      <div className="flex gap-1 sm:gap-2 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
-                          onClick={async () => {
-                            setPreviewDocument(doc);
-                            setIsLoadingPreview(true);
-                            setPreviewUrl(null);
-                            try {
-                              const signedUrl = await documentService.getSignedUrl(doc.id);
-                              setPreviewUrl(signedUrl);
-                            } catch (error: any) {
-                              console.error('Failed to get signed URL:', error);
-                              // Fallback to original URL
-                              setPreviewUrl(doc.url);
-                            } finally {
-                              setIsLoadingPreview(false);
-                            }
-                          }}
-                          title="Preview"
-                        >
-                          <Eye size={12} className="sm:w-4 sm:h-4" />
-                        </Button>
-                        {isAdminCreatedApplication && (
-                          <>
-                            <input
-                              type="file"
-                              accept={doc.type === 'photo' ? 'image/*' : 'image/*,.pdf'}
-                              onChange={(e) => handleReuploadFileSelect(doc.id, e)}
-                              className="hidden"
-                              id={`reupload-joint-${doc.id}`}
-                              ref={(el) => {
-                                if (el) {
-                                  reuploadFileInputsRef.current.set(doc.id, el);
-                                } else {
-                                  reuploadFileInputsRef.current.delete(doc.id);
-                                }
-                              }}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              onClick={() => {
-                                const input = reuploadFileInputsRef.current.get(doc.id);
-                                if (input) {
-                                  input.click();
-                                }
-                              }}
-                              disabled={reuploadingDoc === doc.id || isProcessingDoc === doc.id}
-                              title="Re-upload"
-                            >
-                              {reuploadingDoc === doc.id ? (
-                                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-b-2 border-blue-600"></div>
-                              ) : (
-                                <Upload size={12} className="sm:w-4 sm:h-4" />
-                              )}
-                            </Button>
-                          </>
-                        )}
-                        {doc.status === 'pending' && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={() => handleApproveDocument(doc.id)}
-                              disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
-                              title="Approve"
-                            >
-                              <CheckCircle size={12} className="sm:w-4 sm:h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleRejectDocument(doc)}
-                              disabled={isProcessingDoc === doc.id || reuploadingDoc === doc.id}
-                              title="Reject"
-                            >
-                              <XCircle size={12} className="sm:w-4 sm:h-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
                   );
                 })}
                 {documents.filter(d => d.belongsTo === 'joint').length === 0 && (
@@ -1500,10 +1500,10 @@ const ApplicationDetailsPage: React.FC = () => {
                 <p className="font-medium text-gray-900">
                   {((declarations as any)?.marriageDate || (declarations as any)?.marriageRegistrationDate)
                     ? safeFormatDate(
-                        (declarations as any).marriageDate || (declarations as any).marriageRegistrationDate,
-                        'MMMM d, yyyy',
-                        'Invalid date'
-                      )
+                      (declarations as any).marriageDate || (declarations as any).marriageRegistrationDate,
+                      'MMMM d, yyyy',
+                      'Invalid date'
+                    )
                     : 'Not provided'}
                 </p>
               )}
@@ -1568,16 +1568,16 @@ const ApplicationDetailsPage: React.FC = () => {
 
       {/* Document Preview Modal */}
       {previewDocument && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-2 sm:p-4" 
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-2 sm:p-4"
           onClick={() => {
             setPreviewDocument(null);
             setPreviewUrl(null);
           }}
           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
         >
-          <div 
-            className="bg-white rounded-lg sm:rounded-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-auto" 
+          <div
+            className="bg-white rounded-lg sm:rounded-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
             style={{ zIndex: 101 }}
           >
@@ -1611,9 +1611,9 @@ const ApplicationDetailsPage: React.FC = () => {
                   <Download size={14} className="sm:w-4 sm:h-4 mr-1" />
                   <span className="hidden sm:inline">Download</span>
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="!p-1.5 sm:!p-2 hover:bg-red-50 hover:text-red-600 !text-xs sm:!text-sm"
                   onClick={(e) => {
                     e.stopPropagation();

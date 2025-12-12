@@ -67,6 +67,50 @@ export const authService = {
 
   async register(data: RegisterData): Promise<AuthResponse | { needsConfirmation: true; email: string }> {
     try {
+      // Check if email domain is @mmrburwan.com
+      if (data.email.toLowerCase().endsWith('@mmrburwan.com')) {
+        // Use custom registration flow for internal users (no email verification)
+        const { data: userData, error: fnError } = await supabase.functions.invoke('register-internal-user', {
+          body: {
+            email: data.email,
+            password: data.password,
+            name: data.name,
+            phone: data.phone,
+          },
+        });
+
+        if (fnError) {
+          console.error('Internal registration error:', fnError);
+          throw new Error(fnError.message || 'Registration failed');
+        }
+
+        if (userData?.error) {
+          if (userData.code === 'USER_ALREADY_EXISTS') {
+            throw new Error('User already exists');
+          }
+          throw new Error(userData.error);
+        }
+
+        // Successfully created user. Now log them in automatically.
+        const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({
+          email: data.email,
+          password: data.password,
+        });
+
+        if (loginError) {
+          throw new Error('Registration successful but login failed. Please log in.');
+        }
+
+        // Check if mapSupabaseUser needs to be called - login returns session, we need to return AuthResponse
+        const user = mapSupabaseUser(authData.user, authData.user?.user_metadata?.role || 'client');
+
+        return {
+          user,
+          token: authData.session?.access_token || '',
+        };
+      }
+
+      // Standard registration for other domains
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -235,16 +279,26 @@ export const authService = {
     }
   },
 
+  async updateEmail(newEmail: string): Promise<void> {
+    const { error } = await supabase.auth.updateUser({
+      email: newEmail,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  },
+
   async getCurrentUser(): Promise<User | null> {
     try {
       // First check for an existing session (this will use persisted session if available)
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError) {
         console.error('Error getting session:', sessionError);
         return null;
       }
-      
+
       if (session?.user) {
         // Ensure profile exists
         await this.ensureProfileExists(session.user);
@@ -253,7 +307,7 @@ export const authService = {
 
       // If no session, try to get user (this will trigger refresh if token is expired)
       const { data: { user }, error } = await supabase.auth.getUser();
-      
+
       if (error || !user) {
         return null;
       }

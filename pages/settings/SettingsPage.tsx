@@ -14,7 +14,9 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import PhoneInput from '../../components/ui/PhoneInput';
-import { User, Mail, Phone, Download, Key, ArrowLeft, Calendar, Hash, MapPin, Heart } from 'lucide-react';
+import { User, Mail, Phone, Download, Key, ArrowLeft, Calendar, Hash, MapPin, Heart, Edit2 } from 'lucide-react';
+import Modal from '../../components/ui/Modal';
+import { authService } from '../../services/auth';
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -39,15 +41,20 @@ const SettingsPage: React.FC = () => {
     partnerLastName: '',
   });
 
+  // Email update state
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+
   useEffect(() => {
     const loadProfile = async () => {
       if (!user) return;
-      
+
       setIsLoading(true);
       try {
         const profileData = await profileService.getProfile(user.id);
         setProfile(profileData);
-        
+
         if (profileData) {
           setFormData({
             name: user.name || '',
@@ -96,7 +103,7 @@ const SettingsPage: React.FC = () => {
     try {
       // First, verify we have a valid session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError || !session) {
         throw new Error('No active session. Please log in again.');
       }
@@ -105,7 +112,7 @@ const SettingsPage: React.FC = () => {
       const updateData: { name: string; phone?: string } = {
         name: formData.name,
       };
-      
+
       if (formData.phone && formData.phone.trim()) {
         updateData.phone = formData.phone;
       }
@@ -140,7 +147,7 @@ const SettingsPage: React.FC = () => {
       // Always update profile in database (this uses RLS policies)
       const currentProfile = await profileService.getProfile(user.id);
       const nameParts = formData.name.split(' ');
-      
+
       const profileUpdate: any = {
         firstName: nameParts[0] || formData.name,
         lastName: nameParts.slice(1).join(' ') || '',
@@ -175,12 +182,12 @@ const SettingsPage: React.FC = () => {
           lastName: formData.partnerLastName,
         };
       }
-      
+
       await profileService.updateProfile(user.id, profileUpdate);
-      
+
       // Recalculate completion percentage after update
       const completion = await profileService.calculateCompletion(user.id);
-      
+
       // Reload profile to get updated data
       const updatedProfile = await profileService.getProfile(user.id);
       setProfile(updatedProfile);
@@ -203,7 +210,7 @@ const SettingsPage: React.FC = () => {
       console.error('Failed to save:', error);
       // Provide more specific error messages
       const errorMessage = error.message || 'Failed to save changes. Please try again.';
-      
+
       if (errorMessage.includes('permission') || errorMessage.includes('denied') || errorMessage.includes('RLS')) {
         showToast('Permission denied. Please ensure you are logged in correctly and try again.', 'error');
       } else if (errorMessage.includes('session')) {
@@ -274,6 +281,26 @@ const SettingsPage: React.FC = () => {
     showToast(t('messages.passwordChangeSoon'), 'info');
   };
 
+  const handleUpdateEmail = async () => {
+    if (!newEmail || !newEmail.includes('@')) {
+      showToast('Please enter a valid email address', 'error');
+      return;
+    }
+
+    setIsUpdatingEmail(true);
+    try {
+      await authService.updateEmail(newEmail);
+      showToast('Confirmation link sent to your new email address. Please check your inbox.', 'success');
+      setIsEmailModalOpen(false);
+      setNewEmail('');
+    } catch (error: any) {
+      console.error('Failed to update email:', error);
+      showToast(error.message || 'Failed to update email', 'error');
+    } finally {
+      setIsUpdatingEmail(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
       <div className="mb-4 sm:mb-6">
@@ -311,13 +338,25 @@ const SettingsPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 leftIcon={<User size={16} className="sm:w-5 sm:h-5" />}
               />
-              <Input
-                label="Email"
-                type="email"
-                value={user?.email || ''}
-                leftIcon={<Mail size={16} className="sm:w-5 sm:h-5" />}
-                disabled
-              />
+              <div className="relative">
+                <Input
+                  label="Email"
+                  type="email"
+                  value={user?.email || ''}
+                  leftIcon={<Mail size={16} className="sm:w-5 sm:h-5" />}
+                  disabled
+                />
+                <div className="absolute top-[28px] right-2 sm:right-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEmailModalOpen(true)}
+                    className="!py-1 !px-2 h-auto text-gold-600 hover:text-gold-700 hover:bg-gold-50"
+                  >
+                    <span className="text-xs font-medium">Change</span>
+                  </Button>
+                </div>
+              </div>
               <PhoneInput
                 label="Phone Number"
                 value={formData.phone?.replace('+91', '').trim() || ''}
@@ -434,7 +473,7 @@ const SettingsPage: React.FC = () => {
                   Complete all sections for 100%
                 </p>
               </div>
-              <Button 
+              <Button
                 variant="primary"
                 size="sm"
                 onClick={handleSaveChanges}
@@ -450,7 +489,7 @@ const SettingsPage: React.FC = () => {
           <Card className="p-3 sm:p-5">
             <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-3 sm:mb-4">Account Actions</h3>
             <div className="space-y-2 sm:space-y-3">
-              <Button 
+              <Button
                 variant="outline"
                 size="sm"
                 className="w-full justify-start !text-xs sm:!text-sm"
@@ -459,7 +498,16 @@ const SettingsPage: React.FC = () => {
                 <Key size={14} className="sm:w-[18px] sm:h-[18px] mr-2" />
                 Change Password
               </Button>
-              <Button 
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start !text-xs sm:!text-sm"
+                onClick={() => setIsEmailModalOpen(true)}
+              >
+                <Mail size={14} className="sm:w-[18px] sm:h-[18px] mr-2" />
+                Change Email
+              </Button>
+              <Button
                 variant="outline"
                 size="sm"
                 className="w-full justify-start !text-xs sm:!text-sm"
@@ -473,6 +521,51 @@ const SettingsPage: React.FC = () => {
           </Card>
         </div>
       )}
+      <Modal
+        isOpen={isEmailModalOpen}
+        onClose={() => {
+          setIsEmailModalOpen(false);
+          setNewEmail('');
+        }}
+        title="Change Email Address"
+      >
+        <div className="space-y-4">
+          <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm">
+            Note: Changing your email will require you to verify the new email address.
+            A confirmation link will be sent to the new email.
+          </div>
+
+          <Input
+            label="New Email Address"
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            placeholder="Enter new email"
+            leftIcon={<Mail size={16} />}
+          />
+
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEmailModalOpen(false);
+                setNewEmail('');
+              }}
+              disabled={isUpdatingEmail}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleUpdateEmail}
+              isLoading={isUpdatingEmail}
+              disabled={!newEmail || isUpdatingEmail}
+            >
+              Update Email
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
