@@ -65,29 +65,71 @@ The project follows a **Modern Serverless Architecture** leveraging the **Supaba
 ### Architecture Diagram
 ```mermaid
 graph TD
-    User[Applicant] -->|HTTPS| Frontend[React App]
-    Admin[Administrator] -->|HTTPS| Frontend
+    %% Styles
+    classDef user fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef admin fill:#fbe9e7,stroke:#bf360c,stroke-width:2px;
+    classDef app fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef cloud fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef db fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef ext fill:#eceff1,stroke:#455a64,stroke-width:1px,stroke-dasharray: 5 5;
+
+    %% External Users
+    User([👤 Applicant]):::user
+    Admin([👮 Administrator]):::admin
+
+    %% Frontend Applications
+    subgraph Frontend["🖥️ Frontend Application (React/Vite)"]
+        ClientApp[Client Portal]:::app
+        AdminApp[Admin Dashboard]:::app
+    end
+
+    %% Network Connections
+    User ==>|HTTPS| ClientApp
+    Admin ==>|HTTPS| AdminApp
+
+    %% Backend Services (Supabase)
+    subgraph Supabase["⚡ Supabase Backend Services"]
+        direction TB
+        Auth[🔐 Auth & Security]:::cloud
+        Realtime[📡 Realtime Subscriptions]:::cloud
+        Storage[📂 Object Storage]:::cloud
+        
+        subgraph Data["💾 Data Persistence"]
+            DB[(PostgreSQL Database)]:::db
+        end
+    end
+
+    %% Connections to Supabase
+    ClientApp <-->|REST / WSS| Supabase
+    AdminApp <-->|REST / WSS| Supabase
+
+    %% Detailed Data Flow
+    ClientApp -->|Uploads| Storage
+    AdminApp -->|Verifies| Storage
     
-    Frontend -->|REST/WebSocket| Supabase[Supabase Platform]
+    %% Edge Functions & Webhooks
+    DB -.->|Database Webhook| EdgeFn
     
-    subgraph Supabase Services
-        Auth["Authentication (JWT)"]
-        DB[(PostgreSQL Database)]
-        Storage["File Storage (S3-compatible)"]
-        Realtime[Realtime Subscriptions]
+    subgraph Serverless["☁️ Serverless Compute (Edge Functions)"]
+        EdgeFn{{⚡ Edge Logic}}:::cloud
+        Notify[📧 Notification Service]:::cloud
+        Proxy[🛠️ Admin Tools]:::cloud
     end
     
-    Supabase -->|Database Webhooks| Webhooks[Event Triggers]
-    Webhooks -->|POST| EdgeFn["Edge Functions (Deno)"]
-    
-    subgraph Edge Functions
-        VerifyFn[send-verification-email]
-        RejectFn[send-rejection-email]
-        ProxyFn[create-proxy-user]
+    EdgeFn --> Notify
+    EdgeFn --> Proxy
+
+    %% External Services
+    subgraph External["🌍 External Ecosystem"]
+        Resend[📧 Resend Email API]:::ext
     end
-    
-    EdgeFn -->|API Call| Resend[Resend Email API]
-    Resend -->|SMTP| User
+
+    Notify -->|API Call| Resend
+    Resend -.->|SMTP| User
+    Resend -.->|SMTP| Admin
+
+    %% Click Interactions
+    click ClientApp "https://mmr-burwan.vercel.app" "Go to Client Portal"
 ```
 
 ---
