@@ -43,23 +43,24 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // Also check for existing session as a fallback after a brief moment
+    // Also check for existing session immediately
     // This ensures we have the user even if the listener hasn't fired yet
     const checkSession = async () => {
-      // Wait a bit for Supabase to initialize and fire INITIAL_SESSION
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
+      // No artificial delay needed. 
+      // We want to check immediately if we can.
+
       // Only check if we haven't received an initial state from the listener
       if (!stateRef.hasReceivedInitialState && mounted) {
         try {
           const currentUser = await authService.getCurrentUser();
-          if (mounted) {
+          if (mounted && !stateRef.hasReceivedInitialState) {
+            // Only set if listener still hasn't fired to avoid race conditions overwriting newer state
             setUser(currentUser);
             setIsLoading(false);
           }
         } catch (error) {
           console.error('Failed to get current user:', error);
-          if (mounted) {
+          if (mounted && !stateRef.hasReceivedInitialState) {
             setUser(null);
             setIsLoading(false);
           }
@@ -96,7 +97,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       // Register will always return needsConfirmation: true
       const result = await authService.register({ email, password, name, phone });
       console.log('AuthContext register result:', result);
-      
+
       // Always return the result (which should have needsConfirmation: true)
       // The RegisterPage will handle showing the confirmation screen
       return result;

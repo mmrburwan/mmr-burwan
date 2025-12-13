@@ -312,8 +312,11 @@ export const authService = {
         return null;
       }
 
-      // Ensure profile exists
-      await this.ensureProfileExists(user);
+      // Optimization: Do NOT call ensureProfileExists on every getSession/getUser.
+      // It causes redundant DB calls on every page load.
+      // The profile should be created on registration/login or via database triggers.
+      // await this.ensureProfileExists(user);
+
       return mapSupabaseUser(user, user.user_metadata?.role || 'client');
     } catch (error) {
       console.error('Error in getCurrentUser:', error);
