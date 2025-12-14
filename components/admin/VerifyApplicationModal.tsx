@@ -461,6 +461,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
               </div>
               <div>
                 <input
+                  {...register('volumeLetter')}
                   placeholder="C"
                   disabled={isSubmitting}
                   className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
