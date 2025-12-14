@@ -209,6 +209,31 @@ export const generateCertificateData = (application: Application) => {
     ? `${certParts.serialNumber}/${certParts.serialYear}`
     : certParts.serialNumber;
 
+  // Determine registrar information based on application.registrarName
+  // Default to minhajul_islam_khan for backward compatibility
+  const registrarNameValue = application.registrarName || 'minhajul_islam_khan';
+
+  const registrarInfo = {
+    minhajul_islam_khan: {
+      name: 'MINHAJUL ISLAM KHAN',
+      license: '04L(St.)/LW/O/St./4M-123/2019',
+      qualifications: undefined,
+      office: 'VILL. & P.O- GRAMSALIKA, P.S- BURWAN, DIST- MURSHIDABAD, WEST BENGAL, PIN-742132',
+      phone: '9732688698',
+      email: 'mmrburwan@gmail.com',
+    },
+    md_ismail_khan: {
+      name: 'SENIOR MUFTI MAULANA AL-HAJJ MD. ISMAIL KHAN',
+      qualifications: 'M.M.M.F. (CAL), M.A. ALIGARH MUSLIM UNIVERSITY',
+      license: '2203, 2204',
+      office: 'VILL & PO- GRAMSALIKA, PS- BURWAN, DIST- MURSHIDABAD, WEST BENGAL, PIN- 742132',
+      phone: '9732688698',
+      email: 'mmrburwan@gmail.com',
+    },
+  };
+
+  const selectedRegistrar = registrarInfo[registrarNameValue as keyof typeof registrarInfo] || registrarInfo.minhajul_islam_khan;
+
   return {
     verificationId,
     registrationDate,
@@ -218,11 +243,12 @@ export const generateCertificateData = (application: Application) => {
     serialNo: serialNo,
     page: certParts.pageNumber,
     marriageDate,
-    registrarName: 'MINHAJUL ISLAM KHAN',
-    registrarLicense: '04L(St.)/LW/O/St./4M-123/2019',
-    registrarOffice: 'VILL. & P.O- GRAMSALIKA, P.S- BURWAN, DIST- MURSHIDABAD, WEST BENGAL, PIN-742132',
-    registrarPhone: '9732688698',
-    registrarEmail: 'mmrburwan@gmail.com',
+    registrarName: selectedRegistrar.name,
+    registrarLicense: selectedRegistrar.license,
+    registrarQualifications: selectedRegistrar.qualifications,
+    registrarOffice: selectedRegistrar.office,
+    registrarPhone: selectedRegistrar.phone,
+    registrarEmail: selectedRegistrar.email,
     userFirstName: (userDetails as any).firstName || userRandomName.firstName,
     userLastName: (userDetails as any).lastName || '',
     userFatherName: (userDetails as any).fatherName || `MD ${userRandomName.firstName.toUpperCase()} SK`,

@@ -118,6 +118,7 @@ interface CertificatePDFProps {
     marriageDate: string;
     registrarName: string;
     registrarLicense: string;
+    registrarQualifications?: string;
     registrarOffice: string;
     registrarPhone: string;
     registrarEmail: string;
@@ -396,6 +397,7 @@ const styles = StyleSheet.create({
   registrarRow: {
     flexDirection: 'row',
     marginBottom: 0.5,
+    flexWrap: 'nowrap',
   },
   registrarLabel: {
     fontFamily: 'Times',
@@ -406,6 +408,12 @@ const styles = StyleSheet.create({
   registrarValue: {
     fontFamily: 'Times',
     fontSize: 10,
+    color: BLACK,
+  },
+  registrarValueBold: {
+    fontFamily: 'Times',
+    fontSize: 10,
+    fontWeight: 'bold',
     color: BLACK,
   },
   contactRow: {
@@ -668,14 +676,40 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
           {/* Registrar Details */}
           <View style={styles.registrarBox}>
             <Text style={styles.registrarTitle}>Muhammadan Marriage Registrar & Qaazi Details:</Text>
-            <View style={styles.registrarRow}>
-              <Text style={styles.registrarLabel}>Name: </Text>
-              <Text style={styles.registrarValue}>{certificateData.registrarName}</Text>
-            </View>
-            <View style={styles.registrarRow}>
-              <Text style={styles.registrarLabel}>Licence No: </Text>
-              <Text style={styles.registrarValue}>{certificateData.registrarLicense}</Text>
-            </View>
+            
+            {/* Conditional rendering based on registrar type */}
+            {certificateData.registrarQualifications ? (
+              // MD Ismail Khan format: Name (left) with License and Sanad No (right) on same line, then Qualifications below
+              <>
+                <View style={[styles.registrarRow, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
+                  <View style={{ flex: 2, paddingRight: 15 }}>
+                    <Text style={styles.registrarValue}>
+                      SENIOR MUFTI MAULANA AL-HAJJ <Text style={styles.registrarValueBold}>MD. ISMAIL KHAN</Text>
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, flexShrink: 0 }}>
+                    <Text style={styles.registrarValue}>
+                      <Text style={styles.registrarValueBold}>License and Sanad No:</Text> {certificateData.registrarLicense}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.registrarRow}>
+                  <Text style={styles.registrarValue}>{certificateData.registrarQualifications}</Text>
+                </View>
+              </>
+            ) : (
+              // Minhajul Islam Khan format: Name, Licence No
+              <>
+                <View style={styles.registrarRow}>
+                  <Text style={styles.registrarLabel}>Name: </Text>
+                  <Text style={styles.registrarValue}>{certificateData.registrarName}</Text>
+                </View>
+                <View style={styles.registrarRow}>
+                  <Text style={styles.registrarLabel}>Licence No: </Text>
+                  <Text style={styles.registrarValue}>{certificateData.registrarLicense}</Text>
+                </View>
+              </>
+            )}
             <View style={styles.registrarRow}>
               <Text style={styles.registrarLabel}>Office Address: </Text>
               <Text style={styles.registrarValue}>{certificateData.registrarOffice}</Text>

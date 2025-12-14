@@ -288,6 +288,7 @@ export const applicationService = {
       verifiedBy: data.verified_by,
       certificateNumber: data.certificate_number,
       registrationDate: data.registration_date,
+      registrarName: data.registrar_name,
       submittedAt: data.submitted_at,
       lastUpdated: data.last_updated || data.updated_at,
       // Proxy application fields

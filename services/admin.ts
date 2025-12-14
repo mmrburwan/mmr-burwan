@@ -336,7 +336,8 @@ export const adminService = {
     actorId: string,
     actorName: string,
     certificateNumber: string,
-    registrationDate: string
+    registrationDate: string,
+    registrarName: string
   ): Promise<Application> {
     // First, check for rejected documents that haven't been re-uploaded
     const { data: documentsData, error: docsError } = await supabase
@@ -402,6 +403,7 @@ export const adminService = {
         verified_by: actorId,
         certificate_number: certificateNumber,
         registration_date: registrationDate,
+        registrar_name: registrarName,
       })
       .eq('id', applicationId)
       .select(`

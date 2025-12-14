@@ -164,12 +164,13 @@ const verifySchema = z.object({
   serialYear: z.string(),
   pageNumber: z.string(),
   registrationDate: z.string().min(1, 'Registration date is required'),
+  registrarName: z.string().min(1, 'Registrar selection is required'),
 });
 
 interface VerifyApplicationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (certificateNumber: string, registrationDate: string) => Promise<void>;
+  onConfirm: (certificateNumber: string, registrationDate: string, registrarName: string) => Promise<void>;
   applicationId: string;
   currentCertificateNumber?: string;
   currentRegistrationDate?: string;
@@ -253,6 +254,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
       serialYear: parsedCert.serialYear,
       pageNumber: parsedCert.pageNumber,
       registrationDate: currentRegistrationDate || '',
+      registrarName: 'minhajul_islam_khan', // Default to Minhajul Islam Khan
     },
   });
 
@@ -293,6 +295,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
         serialYear: parsed.serialYear,
         pageNumber: parsed.pageNumber,
         registrationDate: currentRegistrationDate || '',
+        registrarName: 'minhajul_islam_khan', // Default to Minhajul Islam Khan
       });
     }
   }, [isOpen, currentCertificateNumber, currentRegistrationDate, reset]);
@@ -334,7 +337,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
         return;
       }
 
-      await onConfirm(fullCertificateNumber, data.registrationDate);
+      await onConfirm(fullCertificateNumber, data.registrationDate, data.registrarName);
       reset();
       onClose();
     } catch (error: any) {
@@ -546,6 +549,27 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
             />
             <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
               This date will be displayed on the certificate PDF
+            </p>
+          </div>
+
+          {/* Registrar Selection */}
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+              Registrar Name
+            </label>
+            <select
+              {...register('registrarName')}
+              disabled={isSubmitting}
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="minhajul_islam_khan">Minhajul Islam Khan</option>
+              <option value="md_ismail_khan">MD Ismail Khan</option>
+            </select>
+            {errors.registrarName && (
+              <p className="text-[10px] sm:text-xs text-rose-600 mt-0.5 sm:mt-1">{errors.registrarName.message}</p>
+            )}
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
+              Select the registrar who verified this application
             </p>
           </div>
         </div>

@@ -87,7 +87,7 @@ const ClientsPage: React.FC = () => {
     loadClients();
   }, []);
 
-  const handleVerify = async (certificateNumber: string, registrationDate: string) => {
+  const handleVerify = async (certificateNumber: string, registrationDate: string, registrarName: string) => {
     if (!user) return;
     
     try {
@@ -96,7 +96,8 @@ const ClientsPage: React.FC = () => {
         user.id,
         user.name || user.email,
         certificateNumber,
-        registrationDate
+        registrationDate,
+        registrarName
       );
       showToast('Application verified successfully', 'success');
       

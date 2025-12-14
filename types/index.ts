@@ -81,6 +81,7 @@ export interface Application {
   verifiedBy?: string;
   certificateNumber?: string; // Certificate number set by admin during verification
   registrationDate?: string; // Registration date set by admin during verification
+  registrarName?: string; // Name of the registrar who verified the application
   submittedAt?: string;
   lastUpdated: string;
   // Proxy application fields

@@ -240,7 +240,7 @@ const ApplicationDetailsPage: React.FC = () => {
     setIsEditing(false);
   };
 
-  const handleVerify = async (certificateNumber: string, registrationDate: string) => {
+  const handleVerify = async (certificateNumber: string, registrationDate: string, registrarName: string) => {
     if (!application || !user) return;
 
     try {
@@ -249,7 +249,8 @@ const ApplicationDetailsPage: React.FC = () => {
         user.id,
         user.name || user.email,
         certificateNumber,
-        registrationDate
+        registrationDate,
+        registrarName
       );
       setApplication(updated);
       showToast('Application verified successfully', 'success');
