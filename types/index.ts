@@ -35,6 +35,7 @@ export interface PartnerDetails {
   aadhaarNumber?: string;
   mobileNumber?: string;
   email?: string; // Bride's email address
+  voterOrRollNo: string;
   address: Address;
 }
 
@@ -57,6 +58,7 @@ export interface UserDetails {
   dateOfBirth: string;
   aadhaarNumber: string;
   mobileNumber: string;
+  voterOrRollNo: string;
 }
 
 export interface Application {

@@ -71,9 +71,9 @@ const formatAadhaar = (aadhaar: string | undefined): string => {
 // Uses the exact address fields from the application form
 const formatAddress = (address: any): string => {
   if (!address) return 'N/A';
-  
+
   const parts = [];
-  
+
   // Village/Street - use villageStreet field first, fallback to street
   const village = address.villageStreet || address.street || '';
   if (village) {
@@ -81,26 +81,26 @@ const formatAddress = (address: any): string => {
     const cleanVillage = village.toUpperCase().replace(/^VILL-?\s*/i, '').trim();
     parts.push(`VILL- ${cleanVillage}`);
   }
-  
+
   // Post Office - use postOffice field first, fallback to city
   const postOffice = address.postOffice || address.city || '';
   if (postOffice) parts.push(`P.O- ${postOffice.toUpperCase()}`);
-  
+
   // Police Station - use policeStation field
   const policeStation = address.policeStation || '';
   if (policeStation) parts.push(`P.S- ${policeStation.toUpperCase()}`);
-  
+
   // District - use district field first, fallback to city
   const district = address.district || address.city || '';
   if (district) parts.push(`DIST- ${district.toUpperCase()}`);
-  
+
   // State - use actual state from address
   const state = address.state || '';
   if (state) parts.push(state.toUpperCase());
-  
+
   // PIN code
   if (address.zipCode) parts.push(`PIN- ${address.zipCode}`);
-  
+
   // Only show if we have at least village/street info
   return parts.length > 0 ? parts.join(', ') : 'N/A';
 };
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
     padding: '55 45 35 45', // Increased top padding to shift content down
   },
-  
+
   // ===== HEADER =====
   header: {
     textAlign: 'center',
@@ -176,12 +176,12 @@ const styles = StyleSheet.create({
     margin: '-8 auto 2',
   },
   emblemContainer: {
-    width: 40,
-    height: 40,
+    width: 45,
+    height: 45,
   },
   emblem: {
-    width: 40,
-    height: 40,
+    width: 45,
+    height: 45,
     objectFit: 'contain',
   },
   westBengalLogo: {
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: BLACK,
   },
-  
+
   // ===== CERTIFICATE TITLE =====
   titleSection: {
     textAlign: 'center',
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 4,
   },
-  
+
   // ===== CONSECUTIVE ROW =====
   consecutiveRow: {
     flexDirection: 'row',
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   boldText: {
     fontWeight: 'bold',
   },
-  
+
   // ===== DETAILS BOXES =====
   detailsRow: {
     flexDirection: 'row',
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     color: BLACK,
     lineHeight: 1.0,
   },
-  
+
   // ===== SECTION BOXES =====
   sectionBox: {
     marginBottom: 2,
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: BLACK,
   },
-  
+
   // ===== REGISTRATION DETAILS =====
   regDetailsContent: {
     flexDirection: 'row',
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   regItem: {
     flexDirection: 'row',
   },
-  
+
   // ===== WISH STATEMENT =====
   wishSection: {
     textAlign: 'center',
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: BLACK,
   },
-  
+
   // ===== REGISTRAR BOX =====
   registrarBox: {
     marginBottom: 4,
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   // ===== BOTTOM SECTION =====
   bottomSection: {
     flexDirection: 'row',
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     border: `1.5 solid ${GOLD}`,
     backgroundColor: '#f5f5f5',
   },
-  
+
   // ===== SIGNATURE =====
   signatureSection: {
     marginTop: 30,
@@ -480,11 +480,11 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
   const userCurrentAddress = application.userCurrentAddress || (application as any).currentAddress || {};
   const partnerAddress = ((application as any).partnerAddress || (partnerDetails as any).address || {}) as any;
   const partnerCurrentAddress = ((application as any).partnerCurrentAddress || {}) as any;
-  
+
   // Check for villageStreet (new format) OR street (legacy format) to determine if current address exists
   const hasUserCurrentAddress = userCurrentAddress.villageStreet || userCurrentAddress.street;
   const hasPartnerCurrentAddress = partnerCurrentAddress.villageStreet || partnerCurrentAddress.street;
-  
+
   const userPresentAddr = formatAddress(hasUserCurrentAddress ? userCurrentAddress : userAddress);
   const userPermanentAddr = formatAddress(userAddress);
   const partnerPresentAddr = formatAddress(hasPartnerCurrentAddress ? partnerCurrentAddress : partnerAddress);
@@ -495,8 +495,8 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
       <Page size="A4" style={styles.page}>
         {/* Border */}
         <View style={styles.borderContainer}>
-          <Image 
-            src={getImageUrl("/assets/certificate/border.png")} 
+          <Image
+            src={getImageUrl("/assets/certificate/border.png")}
             style={styles.borderImage}
             cache={false}
           />
@@ -508,14 +508,14 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
           <View style={styles.header}>
             <View style={styles.logosContainer}>
               <View style={styles.emblemContainer}>
-                <Image 
-                  src={getImageUrl("/assets/certificate/emblem-india.png")} 
+                <Image
+                  src={getImageUrl("/assets/certificate/emblem-india.png")}
                   style={styles.emblem}
                   cache={false}
                 />
               </View>
-              <Image 
-                src={getImageUrl("/assets/certificate/west-bengal-logo.png")} 
+              <Image
+                src={getImageUrl("/assets/certificate/west-bengal-logo.png")}
                 style={styles.westBengalLogo}
                 cache={false}
               />
@@ -683,24 +683,24 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
             <View style={styles.contactRow}>
               <Text style={styles.registrarLabel}>Contact: </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
-                <Image 
-                  src={getImageUrl("/icons/phone.png")} 
+                <Image
+                  src={getImageUrl("/icons/phone.png")}
                   style={styles.icon}
                   cache={false}
                 />
                 <Text style={styles.registrarValue}> {certificateData.registrarPhone}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
-                <Image 
-                  src={getImageUrl("/icons/mail.png")} 
+                <Image
+                  src={getImageUrl("/icons/mail.png")}
                   style={styles.icon}
                   cache={false}
                 />
                 <Text style={styles.registrarValue}> {certificateData.registrarEmail}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Image 
-                  src={getImageUrl("/icons/world.png")} 
+                <Image
+                  src={getImageUrl("/icons/world.png")}
                   style={styles.icon}
                   cache={false}
                 />
@@ -713,8 +713,8 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
           <View style={styles.bottomSection}>
             <View style={styles.couplePhotoBox}>
               {jointPhotoDataUrl ? (
-                <Image 
-                  src={jointPhotoDataUrl} 
+                <Image
+                  src={jointPhotoDataUrl}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   cache={false}
                 />
@@ -722,8 +722,8 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
             </View>
             <View style={styles.qrSection}>
               {qrCodeImage ? (
-                <Image 
-                  src={qrCodeImage} 
+                <Image
+                  src={qrCodeImage}
                   style={{ width: 68, height: 68 }}
                   cache={false}
                 />

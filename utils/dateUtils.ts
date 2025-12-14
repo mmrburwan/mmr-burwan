@@ -1,4 +1,4 @@
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, differenceInYears } from 'date-fns';
 
 /**
  * Safely formats a date string using date-fns
@@ -80,6 +80,22 @@ export const safeParseISO = (dateString: string | null | undefined): Date | null
   } catch (error) {
     console.warn('Date parsing error:', error, 'for date:', dateString);
     return null;
+  }
+};
+
+/**
+ * Calculates age from a date string
+ * @param dateString - Date of birth string
+ * @returns Age in years, or 0 if invalid
+ */
+export const calculateAge = (dateString: string): number => {
+  if (!dateString) return 0;
+  try {
+    const date = new Date(dateString);
+    if (!isValid(date)) return 0;
+    return differenceInYears(new Date(), date);
+  } catch (error) {
+    return 0;
   }
 };
 

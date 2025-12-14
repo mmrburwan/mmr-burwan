@@ -43,7 +43,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     return {
       bookNumber: 'I',
       volumeNumber: '',
-      volumeLetter: 'C',
+      volumeLetter: '',
       volumeYear: '',
       serialNumber: '',
       serialYear: '',
@@ -57,7 +57,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     return {
       bookNumber: 'I',
       volumeNumber: '',
-      volumeLetter: 'C',
+      volumeLetter: '',
       volumeYear: '',
       serialNumber: '',
       serialYear: '',
@@ -69,7 +69,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     return {
       bookNumber: parts[3] || 'I',
       volumeNumber: parts[4] || '',
-      volumeLetter: parts[5] || 'C',
+      volumeLetter: parts[5] || '',
       volumeYear: '',
       serialNumber: parts[6] || '',
       serialYear: '',
@@ -83,7 +83,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
       return {
         bookNumber: parts[3] || 'I',
         volumeNumber: parts[4] || '',
-        volumeLetter: parts[5] || 'C',
+        volumeLetter: parts[5] || '',
         volumeYear: part6,
         serialNumber: parts[7] || '',
         serialYear: '',
@@ -93,7 +93,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
       return {
         bookNumber: parts[3] || 'I',
         volumeNumber: parts[4] || '',
-        volumeLetter: parts[5] || 'C',
+        volumeLetter: parts[5] || '',
         volumeYear: '',
         serialNumber: part6,
         serialYear: parts[7] || '',
@@ -104,7 +104,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     return {
       bookNumber: parts[3] || 'I',
       volumeNumber: parts[4] || '',
-      volumeLetter: parts[5] || 'C',
+      volumeLetter: parts[5] || '',
       volumeYear: parts[6] || '',
       serialNumber: parts[7] || '',
       serialYear: parts[8] || '',
@@ -114,7 +114,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     return {
       bookNumber: parts[3] || 'I',
       volumeNumber: parts[4] || '',
-      volumeLetter: parts[5] || 'C',
+      volumeLetter: parts[5] || '',
       volumeYear: parts[6] || '',
       serialNumber: parts[7] || '',
       serialYear: parts[8] || '',
@@ -125,7 +125,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
   return {
     bookNumber: 'I',
     volumeNumber: '',
-    volumeLetter: 'C',
+    volumeLetter: '',
     volumeYear: '',
     serialNumber: '',
     serialYear: '',
@@ -170,7 +170,7 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
     defaultValues: {
       bookNumber: 'I',
       volumeNumber: '',
-      volumeLetter: 'C',
+      volumeLetter: '',
       volumeYear: '',
       serialNumber: '',
       serialYear: '',
@@ -207,7 +207,7 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
       reset({
         bookNumber: 'I',
         volumeNumber: '',
-        volumeLetter: 'C',
+        volumeLetter: '',
         volumeYear: '',
         serialNumber: '',
         serialYear: '',
@@ -226,14 +226,14 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
     // Store certificate email in sessionStorage FIRST (same pattern as registration -> login)
     const certificateEmail = `${certificateNumberPreview}@mmrburwan.com`;
     sessionStorage.setItem('pendingCertificateEmail', certificateEmail);
-    
+
     // Use the certificate number as username - bypass form validation
     // Call onSelect to notify parent (which will increment trigger)
     onSelect(certificateNumberPreview);
-    
+
     // Reset form
     reset();
-    
+
     // Close modal after a small delay to ensure sessionStorage is set and parent processes
     setTimeout(() => {
       onClose();
@@ -244,17 +244,17 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
     if (!certificateNumberPreview) {
       return;
     }
-    
+
     // Store certificate email in sessionStorage (same pattern as registration -> login)
     const certificateEmail = `${certificateNumberPreview}@mmrburwan.com`;
     sessionStorage.setItem('pendingCertificateEmail', certificateEmail);
-    
+
     // Call onSelect to notify parent (which will increment trigger)
     onSelect(certificateNumberPreview);
-    
+
     // Reset form
     reset();
-    
+
     // Close modal after a small delay to ensure sessionStorage is set and parent processes
     setTimeout(() => {
       onClose();
@@ -294,22 +294,20 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
             <button
               type="button"
               onClick={() => setUseManualEntry(false)}
-              className={`flex-1 px-3 py-2 text-xs sm:text-sm rounded-lg transition-colors ${
-                !useManualEntry
-                  ? 'bg-gold-100 text-gold-900 font-medium'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className={`flex-1 px-3 py-2 text-xs sm:text-sm rounded-lg transition-colors ${!useManualEntry
+                ? 'bg-gold-100 text-gold-900 font-medium'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
             >
               Form Entry
             </button>
             <button
               type="button"
               onClick={() => setUseManualEntry(true)}
-              className={`flex-1 px-3 py-2 text-xs sm:text-sm rounded-lg transition-colors ${
-                useManualEntry
-                  ? 'bg-gold-100 text-gold-900 font-medium'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className={`flex-1 px-3 py-2 text-xs sm:text-sm rounded-lg transition-colors ${useManualEntry
+                ? 'bg-gold-100 text-gold-900 font-medium'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
             >
               Manual Entry
             </button>

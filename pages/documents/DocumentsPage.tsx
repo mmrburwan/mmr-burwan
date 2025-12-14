@@ -69,7 +69,7 @@ const DocumentsPage: React.FC = () => {
             try {
               const notifications = await notificationService.getNotifications(user.id);
               const rejectionMap = new Map<string, string>();
-              
+
               notifications
                 .filter((n) => n.type === 'document_rejected' && n.documentId)
                 .forEach((n) => {
@@ -77,7 +77,7 @@ const DocumentsPage: React.FC = () => {
                     rejectionMap.set(n.documentId, n.message);
                   }
                 });
-              
+
               setRejectionNotifications(rejectionMap);
             } catch (error) {
               console.error('Failed to load rejection notifications:', error);
@@ -94,13 +94,13 @@ const DocumentsPage: React.FC = () => {
     loadData();
   }, [user, navigate]);
 
-  // Maximum file size: 500KB
-  const MAX_FILE_SIZE = 500 * 1024; // 500KB in bytes
+  // Maximum file size: 250KB
+  const MAX_FILE_SIZE = 250 * 1024; // 250KB in bytes
 
   const handleFileSelection = (file: File, type: string, belongsTo: 'user' | 'partner' | 'joint', docType: 'aadhaar' | 'tenth_certificate' | 'voter_id' | 'photo') => {
     // Check file size
     if (file.size > MAX_FILE_SIZE) {
-      showToast(`File size exceeds 500KB limit. Please compress or resize the image before uploading.`, 'error');
+      showToast('File size exceeds 250KB. Please upload a smaller file.', 'error');
       return;
     }
 
@@ -124,7 +124,7 @@ const DocumentsPage: React.FC = () => {
 
     // Check file size again after cropping
     if (croppedFile.size > MAX_FILE_SIZE) {
-      showToast(`Cropped file size exceeds 500KB limit. Please try again with a smaller image.`, 'error');
+      showToast('Cropped file size exceeds 250KB. Please try again.', 'error');
       setPendingCropFile(null);
       setCropModalOpen(false);
       return;
@@ -248,17 +248,17 @@ const DocumentsPage: React.FC = () => {
       // Refresh documents
       const updated = await documentService.getDocuments(applicationId);
       setDocuments(updated);
-      
+
       // Update rejected documents list
       const rejected = updated.filter((d) => d.status === 'rejected');
       setRejectedDocuments(rejected);
-      
+
       // Reload notifications if there are rejected documents
       if (rejected.length > 0 && user) {
         try {
           const notifications = await notificationService.getNotifications(user.id);
           const rejectionMap = new Map<string, string>();
-          
+
           notifications
             .filter((n) => n.type === 'document_rejected' && n.documentId)
             .forEach((n) => {
@@ -266,7 +266,7 @@ const DocumentsPage: React.FC = () => {
                 rejectionMap.set(n.documentId, n.message);
               }
             });
-          
+
           setRejectionNotifications(rejectionMap);
         } catch (error) {
           console.error('Failed to reload rejection notifications:', error);
@@ -321,24 +321,24 @@ const DocumentsPage: React.FC = () => {
       }
 
       showToast('Documents replaced successfully', 'success');
-      
+
       // Clear selected files
       setSelectedReuploadFiles(new Map());
-      
+
       // Refresh documents
       const updated = await documentService.getDocuments(applicationId);
       setDocuments(updated);
-      
+
       // Update rejected documents list
       const rejected = updated.filter((d) => d.status === 'rejected');
       setRejectedDocuments(rejected);
-      
+
       // Reload notifications
       if (user) {
         try {
           const notifications = await notificationService.getNotifications(user.id);
           const rejectionMap = new Map<string, string>();
-          
+
           notifications
             .filter((n) => n.type === 'document_rejected' && n.documentId)
             .forEach((n) => {
@@ -346,7 +346,7 @@ const DocumentsPage: React.FC = () => {
                 rejectionMap.set(n.documentId, n.message);
               }
             });
-          
+
           setRejectionNotifications(rejectionMap);
         } catch (error) {
           console.error('Failed to reload rejection notifications:', error);
@@ -402,17 +402,17 @@ const DocumentsPage: React.FC = () => {
 
   // Check if upload should be enabled
   // Upload is enabled if: application is not submitted OR there are rejected documents
-  const isUploadEnabled = !application || 
-    (application.status !== 'submitted' && 
-     application.status !== 'under_review' && 
-     application.status !== 'approved') ||
+  const isUploadEnabled = !application ||
+    (application.status !== 'submitted' &&
+      application.status !== 'under_review' &&
+      application.status !== 'approved') ||
     rejectedDocuments.length > 0;
 
   // Check if application is submitted - users cannot delete documents after submission
-  const isApplicationSubmitted = application && 
-    (application.status === 'submitted' || 
-     application.status === 'under_review' || 
-     application.status === 'approved');
+  const isApplicationSubmitted = application &&
+    (application.status === 'submitted' ||
+      application.status === 'under_review' ||
+      application.status === 'approved');
 
   const getDocumentTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
@@ -514,7 +514,7 @@ const DocumentsPage: React.FC = () => {
                 Review reasons below and select new files.
               </p>
               <p className="text-[10px] sm:text-xs text-rose-700 mb-3 sm:mb-4">
-                <span className="font-medium">Max file size: 500KB</span> per document
+                <span className="font-medium">Max file size: 250KB</span> per document
               </p>
               <div className="space-y-3 sm:space-y-4">
                 {rejectedDocuments.map((doc) => {
@@ -571,11 +571,10 @@ const DocumentsPage: React.FC = () => {
                           />
                           <label
                             htmlFor={`reupload-${doc.id}`}
-                            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer text-xs sm:text-sm ${
-                              isReuploadingAll 
-                                ? 'opacity-50 cursor-not-allowed bg-gray-50' 
-                                : 'hover:bg-gray-50 bg-white'
-                            }`}
+                            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer text-xs sm:text-sm ${isReuploadingAll
+                              ? 'opacity-50 cursor-not-allowed bg-gray-50'
+                              : 'hover:bg-gray-50 bg-white'
+                              }`}
                           >
                             <Upload size={14} className="sm:w-4 sm:h-4" />
                             <span>Choose</span>
@@ -634,14 +633,14 @@ const DocumentsPage: React.FC = () => {
         <Card className="p-3 sm:p-5 mb-4 sm:mb-6">
           <h2 className="font-serif text-lg sm:text-xl font-semibold text-gray-900 mb-2 sm:mb-3">Upload Documents</h2>
           <p className="text-[10px] sm:text-xs text-gray-500 mb-4 sm:mb-5">
-            <span className="text-gold-600 font-medium">Max file size: 500KB</span> per document. Supported formats: Images and PDF.
+            <span className="text-gold-600 font-medium">Max file size: 250KB</span> per document. Supported formats: Images and PDF.
           </p>
-          
+
           {/* Groom's Documents */}
           <div className="mb-5 sm:mb-6">
             <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">Groom's Documents</h3>
             <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">Aadhaar card + 10th certificate or Voter ID</p>
-            
+
             <div className="space-y-3 sm:space-y-4">
               {/* Groom's Aadhaar */}
               <div>
@@ -670,7 +669,7 @@ const DocumentsPage: React.FC = () => {
                   10th Certificate / Voter ID <span className="text-rose-600">*</span>
                 </label>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <input type="file" accept="image/*,.pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const fileName = file.name.toLowerCase(); const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate'; handleFileSelection(file, documentTypes.userSecondDoc, 'user', type); }}} className="hidden" id="user-second-doc" disabled={!isUploadEnabled} />
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const fileName = file.name.toLowerCase(); const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate'; handleFileSelection(file, documentTypes.userSecondDoc, 'user', type); } }} className="hidden" id="user-second-doc" disabled={!isUploadEnabled} />
                   <label htmlFor="user-second-doc" className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer text-xs sm:text-sm ${!isUploadEnabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}>
                     <Upload size={14} className="sm:w-4 sm:h-4" />
                     <span>Choose</span>
@@ -691,7 +690,7 @@ const DocumentsPage: React.FC = () => {
           <div className="mb-5 sm:mb-6 pt-4 sm:pt-5 border-t border-gray-200">
             <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">Bride's Documents</h3>
             <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">Aadhaar card + 10th certificate or Voter ID</p>
-            
+
             <div className="space-y-3 sm:space-y-4">
               {/* Bride's Aadhaar */}
               <div>
@@ -720,7 +719,7 @@ const DocumentsPage: React.FC = () => {
                   10th Certificate / Voter ID <span className="text-rose-600">*</span>
                 </label>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <input type="file" accept="image/*,.pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const fileName = file.name.toLowerCase(); const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate'; handleFileSelection(file, documentTypes.partnerSecondDoc, 'partner', type); }}} className="hidden" id="partner-second-doc" disabled={!isUploadEnabled} />
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const fileName = file.name.toLowerCase(); const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate'; handleFileSelection(file, documentTypes.partnerSecondDoc, 'partner', type); } }} className="hidden" id="partner-second-doc" disabled={!isUploadEnabled} />
                   <label htmlFor="partner-second-doc" className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg cursor-pointer text-xs sm:text-sm ${!isUploadEnabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}>
                     <Upload size={14} className="sm:w-4 sm:h-4" />
                     <span>Choose</span>
@@ -741,7 +740,7 @@ const DocumentsPage: React.FC = () => {
           <div className="pt-4 sm:pt-5 border-t border-gray-200">
             <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">Joint Photograph</h3>
             <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">Photo of bride and groom together</p>
-            
+
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                 Joint Photo <span className="text-rose-600">*</span>
@@ -836,8 +835,8 @@ const DocumentsPage: React.FC = () => {
                     previewDocument.status === 'approved'
                       ? 'success'
                       : previewDocument.status === 'rejected'
-                      ? 'error'
-                      : 'default'
+                        ? 'error'
+                        : 'default'
                   }
                   className="!text-[10px] sm:!text-xs"
                 >

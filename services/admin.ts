@@ -980,4 +980,64 @@ export const adminService = {
       throw error;
     }
   },
+
+  async deleteApplication(applicationId: string, actorId: string, actorName: string): Promise<void> {
+    const { data: appData, error: fetchError } = await supabase
+      .from('applications')
+      .select('status, user_id')
+      .eq('id', applicationId)
+      .single();
+
+    if (fetchError) {
+      throw new Error('Application not found');
+    }
+
+    // Verify user is allowed to delete (client-side check + Edge Function will verify admin status)
+
+    // Call Edge Function to delete (bypasses RLS)
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error("Authentication required");
+    }
+
+    const start = Date.now();
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/delete-application`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+        },
+        body: JSON.stringify({
+          applicationId,
+          adminId: actorId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete application');
+      }
+    } catch (err: any) {
+      console.error("Edge function delete failed:", err);
+      throw new Error(err.message || "Failed to invoke delete function");
+    }
+
+    // Only audit log if delete was successful
+    await auditService.createLog({
+      actorId,
+      actorName,
+      actorRole: 'admin',
+      action: 'application_deleted',
+      resourceType: 'application',
+      resourceId: applicationId,
+      details: {
+        previousStatus: appData.status,
+        userId: appData.user_id
+      }
+    });
+  },
 };

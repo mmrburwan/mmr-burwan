@@ -101,7 +101,7 @@ export async function validateJointPhotoAspectRatio(file: File): Promise<boolean
   return new Promise((resolve, reject) => {
     const image = new Image();
     const url = URL.createObjectURL(file);
-    
+
     image.onload = () => {
       URL.revokeObjectURL(url);
       const aspectRatio = image.width / image.height;
@@ -110,12 +110,12 @@ export async function validateJointPhotoAspectRatio(file: File): Promise<boolean
       const matches = Math.abs(aspectRatio - targetRatio) < tolerance;
       resolve(matches);
     };
-    
+
     image.onerror = () => {
       URL.revokeObjectURL(url);
       reject(new Error('Failed to load image'));
     };
-    
+
     image.src = url;
   });
 }
@@ -123,12 +123,12 @@ export async function validateJointPhotoAspectRatio(file: File): Promise<boolean
 /**
  * Compresses an image file to meet size requirements
  * @param file - Image file to compress
- * @param maxSizeBytes - Maximum file size in bytes (default 500KB)
+ * @param maxSizeBytes - Maximum file size in bytes (default 250KB)
  * @returns Promise resolving to compressed File
  */
 export async function compressImageFile(
   file: File,
-  maxSizeBytes: number = 500 * 1024
+  maxSizeBytes: number = 250 * 1024
 ): Promise<File> {
   // If file is already small enough, return as-is
   if (file.size <= maxSizeBytes) {
@@ -146,7 +146,7 @@ export async function compressImageFile(
   // Calculate new dimensions while maintaining aspect ratio
   let { width, height } = image;
   const aspectRatio = width / height;
-  
+
   // Start with a reasonable quality and reduce if needed
   let quality = 0.9;
   let compressedFile: File;

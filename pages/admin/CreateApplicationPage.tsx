@@ -16,7 +16,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Badge from '../../components/ui/Badge';
-import { UserPlus, ArrowRight, Loader2, Clock, FileText, ChevronRight, X, Award } from 'lucide-react';
+import { UserPlus, ArrowRight, Loader2, Clock, FileText, ChevronRight, X, Award, Trash2 } from 'lucide-react';
 import { Application } from '../../types';
 import { safeFormatDate } from '../../utils/dateUtils';
 
@@ -364,6 +364,24 @@ const CreateApplicationPage: React.FC = () => {
     }
   };
 
+  const handleDeleteApplication = async (e: React.MouseEvent, application: Application) => {
+    e.stopPropagation(); // Prevent triggering the row click
+    if (!adminUser) return;
+
+    if (!window.confirm(`Are you sure you want to delete this pending application for ${application.proxyUserEmail || 'this user'}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await adminService.deleteApplication(application.id, adminUser.id, adminUser.name || adminUser.email);
+      setPendingApplications(prev => prev.filter(app => app.id !== application.id));
+      showToast('Application deleted successfully', 'success');
+    } catch (error: any) {
+      console.error('Failed to delete application:', error);
+      showToast(error.message || 'Failed to delete application', 'error');
+    }
+  };
+
   if (!adminUser || adminUser.role !== 'admin') {
     navigate('/admin');
     return null;
@@ -518,7 +536,16 @@ const CreateApplicationPage: React.FC = () => {
                       {safeFormatDate(app.lastUpdated || app.submittedAt || new Date().toISOString(), 'dd MMM yyyy')}
                     </p>
                   </div>
-                  <ChevronRight size={18} className="sm:w-5 sm:h-5 text-gray-400 group-hover:text-gold-600 transition-colors flex-shrink-0 ml-3" />
+                  <div className="flex items-center gap-2 ml-3">
+                    <button
+                      onClick={(e) => handleDeleteApplication(e, app)}
+                      className="p-2 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                      title="Delete Application"
+                    >
+                      <Trash2 size={18} className="sm:w-5 sm:h-5" />
+                    </button>
+                    <ChevronRight size={18} className="sm:w-5 sm:h-5 text-gray-400 group-hover:text-gold-600 transition-colors" />
+                  </div>
                 </div>
               ))}
             </div>

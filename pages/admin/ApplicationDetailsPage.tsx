@@ -134,10 +134,10 @@ const ApplicationDetailsPage: React.FC = () => {
   const handleReuploadFileSelect = (documentId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Check file size (500KB limit)
-      const MAX_FILE_SIZE = 500 * 1024;
+      // Check file size (250KB limit)
+      const MAX_FILE_SIZE = 250 * 1024;
       if (file.size > MAX_FILE_SIZE) {
-        showToast('File size exceeds 500KB limit. Please compress or resize the file before uploading.', 'error');
+        showToast('File too large. Please compress or resize the file before uploading.', 'error');
         event.target.value = '';
         return;
       }
@@ -161,9 +161,9 @@ const ApplicationDetailsPage: React.FC = () => {
     if (!pendingCropFile) return;
 
     // Check file size again after cropping
-    const MAX_FILE_SIZE = 500 * 1024;
+    const MAX_FILE_SIZE = 250 * 1024;
     if (croppedFile.size > MAX_FILE_SIZE) {
-      showToast('Cropped file size exceeds 500KB limit. Please try again with a smaller image.', 'error');
+      showToast('Cropped file too large. Please try again with a smaller image.', 'error');
       setPendingCropFile(null);
       setCropModalOpen(false);
       return;
@@ -598,93 +598,12 @@ const ApplicationDetailsPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Bride Personal Details */}
-        <Card className="p-3 sm:p-4 lg:p-6">
-          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Personal Details</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4 text-xs sm:text-sm">
-            <div>
-              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Full Name</p>
-              {isEditing ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    value={partnerForm.firstName || ''}
-                    onChange={(e) => setEditForm({
-                      ...editForm,
-                      partnerForm: { ...partnerForm, firstName: e.target.value }
-                    })}
-                    placeholder="First Name"
-                  />
-                  <Input
-                    value={partnerForm.lastName || ''}
-                    onChange={(e) => setEditForm({
-                      ...editForm,
-                      partnerForm: { ...partnerForm, lastName: e.target.value }
-                    })}
-                    placeholder="Last Name"
-                  />
-                </div>
-              ) : (
-                <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">
-                  {partnerForm.firstName || '-'} {partnerForm.lastName || ''}
-                </p>
-              )}
-            </div>
-            <div>
-              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
-              {isEditing ? (
-                <Input
-                  type="date"
-                  value={partnerForm.dateOfBirth ? partnerForm.dateOfBirth.split('T')[0] : ''}
-                  onChange={(e) => setEditForm({
-                    ...editForm,
-                    partnerForm: { ...partnerForm, dateOfBirth: e.target.value }
-                  })}
-                />
-              ) : (
-                <p className="font-medium text-gray-900">
-                  {partnerForm.dateOfBirth ? safeFormatDate(partnerForm.dateOfBirth, 'MMMM d, yyyy') : '-'}
-                </p>
-              )}
-            </div>
-            <div>
-              <p className="text-gray-500 mb-1">Aadhaar Number</p>
-              {isEditing ? (
-                <Input
-                  value={(partnerForm as any).aadhaarNumber || partnerForm.idNumber || ''}
-                  onChange={(e) => setEditForm({
-                    ...editForm,
-                    partnerForm: { ...partnerForm, aadhaarNumber: e.target.value, idNumber: e.target.value }
-                  })}
-                  placeholder="Aadhaar Number"
-                />
-              ) : (
-                <p className="font-medium text-gray-900">{(partnerForm as any).aadhaarNumber || partnerForm.idNumber || '-'}</p>
-              )}
-            </div>
-            <div>
-              <p className="text-gray-500 mb-1">Mobile Number</p>
-              {isEditing ? (
-                <Input
-                  value={(partnerForm as any).mobileNumber || ''}
-                  onChange={(e) => setEditForm({
-                    ...editForm,
-                    partnerForm: { ...partnerForm, mobileNumber: e.target.value }
-                  })}
-                  placeholder="Mobile Number"
-                />
-              ) : (
-                <p className="font-medium text-gray-900">{(partnerForm as any).mobileNumber || '-'}</p>
-              )}
-            </div>
-          </div>
-        </Card>
-
         {/* Groom Addresses */}
         <Card className="p-3 sm:p-4 lg:p-6">
           <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom Addresses</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Groom Current Address</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Groom Present Address</p>
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
@@ -888,12 +807,93 @@ const ApplicationDetailsPage: React.FC = () => {
           </div>
         </Card>
 
+        {/* Bride Personal Details */}
+        <Card className="p-3 sm:p-4 lg:p-6">
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Personal Details</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4 text-xs sm:text-sm">
+            <div>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Full Name</p>
+              {isEditing ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    value={partnerForm.firstName || ''}
+                    onChange={(e) => setEditForm({
+                      ...editForm,
+                      partnerForm: { ...partnerForm, firstName: e.target.value }
+                    })}
+                    placeholder="First Name"
+                  />
+                  <Input
+                    value={partnerForm.lastName || ''}
+                    onChange={(e) => setEditForm({
+                      ...editForm,
+                      partnerForm: { ...partnerForm, lastName: e.target.value }
+                    })}
+                    placeholder="Last Name"
+                  />
+                </div>
+              ) : (
+                <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">
+                  {partnerForm.firstName || '-'} {partnerForm.lastName || ''}
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
+              {isEditing ? (
+                <Input
+                  type="date"
+                  value={partnerForm.dateOfBirth ? partnerForm.dateOfBirth.split('T')[0] : ''}
+                  onChange={(e) => setEditForm({
+                    ...editForm,
+                    partnerForm: { ...partnerForm, dateOfBirth: e.target.value }
+                  })}
+                />
+              ) : (
+                <p className="font-medium text-gray-900">
+                  {partnerForm.dateOfBirth ? safeFormatDate(partnerForm.dateOfBirth, 'MMMM d, yyyy') : '-'}
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="text-gray-500 mb-1">Aadhaar Number</p>
+              {isEditing ? (
+                <Input
+                  value={(partnerForm as any).aadhaarNumber || partnerForm.idNumber || ''}
+                  onChange={(e) => setEditForm({
+                    ...editForm,
+                    partnerForm: { ...partnerForm, aadhaarNumber: e.target.value, idNumber: e.target.value }
+                  })}
+                  placeholder="Aadhaar Number"
+                />
+              ) : (
+                <p className="font-medium text-gray-900">{(partnerForm as any).aadhaarNumber || partnerForm.idNumber || '-'}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-gray-500 mb-1">Mobile Number</p>
+              {isEditing ? (
+                <Input
+                  value={(partnerForm as any).mobileNumber || ''}
+                  onChange={(e) => setEditForm({
+                    ...editForm,
+                    partnerForm: { ...partnerForm, mobileNumber: e.target.value }
+                  })}
+                  placeholder="Mobile Number"
+                />
+              ) : (
+                <p className="font-medium text-gray-900">{(partnerForm as any).mobileNumber || '-'}</p>
+              )}
+            </div>
+          </div>
+        </Card>
+
         {/* Bride Addresses */}
         <Card className="p-3 sm:p-4 lg:p-6">
           <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Bride Addresses</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Bride Current Address</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Bride Present Address</p>
               {isEditing ? (
                 <div className="space-y-3">
                   <div>

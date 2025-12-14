@@ -33,11 +33,23 @@ const AcknowledgementSlipTemplate: React.FC<AcknowledgementSlipTemplateProps> = 
                 <h1 className="font-serif text-2xl font-bold text-gray-900 mb-1">MMR BURWAN</h1>
                 <p className="text-xs text-gray-600 uppercase tracking-widest font-semibold mb-3">Marriage Registration Acknowledgement</p>
 
-                <div className="text-[10px] text-gray-700 font-serif leading-tight border-t border-gray-100 pt-2">
+                <div className="text-[12px] text-gray-700 font-serif leading-tight border-t border-gray-100 pt-2">
                     <p className="font-bold">Muhammadan Marriage Registrar & Qaazi Details:</p>
-                    <p>Name: <span className="font-semibold">MINHAJUL ISLAM KHAN</span> | Licence No: 04L(St.)/LW/O/St./4M-123/2019</p>
-                    <p>Office Address: VILL. & P.O- GRAMSALIKA, P.S- BURWAN, DIST- MURSHIDABAD, WEST BENGAL, PIN-742132</p>
-                    <p>Contact: 9732688698 | mmrburwan@gmail.com | mmrburwan.com</p>
+                    <p className="font-bold">Office Address: VILL. & P.O- GRAMSALIKA, P.S- BURWAN, DIST- MURSHIDABAD, WEST BENGAL, PIN-742132</p>
+                    <p className="font-bold">Contact: 9732688698, 9647724532 | mmrburwan@gmail.com | mmrburwan.com</p>
+                </div>
+            </div>
+
+            {/* Bengali Instructions */}
+            <div className="mb-6">
+                <h4 className="text-xs font-bold text-red-600 mb-2 uppercase flex items-center print:text-black">
+                    <span className="mr-1.5 text-base">⚠️</span> Important Instructions
+                </h4>
+                <div className="bg-red-50 p-3 rounded-lg border border-red-100 text-xs text-gray-800 leading-relaxed font-serif print:bg-transparent print:border print:border-gray-200">
+                    <p className="text-[15px] font-bold">বি.দ্র. ম্যারেজ রেজিস্ট্রি অফিসে নিকাহ রেজিস্ট্রেশনের জন্য নিম্নলিখিত ডকুমেন্ট গুলো আনা বাধ্যতামূলক </p>
+                    <p className="text-[13px] mb-2 font-bold"> 1. পাত্র-পাত্রী উভয়ের আধার কার্ড। </p>
+                    <p className="text-[13px] mb-2 font-bold"> 2. পাত্র-পাত্রী উভয়ের দশম শ্রেণীর এডমিট কার্ড অথবা ভোটার আইডি যেটা ওয়েবসাইটে আপলোড করা হয়েছে। </p>
+                    <p className="text-[13px] mb-2 font-bold"> 3. তিন কপি জয়েন্ট রঙিন পাসপোর্ট সাইজ ছবি। </p>
                 </div>
             </div>
 
@@ -132,18 +144,7 @@ const AcknowledgementSlipTemplate: React.FC<AcknowledgementSlipTemplateProps> = 
                 </div>
             </div>
 
-            {/* Bengali Instructions */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
-                <h4 className="text-xs font-bold text-red-600 mb-2 uppercase flex items-center print:text-black">
-                    <span className="mr-1.5 text-base">⚠️</span> Important Instructions
-                </h4>
-                <div className="bg-red-50 p-3 rounded-lg border border-red-100 text-xs text-gray-800 leading-relaxed font-serif print:bg-transparent print:border print:border-gray-200">
-                    <p className="mb-1 font-bold">বি.দ্রঃ</p>
-                    <p>
-                        ম্যারেজ রেজিস্ট্রি অফিসে নিকাহ রেজিস্ট্রেশনের জন্য বর–কনে উভয়ের আধার কার্ড, দশম শ্রেণীর এডমিট কার্ড অথবা ভোটার আইডি, জন্ম তারিখের প্রমাণপত্র, ঠিকানার প্রমাণপত্র, পাসপোর্ট সাইজ ছবি, নিকাহনামা (কাজি কর্তৃক প্রদত্ত) এবং দুইজন সাক্ষীর পরিচয়পত্র ও ছবি সঙ্গে নিয়ে আসা আবশ্যক।
-                    </p>
-                </div>
-            </div>
+
 
             {/* Footer */}
             <div className="mt-8 text-center text-[10px] text-gray-400 print:mt-auto print:pt-4 print:fixed print:bottom-4 print:left-0 print:right-0">

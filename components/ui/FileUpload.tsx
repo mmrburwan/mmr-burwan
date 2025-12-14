@@ -17,7 +17,7 @@ interface FileUploadProps {
 
 const FileUpload: React.FC<FileUploadProps> = ({
   accept = 'image/*,.pdf',
-  maxSize = 500 * 1024, // 500KB default
+  maxSize = 250 * 1024, // 250KB default
   maxFiles = 10,
   onFilesChange,
   existingFiles = [],
@@ -114,7 +114,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           {label}
         </label>
       )}
-      
+
       {/* Drop Zone */}
       <div
         onDragOver={disabled ? undefined : handleDragOver}
@@ -127,10 +127,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
           ${disabled
             ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
             : isDragging
-            ? 'border-gold-500 bg-gold-50 cursor-pointer'
-            : error
-            ? 'border-rose-300 bg-rose-50 cursor-pointer'
-            : 'border-gray-300 hover:border-gold-400 hover:bg-gold-50/30 cursor-pointer'
+              ? 'border-gold-500 bg-gold-50 cursor-pointer'
+              : error
+                ? 'border-rose-300 bg-rose-50 cursor-pointer'
+                : 'border-gray-300 hover:border-gold-400 hover:bg-gold-50/30 cursor-pointer'
           }
         `}
       >
@@ -143,7 +143,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           disabled={disabled}
           className="hidden"
         />
-        
+
         <div className="flex flex-col items-center gap-3">
           <div className={`
             w-12 h-12 rounded-full flex items-center justify-center
@@ -152,7 +152,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           `}>
             <Upload size={24} className={isDragging ? 'text-gold-600' : 'text-gray-400'} />
           </div>
-          
+
           <div>
             <p className="text-sm font-medium text-gray-700">
               {isDragging ? 'Drop files here' : 'Click to upload or drag and drop'}

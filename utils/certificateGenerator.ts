@@ -74,7 +74,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     return {
       book: 'I',
       volumeNumber: '1',
-      volumeLetter: 'C',
+      volumeLetter: '',
       volumeYear: '', // Optional, default to empty
       serialNumber: '1',
       serialYear: '', // Optional, default to empty
@@ -91,7 +91,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     return {
       book: 'I',
       volumeNumber: '1',
-      volumeLetter: 'C',
+      volumeLetter: '',
       volumeYear: '',
       serialNumber: '1',
       serialYear: '',
@@ -108,7 +108,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     return {
       book: parts[3] || 'I',
       volumeNumber: parts[4] || '1',
-      volumeLetter: parts[5] || 'C',
+      volumeLetter: parts[5] || '',
       volumeYear: '',
       serialNumber: parts[6] || '1',
       serialYear: '',
@@ -125,7 +125,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
       return {
         book: parts[3] || 'I',
         volumeNumber: parts[4] || '1',
-        volumeLetter: parts[5] || 'C',
+        volumeLetter: parts[5] || '',
         volumeYear: part6,
         serialNumber: parts[7] || '1',
         serialYear: '',
@@ -136,7 +136,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
       return {
         book: parts[3] || 'I',
         volumeNumber: parts[4] || '1',
-        volumeLetter: parts[5] || 'C',
+        volumeLetter: parts[5] || '',
         volumeYear: '',
         serialNumber: part6,
         serialYear: parts[7] || '',
@@ -148,7 +148,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     return {
       book: parts[3] || 'I',
       volumeNumber: parts[4] || '1',
-      volumeLetter: parts[5] || 'C',
+      volumeLetter: parts[5] || '',
       volumeYear: parts[6] || '',
       serialNumber: parts[7] || '1',
       serialYear: parts[8] || '',
@@ -159,7 +159,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     return {
       book: parts[3] || 'I',
       volumeNumber: parts[4] || '1',
-      volumeLetter: parts[5] || 'C',
+      volumeLetter: parts[5] || '',
       volumeYear: parts[6] || '',
       serialNumber: parts[7] || '1',
       serialYear: parts[8] || '',
@@ -171,7 +171,7 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
   return {
     book: 'I',
     volumeNumber: '1',
-    volumeLetter: 'C',
+    volumeLetter: '',
     volumeYear: '',
     serialNumber: '1',
     serialYear: '',

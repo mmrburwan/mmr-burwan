@@ -5,7 +5,7 @@ import { certificateService } from '../../services/certificates';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import { CheckCircle, XCircle, Search, MapPin, Calendar, Users } from 'lucide-react';
+import { CheckCircle, XCircle, Search, MapPin, Calendar, Users, MessageSquare, Mail, Phone } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 
 interface CertificateVerificationData {
@@ -274,12 +274,7 @@ const VerifyPage: React.FC = () => {
                     <p className="font-semibold text-gray-900">
                       Office of the Muhammadan Marriage Registrar & Qaazi
                     </p>
-                    <p className="font-semibold text-gray-900">
-                      Name: MINHAJUL ISLAM KHAN
-                    </p>
-                    <p className="font-semibold text-gray-900">
-                      Licence No: 04L(St.)/LW/O/St./4M-123/2019
-                    </p>
+
                     <p className="text-gray-700">
                       Vill. & P.O. Gramshalika, P.S. Burwan, Dist. Murshidabad, PIN- 742132
                     </p>
@@ -333,11 +328,32 @@ const VerifyPage: React.FC = () => {
         </div>
       )}
 
-      <div className="mt-4 text-center">
-        <p className="text-[11px] sm:text-xs text-gray-500">
-          Need help? <a href="/help" className="text-gold-600 hover:text-gold-700">Contact Support</a>
-        </p>
-      </div>
+      <Card className="p-4 sm:p-6 text-center mt-6">
+        <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3">Still need help?</h3>
+        <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Get in touch with our support team</p>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
+          <Button variant="primary" size="sm" onClick={() => navigate('/chat')}>
+            <MessageSquare size={14} className="mr-1.5 sm:w-4 sm:h-4" />
+            Start Chat
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.href = 'mailto:support@mmr.gov.in?subject=Support Request'}
+          >
+            <Mail size={14} className="mr-1.5 sm:w-4 sm:h-4" />
+            Email Support
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.href = 'tel:18001234567'}
+          >
+            <Phone size={14} className="mr-1.5 sm:w-4 sm:h-4" />
+            Call Us
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 };
