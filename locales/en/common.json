@@ -52,6 +52,7 @@
     "services": "Services",
     "verify": "Verify",
     "help": "Help",
+    "contact": "Contact",
     "dashboard": "Dashboard",
     "application": "Application",
     "documents": "Documents",
@@ -108,4 +109,3 @@
     "contactSupport": "Contact support if the problem persists"
   }
 }
-

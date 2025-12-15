@@ -38,6 +38,7 @@ const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const HelpPage = lazy(() => import('./pages/help/HelpPage'));
 const HelpCenterPage = lazy(() => import('./pages/help/HelpCenterPage'));
 const PrivacyPage = lazy(() => import('./pages/privacy/PrivacyPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
 
 const router = createBrowserRouter(
   [
@@ -78,6 +79,14 @@ const router = createBrowserRouter(
           element: (
             <Suspense fallback={<LoadingSpinner />}>
               <PrivacyPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'contact',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <ContactPage />
             </Suspense>
           ),
         },

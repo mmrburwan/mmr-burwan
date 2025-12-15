@@ -19,10 +19,9 @@ const Navbar: React.FC = () => {
   }, []);
 
   return (
-    <header 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm py-2 sm:py-3' : 'bg-transparent py-3 sm:py-5'
-      }`}
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm py-2 sm:py-3' : 'bg-transparent py-3 sm:py-5'
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
         {/* Logo Area */}
@@ -42,28 +41,29 @@ const Navbar: React.FC = () => {
           <a href="#services" className="text-sm font-medium text-gray-600 hover:text-gold-600 transition-colors">{t('navigation.services')}</a>
           <Link to="/verify" className="text-sm font-medium text-gray-600 hover:text-gold-600 transition-colors">{t('navigation.verify')}</Link>
           <Link to="/help" className="text-sm font-medium text-gray-600 hover:text-gold-600 transition-colors">{t('navigation.help')}</Link>
+          <Link to="/contact" className="text-sm font-medium text-gray-600 hover:text-gold-600 transition-colors">{t('navigation.contact')}</Link>
         </nav>
 
         {/* Actions */}
         <div className="hidden md:flex items-center gap-4">
-            <LanguageSwitcher />
-            <button 
-              onClick={() => navigate('/auth/login')}
-              className="text-sm font-medium text-gold-700 hover:text-gold-900 px-3 py-2 transition-colors"
-            >
-                {t('buttons.login')}
-            </button>
-            <button 
-              onClick={() => navigate('/auth/register')}
-              className="bg-gray-900 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
-            >
-                <User size={16} />
-                {t('buttons.register')}
-            </button>
+          <LanguageSwitcher />
+          <button
+            onClick={() => navigate('/auth/login')}
+            className="text-sm font-medium text-gold-700 hover:text-gold-900 px-3 py-2 transition-colors"
+          >
+            {t('buttons.login')}
+          </button>
+          <button
+            onClick={() => navigate('/auth/register')}
+            className="bg-gray-900 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+          >
+            <User size={16} />
+            {t('buttons.register')}
+          </button>
         </div>
 
         {/* Mobile Toggle */}
-        <button 
+        <button
           className="md:hidden text-gray-700 p-1"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
@@ -78,12 +78,13 @@ const Navbar: React.FC = () => {
           <a href="#services" onClick={() => setMobileMenuOpen(false)} className="text-sm sm:text-base font-medium text-gray-800 py-1">{t('navigation.services')}</a>
           <Link to="/verify" onClick={() => setMobileMenuOpen(false)} className="text-sm sm:text-base font-medium text-gray-800 py-1">{t('navigation.verify')}</Link>
           <Link to="/help" onClick={() => setMobileMenuOpen(false)} className="text-sm sm:text-base font-medium text-gray-800 py-1">{t('navigation.help')}</Link>
-          <hr className="border-gray-100"/>
+          <Link to="/contact" onClick={() => setMobileMenuOpen(false)} className="text-sm sm:text-base font-medium text-gray-800 py-1">{t('navigation.contact')}</Link>
+          <hr className="border-gray-100" />
           <div className="flex flex-col gap-2">
             <div className="w-full">
               <LanguageSwitcher />
             </div>
-            <button 
+            <button
               onClick={() => {
                 navigate('/auth/login');
                 setMobileMenuOpen(false);
@@ -92,15 +93,15 @@ const Navbar: React.FC = () => {
             >
               {t('buttons.login')}
             </button>
-          <button 
-            onClick={() => {
-              navigate('/auth/register');
-              setMobileMenuOpen(false);
-            }}
+            <button
+              onClick={() => {
+                navigate('/auth/register');
+                setMobileMenuOpen(false);
+              }}
               className="w-full bg-gold-500 text-white py-2.5 sm:py-3 rounded-lg text-sm font-medium hover:bg-gold-600 transition-colors"
-          >
-            {t('buttons.register')}
-          </button>
+            >
+              {t('buttons.register')}
+            </button>
           </div>
         </div>
       )}
