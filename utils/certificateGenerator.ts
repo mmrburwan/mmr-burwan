@@ -294,6 +294,36 @@ const imageUrlToDataUrl = async (imageUrl: string): Promise<string | null> => {
 const generateCertificatePDFBlob = async (application: Application): Promise<{ blob: Blob; certificateData: any }> => {
   const certificateData = generateCertificateData(application);
 
+  // Convert static certificate images to data URLs
+  const baseUrl = typeof window !== 'undefined'
+    ? window.location.origin
+    : 'https://mmrburwan.netlify.app';
+
+  let borderImageDataUrl: string | null = null;
+  let emblemImageDataUrl: string | null = null;
+  let westBengalLogoDataUrl: string | null = null;
+
+  try {
+    // Convert border image
+    borderImageDataUrl = await imageUrlToDataUrl(`${baseUrl}/assets/certificate/border.png`);
+  } catch (error) {
+    console.error('Failed to load border image:', error);
+  }
+
+  try {
+    // Convert emblem image
+    emblemImageDataUrl = await imageUrlToDataUrl(`${baseUrl}/assets/certificate/emblem-india.png`);
+  } catch (error) {
+    console.error('Failed to load emblem image:', error);
+  }
+
+  try {
+    // Convert West Bengal logo
+    westBengalLogoDataUrl = await imageUrlToDataUrl(`${baseUrl}/assets/certificate/west-bengal-logo.png`);
+  } catch (error) {
+    console.error('Failed to load West Bengal logo:', error);
+  }
+
   // Find joint photograph and convert to data URL if it exists
   const jointPhotograph = application.documents?.find(
     (doc) => doc.type === 'photo' && doc.belongsTo === 'joint'
@@ -314,9 +344,6 @@ const generateCertificatePDFBlob = async (application: Application): Promise<{ b
 
   // Generate QR code with verification URL
   const certificateNumber = application.certificateNumber || certificateData.consecutiveNumber;
-  const baseUrl = typeof window !== 'undefined'
-    ? window.location.origin
-    : 'http://localhost:3000'; // Fallback for server-side
   const verificationUrl = `${baseUrl}/verify/${certificateNumber}`;
 
   let qrCodeImage: string | null = null;
@@ -334,12 +361,15 @@ const generateCertificatePDFBlob = async (application: Application): Promise<{ b
     // Continue without QR code if it fails
   }
 
-  // Generate PDF using React PDF with the data URL
+  // Generate PDF using React PDF with the data URLs
   const doc = React.createElement(CertificatePDF, {
     application,
     certificateData,
-    jointPhotoDataUrl, // Pass the data URL instead of URL
-    qrCodeImage // Pass QR code image
+    jointPhotoDataUrl,
+    qrCodeImage,
+    borderImageDataUrl,
+    emblemImageDataUrl,
+    westBengalLogoDataUrl,
   });
   const blob = await pdf(doc).toBlob();
 

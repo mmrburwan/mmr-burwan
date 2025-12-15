@@ -134,6 +134,9 @@ interface CertificatePDFProps {
   };
   jointPhotoDataUrl?: string | null;
   qrCodeImage?: string | null;
+  borderImageDataUrl?: string | null;
+  emblemImageDataUrl?: string | null;
+  westBengalLogoDataUrl?: string | null;
 }
 
 // Exact colors from the original
@@ -484,7 +487,15 @@ const styles = StyleSheet.create({
   },
 });
 
-export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, certificateData, jointPhotoDataUrl, qrCodeImage }) => {
+export const CertificatePDF: React.FC<CertificatePDFProps> = ({
+  application,
+  certificateData,
+  jointPhotoDataUrl,
+  qrCodeImage,
+  borderImageDataUrl,
+  emblemImageDataUrl,
+  westBengalLogoDataUrl
+}) => {
   const userDetails = application.userDetails || {};
   const partnerDetails = (application as any).partnerDetails || (application as any).partnerForm || {};
   const userAddress = application.userAddress || (application as any).address || {};
@@ -506,11 +517,13 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
       <Page size="A4" style={styles.page}>
         {/* Border */}
         <View style={styles.borderContainer}>
-          <Image
-            src={getImageUrl("/assets/certificate/border.png")}
-            style={styles.borderImage}
-            cache={false}
-          />
+          {borderImageDataUrl && (
+            <Image
+              src={borderImageDataUrl}
+              style={styles.borderImage}
+              cache={false}
+            />
+          )}
         </View>
 
         {/* Content */}
@@ -519,17 +532,21 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({ application, cer
           <View style={styles.header}>
             <View style={styles.logosContainer}>
               <View style={styles.emblemContainer}>
+                {emblemImageDataUrl && (
+                  <Image
+                    src={emblemImageDataUrl}
+                    style={styles.emblem}
+                    cache={false}
+                  />
+                )}
+              </View>
+              {westBengalLogoDataUrl && (
                 <Image
-                  src={getImageUrl("/assets/certificate/emblem-india.png")}
-                  style={styles.emblem}
+                  src={westBengalLogoDataUrl}
+                  style={styles.westBengalLogo}
                   cache={false}
                 />
-              </View>
-              <Image
-                src={getImageUrl("/assets/certificate/west-bengal-logo.png")}
-                style={styles.westBengalLogo}
-                cache={false}
-              />
+              )}
             </View>
             <Text style={styles.govTitle}>GOVERNMENT OF WEST BENGAL</Text>
             <View style={styles.lawDeptBox}>
