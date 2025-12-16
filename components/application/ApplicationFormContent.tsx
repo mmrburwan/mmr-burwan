@@ -48,7 +48,10 @@ const groomSchema = z.object({
   currentZipCode: z.string().regex(/^\d{6}$/, 'ZIP code must be exactly 6 digits'),
   currentCountry: z.string().min(2, 'Country is required'),
   sameAsPermanent: z.boolean().optional(),
-  marriageDate: z.string().min(1, 'Marriage date is required'),
+  marriageDate: z.string().min(1, 'Marriage date is required').refine((val) => {
+    const today = new Date().toISOString().split('T')[0];
+    return val <= today;
+  }, 'Marriage date cannot be in the future'),
 });
 
 // Bride Details Schema (Partner personal + address)
@@ -1252,6 +1255,7 @@ const ApplicationFormContent: React.FC = () => {
                 <Input
                   label="Marriage Date"
                   type="date"
+                  max={new Date().toISOString().split('T')[0]}
                   {...groomForm.register('marriageDate')}
                   error={groomForm.formState.errors.marriageDate?.message}
                   required
