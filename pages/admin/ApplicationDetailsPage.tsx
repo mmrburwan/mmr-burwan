@@ -550,6 +550,23 @@ const ApplicationDetailsPage: React.FC = () => {
               )}
             </div>
             <div>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Father's Name</p>
+              {isEditing ? (
+                <Input
+                  value={userDetails.fatherName || ''}
+                  onChange={(e) => setEditForm({
+                    ...editForm,
+                    userDetails: { ...userDetails, fatherName: e.target.value }
+                  })}
+                  placeholder="Father's Name"
+                />
+              ) : (
+                <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">
+                  {userDetails.fatherName || '-'}
+                </p>
+              )}
+            </div>
+            <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
               {isEditing ? (
                 <Input
@@ -836,6 +853,23 @@ const ApplicationDetailsPage: React.FC = () => {
               ) : (
                 <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">
                   {partnerForm.firstName || '-'} {partnerForm.lastName || ''}
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Father's Name</p>
+              {isEditing ? (
+                <Input
+                  value={(partnerForm as any).fatherName || ''}
+                  onChange={(e) => setEditForm({
+                    ...editForm,
+                    partnerForm: { ...partnerForm, fatherName: e.target.value }
+                  })}
+                  placeholder="Father's Name"
+                />
+              ) : (
+                <p className="font-medium text-xs sm:text-sm text-gray-900 truncate">
+                  {(partnerForm as any).fatherName || '-'}
                 </p>
               )}
             </div>
