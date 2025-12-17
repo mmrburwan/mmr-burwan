@@ -262,8 +262,8 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
   const formValues = watch();
   const certificateNumberPreview = useMemo(() => {
     const { bookNumber, volumeNumber, volumeLetter, volumeYear, serialNumber, serialYear, pageNumber } = formValues;
-    if (bookNumber && volumeNumber && volumeLetter && serialNumber && pageNumber) {
-      // Build certificate number, handling optional volumeYear and serialYear
+    if (bookNumber && volumeNumber && serialNumber && pageNumber) {
+      // Build certificate number, handling optional volumeLetter, volumeYear and serialYear
       // Filter out empty strings to prevent consecutive dashes
       const parts = [
         'WB',
@@ -271,7 +271,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
         'BRW',
         bookNumber,
         volumeNumber,
-        volumeLetter,
+        ...(volumeLetter ? [volumeLetter] : []), // Only include if not empty
         ...(volumeYear ? [volumeYear] : []), // Only include if not empty
         serialNumber,
         ...(serialYear ? [serialYear] : []), // Only include if not empty
@@ -308,7 +308,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Construct the full certificate number, handling optional volumeYear and serialYear
+      // Construct the full certificate number, handling optional volumeLetter, volumeYear and serialYear
       // Filter out empty strings to prevent consecutive dashes
       const parts = [
         'WB',
@@ -316,7 +316,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
         'BRW',
         data.bookNumber,
         data.volumeNumber,
-        data.volumeLetter,
+        ...(data.volumeLetter ? [data.volumeLetter] : []), // Only include if not empty
         ...(data.volumeYear ? [data.volumeYear] : []), // Only include if not empty
         data.serialNumber,
         ...(data.serialYear ? [data.serialYear] : []), // Only include if not empty
