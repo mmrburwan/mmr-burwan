@@ -195,7 +195,7 @@ const ClientsPage: React.FC = () => {
       submitted: 'info',
       under_review: 'warning',
       rejected: 'error',
-      draft: 'info',
+      draft: 'warning',
     };
     return <Badge variant={variants[status] || 'info'}>{status}</Badge>;
   };
