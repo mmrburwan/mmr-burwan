@@ -691,7 +691,7 @@ export const adminService = {
     if (updates.partnerCurrentAddress) updatedData.partner_current_address = updates.partnerCurrentAddress;
     if (updates.declarations) updatedData.declarations = updates.declarations;
 
-    updatedData.last_updated = new Date().toISOString();
+    updatedData.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
       .from('applications')
@@ -922,7 +922,7 @@ export const adminService = {
       // Documents will add remaining 20% (checked separately when documents are uploaded)
       updatedData.progress = Math.min(progress, 80);
 
-      updatedData.last_updated = new Date().toISOString();
+      updatedData.updated_at = new Date().toISOString();
 
       const { data: updatedAppData, error: updateError } = await supabase
         .from('applications')

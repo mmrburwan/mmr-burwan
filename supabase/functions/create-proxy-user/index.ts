@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 // Create admin client with service role key for user creation
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -12,17 +13,19 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   },
 });
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-info, apikey",
+};
+
 serve(async (req) => {
   try {
     // Handle CORS preflight
     if (req.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-info, apikey",
-        },
+        headers: corsHeaders,
       });
     }
 
@@ -32,12 +35,68 @@ serve(async (req) => {
         JSON.stringify({ error: "Method not allowed" }),
         {
           status: 405,
-          headers: { 
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-info, apikey",
-          },
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Verify the caller is authenticated
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid authorization header" }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+
+    // Create a client with the user's token to verify their identity
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    });
+
+    // Get the authenticated user
+    const { data: { user: callerUser }, error: authError } = await supabaseClient.auth.getUser(token);
+
+    if (authError || !callerUser) {
+      console.error("Auth error:", authError);
+      return new Response(
+        JSON.stringify({ error: "Invalid or expired token. Please log in again." }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Check if user is admin (from user metadata or profiles table)
+    const isAdminFromMetadata = callerUser.user_metadata?.role === "admin";
+
+    let isAdmin = isAdminFromMetadata;
+
+    if (!isAdmin) {
+      // Check profiles table as fallback
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("role")
+        .eq("id", callerUser.id)
+        .single();
+
+      isAdmin = profile?.role === "admin";
+    }
+
+    if (!isAdmin) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized. Only admins can create proxy users." }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
     }
@@ -52,12 +111,7 @@ serve(async (req) => {
         JSON.stringify({ error: "Invalid request body" }),
         {
           status: 400,
-          headers: { 
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-info, apikey",
-          },
+          headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
     }
@@ -67,13 +121,13 @@ serve(async (req) => {
     // Validate required fields
     if (!email || !password || !adminId || !adminName) {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: "Missing required fields: email, password, adminId, adminName",
           received: { email: !!email, password: !!password, adminId: !!adminId, adminName: !!adminName }
         }),
         {
           status: 400,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -89,7 +143,7 @@ serve(async (req) => {
         JSON.stringify({ error: "Password must be at least 6 characters long" }),
         {
           status: 400,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -111,7 +165,7 @@ serve(async (req) => {
         JSON.stringify({ error: "Server configuration error" }),
         {
           status: 500,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -125,22 +179,22 @@ serve(async (req) => {
     console.log("Checking if user exists:", { email: userEmail });
     try {
       const { data: existingUsers, error: checkError } = await supabaseAdmin.auth.admin.listUsers();
-      
+
       if (!checkError && existingUsers?.users) {
-        const userExists = existingUsers.users.some(user => 
+        const userExists = existingUsers.users.some(user =>
           user.email?.toLowerCase() === userEmail.toLowerCase()
         );
-        
+
         if (userExists) {
           console.log("User already exists with email:", userEmail);
           return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
               error: "A user with this email address already exists",
               code: "USER_ALREADY_EXISTS"
             }),
             {
               status: 409, // Conflict status code
-              headers: { 
+              headers: {
                 "Content-Type": "application/json",
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -172,20 +226,20 @@ serve(async (req) => {
 
     if (userError) {
       console.error("Error creating user:", userError);
-      
+
       // Check if error is due to duplicate email
-      if (userError.message?.includes("already registered") || 
-          userError.message?.includes("already exists") ||
-          userError.message?.includes("User already registered") ||
-          userError.message?.includes("email address is already")) {
+      if (userError.message?.includes("already registered") ||
+        userError.message?.includes("already exists") ||
+        userError.message?.includes("User already registered") ||
+        userError.message?.includes("email address is already")) {
         return new Response(
-          JSON.stringify({ 
+          JSON.stringify({
             error: "A user with this email address already exists",
             code: "USER_ALREADY_EXISTS"
           }),
           {
             status: 409, // Conflict status code
-            headers: { 
+            headers: {
               "Content-Type": "application/json",
               "Access-Control-Allow-Origin": "*",
               "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -194,15 +248,15 @@ serve(async (req) => {
           }
         );
       }
-      
+
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: `Failed to create user: ${userError.message}`,
           details: userError
         }),
         {
           status: 500,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -218,7 +272,7 @@ serve(async (req) => {
         JSON.stringify({ error: "User creation failed - no user data returned" }),
         {
           status: 500,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
           },
@@ -253,7 +307,7 @@ serve(async (req) => {
       cause: error.cause,
     });
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error.message || "Internal server error",
         type: error.name || "UnknownError",
       }),

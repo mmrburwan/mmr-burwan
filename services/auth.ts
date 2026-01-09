@@ -334,11 +334,11 @@ export const authService = {
         return;
       }
 
-      // Check if profile exists
+      // Check if profile exists - profiles.id = auth.users.id
       const { data: existingProfile, error: checkError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle();
 
       // If profile doesn't exist, create it (only for verified users)
@@ -350,7 +350,7 @@ export const authService = {
         const { error: insertError } = await supabase
           .from('profiles')
           .insert({
-            user_id: user.id,
+            id: user.id, // profiles.id = auth.users.id
             first_name: firstName,
             last_name: lastName,
             completion_percentage: 0,
