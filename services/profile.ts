@@ -3,10 +3,11 @@ import { Profile, Address, PartnerDetails } from '../types';
 
 export const profileService = {
   async getProfile(userId: string): Promise<Profile | null> {
+    // Note: profiles table uses 'id' as PK which equals auth.users.id
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (error) {
@@ -21,14 +22,16 @@ export const profileService = {
 
     return {
       id: data.id,
-      userId: data.user_id,
+      userId: data.id, // id IS the userId in this table
       firstName: data.first_name || '',
       lastName: data.last_name || '',
       dateOfBirth: data.date_of_birth || '',
       idNumber: data.id_number || '',
       address: data.address as Address || {
-        street: '',
-        city: '',
+        villageStreet: '',
+        postOffice: '',
+        policeStation: '',
+        district: '',
         state: '',
         zipCode: '',
         country: 'India',
@@ -41,8 +44,9 @@ export const profileService = {
   },
 
   async updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile> {
+    // Note: profiles table uses 'id' as PK which equals auth.users.id
     const profileData: any = {
-      user_id: userId,
+      id: userId, // Use 'id' not 'user_id'
       first_name: updates.firstName,
       last_name: updates.lastName,
       date_of_birth: updates.dateOfBirth,
@@ -53,33 +57,18 @@ export const profileService = {
       updated_at: new Date().toISOString(),
     };
 
-    // Remove undefined fields to avoid overwriting with null/undefined if that's unintentional, 
-    // but upsert usually requires a fuller object or careful handling. 
-    // However, the original code reconstructed the object from 'updates'. 
-    // We should probably merge with existing if we want partial updates via upsert, 
-    // BUT supbase upsert replaces the row if it exists unless we use onConflict + ignoreDuplicates (which we don't want).
-    // Actually, simple UPDATE ... WHERE user_id is better if we just want to update fields.
-    // The original code handled Create vs Update.
-    // Optimization: Try UPDATE first. If it returns 0 rows, then INSERT.
-    // This avoids the 'getProfile' read.
+    // Remove undefined values to avoid overwriting
+    Object.keys(profileData).forEach(key => {
+      if (profileData[key] === undefined) {
+        delete profileData[key];
+      }
+    });
 
-    // Remove keys that are undefined to avoid sending them? 
-    // The original code mapped inputs to profileData explicitly. undefined values would be passed as such.
-
-    // Let's stick to the plan: efficiently handle create/update.
-    // Since we don't know for sure if it exists without checking, 
-    // and we want to return the FULL profile, `upsert` is best if we have all data.
-    // verifying usage: updateProfile is usually called with partial updates. 
-    // `upsert` with partial data might wipe other fields if we are not careful.
-    // The previous implementation fetched existing first. 
-    // To do this safely and safely without fetching, we can use `upsert` only if we are sure we pass all fields, 
-    // OR we revert to the pattern: try UPDATE. if count=0, INSERT.
-
-    // Try UPDATE first
+    // Try UPDATE first using 'id' column
     const { data: updatedData, error: updateError } = await supabase
       .from('profiles')
       .update(profileData)
-      .eq('user_id', userId)
+      .eq('id', userId)
       .select()
       .maybeSingle();
 
@@ -90,12 +79,8 @@ export const profileService = {
     }
 
     // If no update happened (profile doesn't exist), INSERT
-    // We need to ensure we don't insert partial data that violates constraints, 
-    // but looking at schema, most fields seem nullable or we have defaults.
-    // We might drastically fail if we insert minimal data. 
-    // But original code did: `const existing = await this.getProfile(userId);`
-    // If existing -> update. Else -> insert.
-    // So 'updates' + 'userId' is all we have.
+    // Make sure to include the id for insert
+    profileData.id = userId;
 
     const { data: insertedData, error: insertError } = await supabase
       .from('profiles')
@@ -176,14 +161,16 @@ export const profileService = {
   mapProfile(data: any): Profile {
     return {
       id: data.id,
-      userId: data.user_id,
+      userId: data.id, // id IS the userId in profiles table
       firstName: data.first_name || '',
       lastName: data.last_name || '',
       dateOfBirth: data.date_of_birth || '',
       idNumber: data.id_number || '',
       address: data.address as Address || {
-        street: '',
-        city: '',
+        villageStreet: '',
+        postOffice: '',
+        policeStation: '',
+        district: '',
         state: '',
         zipCode: '',
         country: 'India',
