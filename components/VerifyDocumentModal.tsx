@@ -56,10 +56,10 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
     setIsLoading(true);
     setError('');
     setHasSearched(false);
-    
+
     try {
       const data = await certificateService.getCertificateByCertificateNumber(certificateNumber.trim());
-      
+
       if (data) {
         setCertificateData(data);
         setIsValid(true);
@@ -67,7 +67,7 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
         setIsValid(false);
         setError('Certificate not found. Please verify the certificate number and try again.');
       }
-      
+
       setHasSearched(true);
     } catch (err: any) {
       console.error('Failed to verify certificate:', err);
@@ -94,8 +94,8 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
+    <Modal
+      isOpen={isOpen}
       onClose={handleClose}
       size="lg"
       showCloseButton={false}
@@ -137,7 +137,7 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
               error={error}
               disabled={isLoading}
             />
-            
+
             {error && (
               <div className="p-3 rounded-xl bg-rose-50 border border-rose-200">
                 <p className="text-sm text-rose-600">{error}</p>
@@ -238,8 +238,8 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
                       <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Registration Date</p>
                     </div>
                     <p className="font-semibold text-gray-900">
-                      {certificateData.registrationDate 
-                        ? safeFormatDateObject(new Date(certificateData.registrationDate), 'MMMM d, yyyy')
+                      {certificateData.registrationDate
+                        ? safeFormatDateObject(new Date(certificateData.registrationDate), 'dd-MM-yyyy')
                         : 'N/A'}
                     </p>
                   </div>

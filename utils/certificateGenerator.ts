@@ -219,7 +219,7 @@ export const generateCertificateData = (application: Application) => {
       license: '04L(St.)/LW/O/St./4M-123/2019',
       qualifications: undefined,
       office: 'VILL. & P.O- GRAMSHALIKA, P.S- BURWAN, DIST- MURSHIDABAD, WEST BENGAL, PIN-742132',
-      phone: '9732688698',
+      phone: '9647724532',
       email: 'mmrburwan@gmail.com',
     },
     md_ismail_khan: {

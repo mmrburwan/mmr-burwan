@@ -217,7 +217,7 @@ export const AppointmentPassPDF: React.FC<AppointmentPassPDFProps> = ({
   userEmail,
   qrCodeImage,
 }) => {
-  const formattedDate = safeFormatDate(appointment.date, 'EEEE, MMMM d, yyyy');
+  const formattedDate = safeFormatDate(appointment.date, 'dd-MM-yyyy');
   const formattedTime = appointment.time;
 
   return (
@@ -314,7 +314,7 @@ export const AppointmentPassPDF: React.FC<AppointmentPassPDFProps> = ({
             Official document. Keep safe and bring to appointment.
           </Text>
           <Text style={styles.footerText}>
-            Generated: {safeFormatDate(new Date().toISOString(), 'MMM d, yyyy')} {safeFormatDate(new Date().toISOString(), 'h:mm a')}
+            Generated: {safeFormatDate(new Date().toISOString(), 'dd-MM-yyyy')} {safeFormatDate(new Date().toISOString(), 'HH:mm')}
           </Text>
         </View>
       </Page>

@@ -54,7 +54,7 @@ const ViewApplicationPage: React.FC = () => {
   const getDocumentTypeLabel = (type: string): string => {
     const labels: Record<string, string> = {
       aadhaar: 'Aadhaar Card',
-      tenth_certificate: '10th Certificate',
+      tenth_certificate: 'Madhyamik Admit Card',
       voter_id: 'Voter ID',
       id: 'ID Document',
       photo: 'Photo',
@@ -151,7 +151,7 @@ const ViewApplicationPage: React.FC = () => {
               <div className="text-[10px] sm:text-xs lg:text-sm text-gray-600 min-w-0">
                 <p className="truncate max-w-[120px] sm:max-w-none">Certificate: {application.certificateNumber}</p>
                 {application.registrationDate && (
-                  <p className="truncate max-w-[120px] sm:max-w-none">Reg. Date: {safeFormatDate(application.registrationDate, 'MMM d, yyyy')}</p>
+                  <p className="truncate max-w-[120px] sm:max-w-none">Reg. Date: {safeFormatDate(application.registrationDate, 'dd-MM-yyyy')}</p>
                 )}
               </div>
             )}
@@ -160,6 +160,27 @@ const ViewApplicationPage: React.FC = () => {
       </div>
 
       <div className="space-y-2.5 sm:space-y-4 lg:space-y-6">
+        {/* Marriage Information */}
+        <Card className="p-2.5 sm:p-4 lg:p-6 bg-gold-50/30 border-gold-100">
+          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-1.5 sm:mb-3 lg:mb-4">
+            Marriage Information [বিবাহের তথ্য]
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
+            <div>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Marriage Date</p>
+              <p className="font-medium text-gray-900">
+                {((declarations as any)?.marriageDate || (declarations as any)?.marriageRegistrationDate)
+                  ? safeFormatDate(
+                    (declarations as any).marriageDate || (declarations as any).marriageRegistrationDate,
+                    'dd-MM-yyyy',
+                    'Invalid date'
+                  )
+                  : 'Not provided'}
+              </p>
+            </div>
+          </div>
+        </Card>
+
         {/* Groom Personal Details */}
         <Card className="p-2.5 sm:p-4 lg:p-6">
           <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-1.5 sm:mb-3 lg:mb-4">
@@ -179,7 +200,7 @@ const ViewApplicationPage: React.FC = () => {
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
               <p className="font-medium text-gray-900">
-                {userDetails.dateOfBirth ? safeFormatDate(userDetails.dateOfBirth, 'MMMM d, yyyy') : '-'}
+                {userDetails.dateOfBirth ? safeFormatDate(userDetails.dateOfBirth, 'dd-MM-yyyy') : '-'}
               </p>
             </div>
             <div>
@@ -233,7 +254,7 @@ const ViewApplicationPage: React.FC = () => {
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
               <p className="font-medium text-gray-900">
-                {partnerForm.dateOfBirth ? safeFormatDate(partnerForm.dateOfBirth, 'MMMM d, yyyy') : '-'}
+                {partnerForm.dateOfBirth ? safeFormatDate(partnerForm.dateOfBirth, 'dd-MM-yyyy') : '-'}
               </p>
             </div>
             <div>
@@ -279,55 +300,61 @@ const ViewApplicationPage: React.FC = () => {
             <div>
               <p className="text-[11px] sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Groom's Documents</p>
               <div className="space-y-1 sm:space-y-2">
-                {documents.filter(d => d.belongsTo === 'user').map(doc => (
-                  <div
-                    key={doc.id}
-                    className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 text-[11px] sm:text-sm text-gray-600 p-1.5 sm:p-2.5 lg:p-3 rounded-lg bg-gray-50 min-w-0"
-                  >
-                    <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
-                      <FileText size={12} className="sm:w-4 sm:h-5 text-gold-600 flex-shrink-0" />
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <p
-                          className="font-medium text-[11px] sm:text-sm text-gray-900 truncate block"
-                          title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}
+                {documents
+                  .filter(d => d.belongsTo === 'user')
+                  .sort((a, b) => {
+                    const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                    return (order[a.type] || 99) - (order[b.type] || 99);
+                  })
+                  .map(doc => (
+                    <div
+                      key={doc.id}
+                      className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 text-[11px] sm:text-sm text-gray-600 p-1.5 sm:p-2.5 lg:p-3 rounded-lg bg-gray-50 min-w-0"
+                    >
+                      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
+                        <FileText size={12} className="sm:w-4 sm:h-5 text-gold-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <p
+                            className="font-medium text-[11px] sm:text-sm text-gray-900 truncate block"
+                            title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}
+                          >
+                            <span className="text-gray-500">{getDocumentTypeLabel(doc.type)}:</span> {doc.name}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-3 flex-shrink-0">
+                        <Badge
+                          variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'}
+                          className="flex-shrink-0 !text-[9px] sm:!text-xs"
                         >
-                          <span className="text-gray-500">{getDocumentTypeLabel(doc.type)}:</span> {doc.name}
-                        </p>
+                          {doc.status}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
+                          onClick={async () => {
+                            setPreviewDocument(doc);
+                            setIsLoadingPreview(true);
+                            setPreviewUrl(null);
+                            try {
+                              const signedUrl = await documentService.getSignedUrl(doc.id);
+                              setPreviewUrl(signedUrl);
+                            } catch (error: any) {
+                              console.error('Failed to get signed URL:', error);
+                              setPreviewUrl(doc.url);
+                            } finally {
+                              setIsLoadingPreview(false);
+                            }
+                          }}
+                          title="View Document"
+                        >
+                          <Eye size={11} className="sm:w-4 sm:h-4" />
+                          <span className="ml-1 sm:ml-1.5 hidden sm:inline">View</span>
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-3 flex-shrink-0">
-                      <Badge
-                        variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'}
-                        className="flex-shrink-0 !text-[9px] sm:!text-xs"
-                      >
-                        {doc.status}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
-                        onClick={async () => {
-                          setPreviewDocument(doc);
-                          setIsLoadingPreview(true);
-                          setPreviewUrl(null);
-                          try {
-                            const signedUrl = await documentService.getSignedUrl(doc.id);
-                            setPreviewUrl(signedUrl);
-                          } catch (error: any) {
-                            console.error('Failed to get signed URL:', error);
-                            setPreviewUrl(doc.url);
-                          } finally {
-                            setIsLoadingPreview(false);
-                          }
-                        }}
-                        title="View Document"
-                      >
-                        <Eye size={11} className="sm:w-4 sm:h-4" />
-                        <span className="ml-1 sm:ml-1.5 hidden sm:inline">View</span>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
                 {documents.filter(d => d.belongsTo === 'user').length === 0 && (
                   <p className="text-[11px] sm:text-sm text-gray-400 italic">No documents uploaded</p>
                 )}
@@ -336,62 +363,68 @@ const ViewApplicationPage: React.FC = () => {
             <div>
               <p className="text-[11px] sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Bride's Documents</p>
               <div className="space-y-1 sm:space-y-2">
-                {documents.filter(d => d.belongsTo === 'partner').map(doc => (
-                  <div
-                    key={doc.id}
-                    className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 text-[11px] sm:text-sm text-gray-600 p-1.5 sm:p-2.5 lg:p-3 rounded-lg bg-gray-50 min-w-0"
-                  >
-                    <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
-                      <FileText size={12} className="sm:w-4 sm:h-5 text-gold-600 flex-shrink-0" />
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <p
-                          className="font-medium text-[11px] sm:text-sm text-gray-900 truncate block"
-                          title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}
+                {documents
+                  .filter(d => d.belongsTo === 'partner')
+                  .sort((a, b) => {
+                    const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                    return (order[a.type] || 99) - (order[b.type] || 99);
+                  })
+                  .map(doc => (
+                    <div
+                      key={doc.id}
+                      className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 text-[11px] sm:text-sm text-gray-600 p-1.5 sm:p-2.5 lg:p-3 rounded-lg bg-gray-50 min-w-0"
+                    >
+                      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
+                        <FileText size={12} className="sm:w-4 sm:h-5 text-gold-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <p
+                            className="font-medium text-[11px] sm:text-sm text-gray-900 truncate block"
+                            title={`${getDocumentTypeLabel(doc.type)}: ${doc.name}`}
+                          >
+                            <span className="text-gray-500">{getDocumentTypeLabel(doc.type)}:</span> {doc.name}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-3 flex-shrink-0">
+                        <Badge
+                          variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'}
+                          className="flex-shrink-0 !text-[9px] sm:!text-xs"
                         >
-                          <span className="text-gray-500">{getDocumentTypeLabel(doc.type)}:</span> {doc.name}
-                        </p>
+                          {doc.status}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
+                          onClick={async () => {
+                            setPreviewDocument(doc);
+                            setIsLoadingPreview(true);
+                            setPreviewUrl(null);
+                            try {
+                              const signedUrl = await documentService.getSignedUrl(doc.id);
+                              setPreviewUrl(signedUrl);
+                            } catch (error: any) {
+                              console.error('Failed to get signed URL:', error);
+                              setPreviewUrl(doc.url);
+                            } finally {
+                              setIsLoadingPreview(false);
+                            }
+                          }}
+                          title="View Document"
+                        >
+                          <Eye size={11} className="sm:w-4 sm:h-4" />
+                          <span className="ml-1 sm:ml-1.5 hidden sm:inline">View</span>
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-3 flex-shrink-0">
-                      <Badge
-                        variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'error' : 'default'}
-                        className="flex-shrink-0 !text-[9px] sm:!text-xs"
-                      >
-                        {doc.status}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="!p-1 sm:!p-1.5 !text-[10px] sm:!text-xs"
-                        onClick={async () => {
-                          setPreviewDocument(doc);
-                          setIsLoadingPreview(true);
-                          setPreviewUrl(null);
-                          try {
-                            const signedUrl = await documentService.getSignedUrl(doc.id);
-                            setPreviewUrl(signedUrl);
-                          } catch (error: any) {
-                            console.error('Failed to get signed URL:', error);
-                            setPreviewUrl(doc.url);
-                          } finally {
-                            setIsLoadingPreview(false);
-                          }
-                        }}
-                        title="View Document"
-                      >
-                        <Eye size={11} className="sm:w-4 sm:h-4" />
-                        <span className="ml-1 sm:ml-1.5 hidden sm:inline">View</span>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
                 {documents.filter(d => d.belongsTo === 'partner').length === 0 && (
                   <p className="text-[11px] sm:text-sm text-gray-400 italic">No documents uploaded</p>
                 )}
               </div>
             </div>
             <div>
-              <p className="text-[11px] sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Joint Documents</p>
+              <p className="text-[11px] sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Joint Photograph</p>
               <div className="space-y-1 sm:space-y-2">
                 {documents.filter(d => d.belongsTo === 'joint').map(doc => (
                   <div
@@ -450,26 +483,6 @@ const ViewApplicationPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Marriage Information */}
-        <Card className="p-2.5 sm:p-4 lg:p-6">
-          <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-1.5 sm:mb-3 lg:mb-4">
-            Marriage Information
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
-            <div>
-              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Marriage Date</p>
-              <p className="font-medium text-gray-900">
-                {((declarations as any)?.marriageDate || (declarations as any)?.marriageRegistrationDate)
-                  ? safeFormatDate(
-                    (declarations as any).marriageDate || (declarations as any).marriageRegistrationDate,
-                    'MMMM d, yyyy',
-                    'Invalid date'
-                  )
-                  : 'Not provided'}
-              </p>
-            </div>
-          </div>
-        </Card>
 
         {/* Declarations */}
         {application.declarations && (
@@ -507,14 +520,14 @@ const ViewApplicationPage: React.FC = () => {
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Last Updated</p>
               <p className="font-medium text-gray-900">
-                {safeFormatDate(application.lastUpdated, 'MMMM d, yyyy')}
+                {safeFormatDate(application.lastUpdated, 'dd-MM-yyyy')}
               </p>
             </div>
             {application.submittedAt && (
               <div>
                 <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Submitted At</p>
                 <p className="font-medium text-gray-900">
-                  {safeFormatDate(application.submittedAt, 'MMMM d, yyyy')}
+                  {safeFormatDate(application.submittedAt, 'dd-MM-yyyy')}
                 </p>
               </div>
             )}
@@ -522,7 +535,7 @@ const ViewApplicationPage: React.FC = () => {
               <div>
                 <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Verified At</p>
                 <p className="font-medium text-gray-900">
-                  {safeFormatDate(application.verifiedAt, 'MMMM d, yyyy')}
+                  {safeFormatDate(application.verifiedAt, 'dd-MM-yyyy')}
                 </p>
               </div>
             )}

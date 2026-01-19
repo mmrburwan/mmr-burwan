@@ -533,7 +533,7 @@ const CreateApplicationPage: React.FC = () => {
                       )}
                     </div>
                     <p className="text-[10px] sm:text-xs text-gray-500">
-                      {safeFormatDate(app.lastUpdated || app.submittedAt || new Date().toISOString(), 'dd MMM yyyy')}
+                      {safeFormatDate(app.lastUpdated || app.submittedAt || new Date().toISOString(), 'dd-MM-yyyy')}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 ml-3">

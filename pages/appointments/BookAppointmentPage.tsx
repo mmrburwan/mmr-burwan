@@ -109,7 +109,7 @@ const BookAppointmentPage: React.FC = () => {
             <div className="flex items-center justify-center gap-2 mb-1 sm:mb-2">
               <Calendar size={16} className="sm:w-5 sm:h-5 text-gold-600" />
               <span className="font-semibold text-sm sm:text-base text-gray-900">
-                {safeFormatDate(appointment.date, 'MMM d, yyyy')}
+                {safeFormatDate(appointment.date, 'dd-MM-yyyy')}
               </span>
             </div>
             <div className="flex items-center justify-center gap-2">
@@ -158,7 +158,7 @@ const BookAppointmentPage: React.FC = () => {
             <div className="flex items-center gap-2 sm:gap-3">
               <Calendar size={16} className="sm:w-5 sm:h-5 text-gold-600" />
               <span className="text-xs sm:text-sm text-gray-700">
-                {safeFormatDate(slot.date, 'EEE, MMM d, yyyy')}
+                {safeFormatDate(slot.date, 'dd-MM-yyyy')}
               </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">

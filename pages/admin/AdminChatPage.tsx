@@ -299,7 +299,7 @@ const AdminChatPage: React.FC = () => {
     } else if (days < 7) {
       return safeFormatDateObject(date, 'EEE');
     } else {
-      return safeFormatDateObject(date, 'MMM d');
+      return safeFormatDateObject(date, 'dd-MM-yyyy');
     }
   };
 

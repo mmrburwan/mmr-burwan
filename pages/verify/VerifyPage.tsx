@@ -267,7 +267,7 @@ const VerifyPage: React.FC = () => {
                     </div>
                     <p className="font-semibold text-xs sm:text-sm text-gray-900">
                       {certificateData.registrationDate
-                        ? safeFormatDateObject(new Date(certificateData.registrationDate), 'MMMM d, yyyy')
+                        ? safeFormatDateObject(new Date(certificateData.registrationDate), 'dd-MM-yyyy')
                         : 'N/A'}
                     </p>
                   </div>

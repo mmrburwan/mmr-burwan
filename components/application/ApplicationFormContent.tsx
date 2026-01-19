@@ -604,9 +604,9 @@ const ApplicationFormContent: React.FC = () => {
 
         const missingDocs = [];
         if (!userAadhaar) missingDocs.push("Groom's Aadhaar Card");
-        if (!userSecondDoc) missingDocs.push("Groom's 10th Certificate or Voter ID");
+        if (!userSecondDoc) missingDocs.push("Groom's Madhyamik Admit Card or Voter ID");
         if (!partnerAadhaar) missingDocs.push("Bride's Aadhaar Card");
-        if (!partnerSecondDoc) missingDocs.push("Bride's 10th Certificate or Voter ID");
+        if (!partnerSecondDoc) missingDocs.push("Bride's Madhyamik Admit Card or Voter ID");
         if (!jointPhotograph) missingDocs.push("Joint Photograph");
 
         showToast(`Please upload all required documents: ${missingDocs.join(', ')}`, 'error');
@@ -1026,7 +1026,7 @@ const ApplicationFormContent: React.FC = () => {
   const getDocumentTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       aadhaar: 'Aadhaar Card',
-      tenth_certificate: '10th Certificate',
+      tenth_certificate: 'Madhyamik Admit Card',
       voter_id: 'Voter ID',
       photo: 'Photograph',
       id: 'ID Document',
@@ -1049,6 +1049,21 @@ const ApplicationFormContent: React.FC = () => {
       case 0:
         return (
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+            <div className="pb-4 sm:pb-5 lg:pb-6 border-b border-gray-200 mb-4 sm:mb-5 lg:mb-6">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Marriage Date [বিবাহের তারিখ]</h3>
+              <div className="space-y-3 sm:space-y-4">
+                <Input
+                  label="Marriage Date"
+                  type="date"
+                  max={new Date().toISOString().split('T')[0]}
+                  {...groomForm.register('marriageDate')}
+                  error={groomForm.formState.errors.marriageDate?.message}
+                  required
+                  disabled={isSubmitted}
+                />
+              </div>
+            </div>
+
             <div>
               <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom [পাত্র] Personal Details</h3>
               <div className="space-y-3 sm:space-y-4">
@@ -1261,20 +1276,6 @@ const ApplicationFormContent: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Marriage Date</h3>
-              <div className="space-y-3 sm:space-y-4">
-                <Input
-                  label="Marriage Date"
-                  type="date"
-                  max={new Date().toISOString().split('T')[0]}
-                  {...groomForm.register('marriageDate')}
-                  error={groomForm.formState.errors.marriageDate?.message}
-                  required
-                  disabled={isSubmitted}
-                />
-              </div>
-            </div>
           </div>
         );
       case 1:
@@ -1498,7 +1499,7 @@ const ApplicationFormContent: React.FC = () => {
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             <div>
               <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">Groom's Documents</h3>
-              <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Upload Aadhaar card + 10th certificate or Voter ID</p>
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Upload Aadhaar card + Madhyamik Admit Card or Voter ID</p>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-3 sm:mb-4 lg:mb-6">
                 <span className="text-gold-600 font-medium">Max file size: 250KB</span> per document
               </p>
@@ -1517,12 +1518,16 @@ const ApplicationFormContent: React.FC = () => {
                   <div className="space-y-1.5 sm:space-y-2">
                     {applicationDocuments
                       .filter(d => d.belongsTo === 'user')
+                      .sort((a, b) => {
+                        const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                        return (order[a.type] || 99) - (order[b.type] || 99);
+                      })
                       .map(doc => (
                         <div key={doc.id} className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-600">
                           <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="cursor-pointer hover:text-gray-900 truncate flex-1" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
                             {doc.type === 'aadhaar' && 'Aadhaar'}
-                            {doc.type === 'tenth_certificate' && '10th Cert'}
+                            {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                             {doc.type === 'voter_id' && 'Voter ID'}
                             : {doc.name}
                           </span>
@@ -1631,7 +1636,7 @@ const ApplicationFormContent: React.FC = () => {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-                    10th Certificate / Voter ID <span className="text-rose-600">*</span>
+                    Madhyamik Admit Card / Voter ID <span className="text-rose-600">*</span>
                   </label>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
                     {!secondDocumentExists('user') && (
@@ -1694,7 +1699,7 @@ const ApplicationFormContent: React.FC = () => {
                         <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
                           <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
-                            {doc.name || (doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID')}
+                            {doc.name || (doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID')}
                           </span>
                           <button
                             onClick={() => handlePreviewDocument(doc)}
@@ -1720,7 +1725,7 @@ const ApplicationFormContent: React.FC = () => {
 
             <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
               <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">Bride's Documents</h3>
-              <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Upload Aadhaar card + 10th certificate or Voter ID</p>
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Upload Aadhaar card + Madhyamik Admit Card or Voter ID</p>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-3 sm:mb-4 lg:mb-6">
                 <span className="text-gold-600 font-medium">Max file size: 250KB</span> per document
               </p>
@@ -1739,12 +1744,16 @@ const ApplicationFormContent: React.FC = () => {
                   <div className="space-y-1.5 sm:space-y-2">
                     {applicationDocuments
                       .filter(d => d.belongsTo === 'partner')
+                      .sort((a, b) => {
+                        const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                        return (order[a.type] || 99) - (order[b.type] || 99);
+                      })
                       .map(doc => (
                         <div key={doc.id} className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-600">
                           <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="cursor-pointer hover:text-gray-900 truncate flex-1" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
                             {doc.type === 'aadhaar' && 'Aadhaar'}
-                            {doc.type === 'tenth_certificate' && '10th Cert'}
+                            {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                             {doc.type === 'voter_id' && 'Voter ID'}
                             : {doc.name}
                           </span>
@@ -1853,7 +1862,7 @@ const ApplicationFormContent: React.FC = () => {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-                    10th Certificate / Voter ID <span className="text-rose-600">*</span>
+                    Madhyamik Admit Card / Voter ID <span className="text-rose-600">*</span>
                   </label>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
                     {!secondDocumentExists('partner') && (
@@ -1916,7 +1925,7 @@ const ApplicationFormContent: React.FC = () => {
                         <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
                           <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
-                            {doc.name || (doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID')}
+                            {doc.name || (doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID')}
                           </span>
                           <button
                             onClick={() => handlePreviewDocument(doc)}
@@ -2155,7 +2164,7 @@ const ApplicationFormContent: React.FC = () => {
                   <p className="text-gray-500 mb-1">Marriage Date</p>
                   <p className="font-medium text-gray-900">
                     {marriageDate && marriageDate.trim() !== ''
-                      ? safeFormatDate(marriageDate, 'MMMM d, yyyy', 'Invalid date format')
+                      ? safeFormatDate(marriageDate, 'dd-MM-yyyy', 'Invalid date format')
                       : 'Not provided'}
                   </p>
                 </div>
@@ -2188,7 +2197,7 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Date of Birth</p>
-                  <p className="font-medium text-gray-900">{safeFormatDate(groomData.dateOfBirth, 'MMMM d, yyyy')}</p>
+                  <p className="font-medium text-gray-900">{safeFormatDate(groomData.dateOfBirth, 'dd-MM-yyyy')}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Aadhaar Number</p>
@@ -2256,7 +2265,7 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Date of Birth</p>
-                  <p className="font-medium text-gray-900">{safeFormatDate(brideData.dateOfBirth, 'MMMM d, yyyy')}</p>
+                  <p className="font-medium text-gray-900">{safeFormatDate(brideData.dateOfBirth, 'dd-MM-yyyy')}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Aadhaar Number</p>
@@ -2327,12 +2336,16 @@ const ApplicationFormContent: React.FC = () => {
                         {/* Show saved documents from applicationDocuments */}
                         {applicationDocuments
                           .filter(d => d.belongsTo === 'user')
+                          .sort((a, b) => {
+                            const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                            return (order[a.type] || 99) - (order[b.type] || 99);
+                          })
                           .map(doc => (
                             <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
                               <FileText size={16} className="flex-shrink-0" />
-                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.name}`}>
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID'}: ${doc.name}`}>
                                 {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                                 {doc.type === 'voter_id' && 'Voter ID'}
                                 : {doc.name}
                               </span>
@@ -2361,12 +2374,16 @@ const ApplicationFormContent: React.FC = () => {
                             );
                             return !isAlreadySaved;
                           })
+                          .sort((a, b) => {
+                            const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                            return (order[a.type] || 99) - (order[b.type] || 99);
+                          })
                           .map(doc => (
                             <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
                               <FileText size={16} className="flex-shrink-0" />
-                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.file.name}`}>
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID'}: ${doc.file.name}`}>
                                 {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                                 {doc.type === 'voter_id' && 'Voter ID'}
                                 : {doc.file.name}
                               </span>
@@ -2406,12 +2423,16 @@ const ApplicationFormContent: React.FC = () => {
                         {/* Show saved documents from applicationDocuments */}
                         {applicationDocuments
                           .filter(d => d.belongsTo === 'partner')
+                          .sort((a, b) => {
+                            const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                            return (order[a.type] || 99) - (order[b.type] || 99);
+                          })
                           .map(doc => (
                             <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
                               <FileText size={16} className="flex-shrink-0" />
-                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.name}`}>
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID'}: ${doc.name}`}>
                                 {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                                 {doc.type === 'voter_id' && 'Voter ID'}
                                 : {doc.name}
                               </span>
@@ -2440,12 +2461,16 @@ const ApplicationFormContent: React.FC = () => {
                             );
                             return !isAlreadySaved;
                           })
+                          .sort((a, b) => {
+                            const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                            return (order[a.type] || 99) - (order[b.type] || 99);
+                          })
                           .map(doc => (
                             <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
                               <FileText size={16} className="flex-shrink-0" />
-                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.file.name}`}>
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID'}: ${doc.file.name}`}>
                                 {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                                 {doc.type === 'voter_id' && 'Voter ID'}
                                 : {doc.file.name}
                               </span>

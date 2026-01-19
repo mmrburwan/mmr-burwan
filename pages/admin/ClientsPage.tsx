@@ -344,7 +344,7 @@ const ClientsPage: React.FC = () => {
                       <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1">Updated</p>
                       <p className="text-[10px] font-medium text-gray-700">
                         {client.application?.lastUpdated
-                          ? safeFormatDateObject(new Date(client.application.lastUpdated), 'MMM d')
+                          ? safeFormatDateObject(new Date(client.application.lastUpdated), 'dd-MM-yyyy')
                           : '-'
                         }
                       </p>
@@ -683,7 +683,7 @@ const ClientsPage: React.FC = () => {
                     </td>
                     <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm text-gray-600">
                       {client.application?.lastUpdated
-                        ? safeFormatDateObject(new Date(client.application.lastUpdated), 'MMM d, yyyy')
+                        ? safeFormatDateObject(new Date(client.application.lastUpdated), 'dd-MM-yyyy')
                         : '-'
                       }
                     </td>

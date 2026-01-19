@@ -262,7 +262,7 @@ export const adminService = {
     const getDocumentTypeLabel = (type: string): string => {
       const labels: Record<string, string> = {
         aadhaar: 'Aadhaar Card',
-        tenth_certificate: '10th Certificate',
+        tenth_certificate: 'Madhyamik Admit Card',
         voter_id: 'Voter ID',
         id: 'ID Document',
         photo: 'Photo',
@@ -360,7 +360,7 @@ export const adminService = {
       const getDocumentTypeLabel = (type: string): string => {
         const labels: Record<string, string> = {
           aadhaar: 'Aadhaar Card',
-          tenth_certificate: '10th Certificate',
+          tenth_certificate: 'Madhyamik Admit Card',
           voter_id: 'Voter ID',
           id: 'ID Document',
           photo: 'Photo',

@@ -12,7 +12,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const getDocumentTypeLabel = (type: string): string => {
     const labels: Record<string, string> = {
         aadhaar: 'Aadhaar Card',
-        tenth_certificate: '10th Certificate',
+        tenth_certificate: 'Madhyamik Admit Card',
         voter_id: 'Voter ID',
         id: 'ID Document',
         photo: 'Photo',

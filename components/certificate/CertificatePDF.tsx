@@ -605,11 +605,17 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({
                 </View>
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Present Address:</Text>
-                  <Text style={styles.addressValue}>{userPresentAddr}</Text>
+                  <Text style={{
+                    ...styles.addressValue,
+                    fontSize: userPresentAddr.length > 120 ? 9 : userPresentAddr.length > 85 ? 10 : 12
+                  }}>{userPresentAddr}</Text>
                 </View>
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Permanent Address:</Text>
-                  <Text style={styles.addressValue}>{userPermanentAddr}</Text>
+                  <Text style={{
+                    ...styles.addressValue,
+                    fontSize: userPermanentAddr.length > 120 ? 9 : userPermanentAddr.length > 85 ? 10 : 12
+                  }}>{userPermanentAddr}</Text>
                 </View>
               </View>
             </View>
@@ -642,11 +648,17 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({
                 </View>
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Present Address:</Text>
-                  <Text style={styles.addressValue}>{partnerPresentAddr}</Text>
+                  <Text style={{
+                    ...styles.addressValue,
+                    fontSize: partnerPresentAddr.length > 120 ? 9 : partnerPresentAddr.length > 85 ? 10 : 12
+                  }}>{partnerPresentAddr}</Text>
                 </View>
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Permanent Address:</Text>
-                  <Text style={styles.addressValue}>{partnerPermanentAddr}</Text>
+                  <Text style={{
+                    ...styles.addressValue,
+                    fontSize: partnerPermanentAddr.length > 120 ? 9 : partnerPermanentAddr.length > 85 ? 10 : 12
+                  }}>{partnerPermanentAddr}</Text>
                 </View>
               </View>
             </View>
