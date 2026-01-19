@@ -2,6 +2,14 @@
   command = "npm run build"
   publish = "dist"
 
+# Redirect to agency website (helps avoid email spam filters)
+[[redirects]]
+  from = "/epplicon"
+  to = "https://www.epplicon.net"
+  status = 301
+  force = true
+
+# SPA fallback - must be last
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -233,7 +233,10 @@ serve(async (req) => {
         console.error("Error in send-admin-notification:", error);
         return new Response(JSON.stringify({ error: error.message }), {
             status: 500,
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
         });
     }
 });

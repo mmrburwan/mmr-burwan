@@ -136,16 +136,59 @@ export const notificationService = {
       };
     }
 
-    // Fetch the created notification
+    // Check if we got a valid notification ID from the RPC
+    if (!notificationId) {
+      console.error('RPC create_notification returned null ID');
+      // Create a minimal notification object since the insert succeeded but we can't fetch it
+      return {
+        id: 'unknown',
+        userId: data.userId,
+        applicationId: data.applicationId,
+        documentId: data.documentId,
+        type: data.type,
+        title: data.title,
+        message: data.message,
+        read: false,
+        createdAt: new Date().toISOString(),
+      };
+    }
+
+    // Fetch the created notification using maybeSingle to avoid 406 errors
     const { data: notification, error: fetchError } = await supabase
       .from('notifications')
       .select('*')
       .eq('id', notificationId)
-      .single();
+      .maybeSingle();
 
     if (fetchError) {
       console.error('Error fetching created notification:', fetchError);
-      throw new Error(`Failed to fetch created notification: ${fetchError.message}`);
+      // Return a minimal notification instead of throwing
+      return {
+        id: notificationId,
+        userId: data.userId,
+        applicationId: data.applicationId,
+        documentId: data.documentId,
+        type: data.type,
+        title: data.title,
+        message: data.message,
+        read: false,
+        createdAt: new Date().toISOString(),
+      };
+    }
+
+    if (!notification) {
+      console.warn('Notification was created but could not be fetched (RLS?)');
+      return {
+        id: notificationId,
+        userId: data.userId,
+        applicationId: data.applicationId,
+        documentId: data.documentId,
+        type: data.type,
+        title: data.title,
+        message: data.message,
+        read: false,
+        createdAt: new Date().toISOString(),
+      };
     }
 
     return {

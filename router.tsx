@@ -90,6 +90,14 @@ const router = createBrowserRouter(
             </Suspense>
           ),
         },
+        {
+          path: 'epplicon',
+          loader: () => {
+            window.location.href = 'https://www.epplicon.net';
+            return null;
+          },
+          element: null,
+        },
       ],
     },
     {
