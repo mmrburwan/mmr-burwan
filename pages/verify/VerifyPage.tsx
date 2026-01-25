@@ -85,7 +85,8 @@ const VerifyPage: React.FC = () => {
     }
 
     // Validate certificate number format - accept both compact (WBMSDBRW) and legacy (WB-MSD-BRW-) formats
-    const isValidFormat = certificateNumber.trim().startsWith('WBMSDBRW') || certificateNumber.trim().startsWith('WB-MSD-BRW-');
+    const certNumUpper = certificateNumber.trim().toUpperCase();
+    const isValidFormat = certNumUpper.startsWith('WBMSDBRW') || certNumUpper.startsWith('WB-MSD-BRW-');
     if (!isValidFormat) {
       setError('Please enter a valid certificate number starting with WBMSDBRW or WB-MSD-BRW-');
       return;

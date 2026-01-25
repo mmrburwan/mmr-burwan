@@ -113,6 +113,7 @@ export const adminService = {
     pending: number;
     verified: number;
     unverified: number;
+    draft: number;
   }> {
     // We run parallel count queries. 
     // This is much lighter than fetching all rows.
@@ -122,7 +123,7 @@ export const adminService = {
       .from('applications')
       .select('id', { count: 'exact', head: true });
 
-    // 2. Pending (submitted or under_review)
+    // 2. Pending Review (submitted or under_review)
     const pendingPromise = supabase
       .from('applications')
       .select('id', { count: 'exact', head: true })
@@ -141,11 +142,18 @@ export const adminService = {
       .in('status', ['submitted', 'under_review'])
       .or('verified.is.false,verified.is.null');
 
-    const [totalRes, pendingRes, verifiedRes, unverifiedRes] = await Promise.all([
+    // 5. Draft
+    const draftPromise = supabase
+      .from('applications')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'draft');
+
+    const [totalRes, pendingRes, verifiedRes, unverifiedRes, draftRes] = await Promise.all([
       totalPromise,
       pendingPromise,
       verifiedPromise,
-      unverifiedPromise
+      unverifiedPromise,
+      draftPromise
     ]);
 
     return {
@@ -153,6 +161,7 @@ export const adminService = {
       pending: pendingRes.count || 0,
       verified: verifiedRes.count || 0,
       unverified: unverifiedRes.count || 0,
+      draft: draftRes.count || 0,
     };
   },
 
@@ -780,7 +789,7 @@ export const adminService = {
       }
 
       // Use fetch directly to have better control over error handling
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
       const functionUrl = `${supabaseUrl}/functions/v1/create-proxy-user`;
 
       let functionData: any = null;
@@ -791,7 +800,7 @@ export const adminService = {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+            'apikey': (import.meta as any).env.VITE_SUPABASE_ANON_KEY || '',
           },
           body: JSON.stringify({
             email: applicantData.email,
@@ -955,14 +964,14 @@ export const adminService = {
           user_id: userId,
           application_id: appData.id,
           email: userEmail,
-          password: password, // Store password (consider encryption in production)
+          password: applicantData.password, // Use the input password directly to ensure it's captured
           created_by_admin_id: adminId,
         });
 
       if (credError) {
         console.error('Failed to store credentials:', credError);
-        // Don't fail the whole operation if credential storage fails
-        // The credentials are already returned, so admin can note them down
+        // Throw error so the user and UI are aware that credentials weren't saved
+        throw new Error(`Application created but failed to save credentials: ${credError.message}`);
       }
 
       // Step 5: Create audit log entry

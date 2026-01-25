@@ -10,7 +10,8 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
 import VerifyApplicationModal from '../../components/admin/VerifyApplicationModal';
-import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText } from 'lucide-react';
+import DeleteApplicationModal from '../../components/admin/DeleteApplicationModal';
+import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText, Trash2 } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
 
@@ -84,6 +85,16 @@ const ClientsPage: React.FC = () => {
     applicationId: string;
     certificateNumber?: string;
     registrationDate?: string;
+  }>({
+    isOpen: false,
+    applicationId: '',
+  });
+
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isOpen: boolean;
+    applicationId: string;
+    groomName?: string;
+    brideName?: string;
   }>({
     isOpen: false,
     applicationId: '',
@@ -203,6 +214,30 @@ const ClientsPage: React.FC = () => {
       showToast('Certificate downloaded successfully', 'success');
     } catch (error) {
       showToast('Failed to generate download link', 'error');
+    }
+  };
+
+  const handleDeleteApplication = async (applicationId: string) => {
+    if (!user) return;
+
+    try {
+      await adminService.deleteApplication(applicationId, user.id, user.name || user.email);
+      showToast('Application deleted successfully', 'success');
+
+      // Refresh the list
+      const applications = await adminService.getAllApplications();
+      const userIds = [...new Set(applications.map(app => app.userId))];
+      const emailMap = await adminService.getUserEmails(userIds);
+      const clientsData: ClientWithApplication[] = applications.map((application) => ({
+        userId: application.userId,
+        email: emailMap[application.userId] || 'N/A',
+        application,
+      }));
+      setClients(clientsData);
+      setFilteredClients(clientsData);
+    } catch (error: any) {
+      showToast(error.message || 'Failed to delete application', 'error');
+      throw error;
     }
   };
 
@@ -561,6 +596,31 @@ const ClientsPage: React.FC = () => {
                         )}
                       </>
                     )}
+                    {client.application && client.application.status === 'draft' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex-1"
+                        onClick={() => {
+                          const groomName = client.application?.userDetails
+                            ? `${client.application.userDetails.firstName}${client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''}`
+                            : undefined;
+                          const brideName = client.application?.partnerForm
+                            ? `${client.application.partnerForm.firstName}${client.application.partnerForm.lastName ? ' ' + client.application.partnerForm.lastName : ''}`
+                            : undefined;
+
+                          setDeleteModalState({
+                            isOpen: true,
+                            applicationId: client.application!.id,
+                            groomName,
+                            brideName,
+                          });
+                        }}
+                      >
+                        <Trash2 size={14} className="mr-1" />
+                        Delete
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -772,6 +832,32 @@ const ClientsPage: React.FC = () => {
                             )}
                           </>
                         )}
+                        {client.application && client.application.status === 'draft' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-red-600 hover:bg-red-50"
+                            onClick={() => {
+                              const groomName = client.application?.userDetails
+                                ? `${client.application.userDetails.firstName}${client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''}`
+                                : undefined;
+                              const brideName = client.application?.partnerForm
+                                ? `${client.application.partnerForm.firstName}${client.application.partnerForm.lastName ? ' ' + client.application.partnerForm.lastName : ''}`
+                                : undefined;
+
+                              setDeleteModalState({
+                                isOpen: true,
+                                applicationId: client.application!.id,
+                                groomName,
+                                brideName,
+                              });
+                            }}
+                            title="Delete Draft"
+                          >
+                            <Trash2 size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                            <span className="hidden sm:inline">Delete</span>
+                          </Button>
+                        )}
                       </div>
                     </td>
 
@@ -804,6 +890,16 @@ const ClientsPage: React.FC = () => {
         applicationId={verifyModalState.applicationId}
         currentCertificateNumber={verifyModalState.certificateNumber}
         currentRegistrationDate={verifyModalState.registrationDate}
+      />
+
+      {/* Delete Application Confirmation Modal */}
+      <DeleteApplicationModal
+        isOpen={deleteModalState.isOpen}
+        onClose={() => setDeleteModalState({ ...deleteModalState, isOpen: false })}
+        onConfirm={() => handleDeleteApplication(deleteModalState.applicationId)}
+        applicationId={deleteModalState.applicationId}
+        groomName={deleteModalState.groomName}
+        brideName={deleteModalState.brideName}
       />
     </div>
   );
