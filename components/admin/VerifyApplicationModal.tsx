@@ -38,113 +38,14 @@ const generateRomanNumerals = (): string[] => {
 
 const ROMAN_NUMERALS = generateRomanNumerals();
 
-// Parse certificate number: 
-// "WB-MSD-BRW-I-1-C-2024-16-2025-21" (with both optional fields)
-// "WB-MSD-BRW-I-1-C-2024-16-21" (with only volumeYear)
-// "WB-MSD-BRW-I-1-C-16-2025-21" (with only serialYear)
-// "WB-MSD-BRW-I-1-C-16-21" (without optional fields)
-// Also handles old format with consecutive dashes for backward compatibility
+// Parse certificate number with compact format support (no hyphens)
+// Examples of valid formats (all starting with WBMSDBRW):
+// "WBMSDBRWI1C20241620252" (all fields present)
+// "WBMSDBRWI1C1621" (no years)
+// "WBMSDBRWI12122" (no volumeLetter, no years - minimal format)
+// Also supports legacy hyphenated format for backward compatibility
 const parseCertificateNumber = (certNumber: string | undefined) => {
-  if (!certNumber) {
-    return {
-      bookNumber: 'I',
-      volumeNumber: '',
-      volumeLetter: '',
-      volumeYear: '', // Optional, default to empty
-      serialNumber: '',
-      serialYear: '', // Optional, default to empty
-      pageNumber: '',
-    };
-  }
-
-  // Format: WB-MSD-BRW-{book}-{volumeNumber}-{volumeLetter}-{volumeYear?}-{serialNumber}-{serialYear?}-{pageNumber}
-  // volumeYear and serialYear are optional
-  const parts = certNumber.split('-');
-
-  // Must start with WB-MSD-BRW
-  if (parts.length < 8 || parts[0] !== 'WB' || parts[1] !== 'MSD' || parts[2] !== 'BRW') {
-    return {
-      bookNumber: 'I',
-      volumeNumber: '',
-      volumeLetter: '',
-      volumeYear: '',
-      serialNumber: '',
-      serialYear: '',
-      pageNumber: '',
-    };
-  }
-
-  // Base structure: WB-MSD-BRW-book-volNum-volLet-[volYear?]-serialNum-[serialYear?]-pageNum
-  // 8 parts = no optional fields: WB-MSD-BRW-book-volNum-volLet-serialNum-pageNum
-  // 9 parts = one optional field
-  // 10 parts = both optional fields
-  if (parts.length === 8) {
-    // No optional fields: WB-MSD-BRW-book-volNum-volLet-serialNum-pageNum
-    return {
-      bookNumber: parts[3] || 'I',
-      volumeNumber: parts[4] || '',
-      volumeLetter: parts[5] || '',
-      volumeYear: '',
-      serialNumber: parts[6] || '',
-      serialYear: '',
-      pageNumber: parts[7] || '',
-    };
-  } else if (parts.length === 9) {
-    // One optional field - need to determine which one
-    // Check if part[6] looks like a year (4 digits) or serial number
-    const part6 = parts[6] || '';
-    const isYear = /^\d{4}$/.test(part6);
-
-    if (isYear) {
-      // volumeYear present: WB-MSD-BRW-book-volNum-volLet-volYear-serialNum-pageNum
-      return {
-        bookNumber: parts[3] || 'I',
-        volumeNumber: parts[4] || '',
-        volumeLetter: parts[5] || '',
-        volumeYear: part6,
-        serialNumber: parts[7] || '',
-        serialYear: '',
-        pageNumber: parts[8] || '',
-      };
-    } else {
-      // serialYear present: WB-MSD-BRW-book-volNum-volLet-serialNum-serialYear-pageNum
-      return {
-        bookNumber: parts[3] || 'I',
-        volumeNumber: parts[4] || '',
-        volumeLetter: parts[5] || '',
-        volumeYear: '',
-        serialNumber: part6,
-        serialYear: parts[7] || '',
-        pageNumber: parts[8] || '',
-      };
-    }
-  } else if (parts.length === 10) {
-    // Both optional fields: WB-MSD-BRW-book-volNum-volLet-volYear-serialNum-serialYear-pageNum
-    return {
-      bookNumber: parts[3] || 'I',
-      volumeNumber: parts[4] || '',
-      volumeLetter: parts[5] || '',
-      volumeYear: parts[6] || '',
-      serialNumber: parts[7] || '',
-      serialYear: parts[8] || '',
-      pageNumber: parts[9] || '',
-    };
-  } else if (parts.length >= 10) {
-    // Old format with consecutive dashes (backward compatibility)
-    // WB-MSD-BRW-book-volNum-volLet--serialNum--pageNum or similar
-    return {
-      bookNumber: parts[3] || 'I',
-      volumeNumber: parts[4] || '',
-      volumeLetter: parts[5] || '',
-      volumeYear: parts[6] || '',
-      serialNumber: parts[7] || '',
-      serialYear: parts[8] || '',
-      pageNumber: parts[9] || '',
-    };
-  }
-
-  // Fallback to defaults
-  return {
+  const defaults = {
     bookNumber: 'I',
     volumeNumber: '',
     volumeLetter: '',
@@ -152,6 +53,137 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     serialNumber: '',
     serialYear: '',
     pageNumber: '',
+  };
+
+  if (!certNumber) {
+    return defaults;
+  }
+
+  // Check if it's legacy hyphenated format
+  if (certNumber.includes('-')) {
+    // Legacy format: WB-MSD-BRW-...
+    const parts = certNumber.split('-');
+    if (parts.length >= 7 && parts[0] === 'WB' && parts[1] === 'MSD' && parts[2] === 'BRW') {
+      // Handle legacy format - extract parts after prefix
+      const afterPrefix = parts.slice(3);
+      return {
+        bookNumber: afterPrefix[0] || 'I',
+        volumeNumber: afterPrefix[1] || '',
+        volumeLetter: afterPrefix[2] && /^[A-Za-z]+$/.test(afterPrefix[2]) ? afterPrefix[2] : '',
+        volumeYear: afterPrefix[3] && /^\d+$/.test(afterPrefix[3]) ? afterPrefix[3] : '',
+        serialNumber: afterPrefix[4] || afterPrefix[2] || '',
+        serialYear: afterPrefix[5] || '',
+        pageNumber: afterPrefix[afterPrefix.length - 1] || '',
+      };
+    }
+    return defaults;
+  }
+
+  // New compact format: WBMSDBRW followed by components
+  if (!certNumber.startsWith('WBMSDBRW')) {
+    return defaults;
+  }
+
+  // Remove the prefix
+  const remainder = certNumber.slice(8); // "WBMSDBRW".length = 8
+
+  // Extract book number (Roman numerals at the start)
+  const bookMatch = remainder.match(/^([IVXLCDM]+)/);
+  if (!bookMatch) {
+    return defaults;
+  }
+  const bookNumber = bookMatch[1];
+  let rest = remainder.slice(bookNumber.length);
+
+  // Now we need to extract: volumeNumber, volumeLetter?, volumeYear?, serialNumber, serialYear?, pageNumber
+  // Strategy: work from the end backwards since pageNumber is last
+
+  // Match volumeNumber (1+ digits at the start of rest)
+  const volNumMatch = rest.match(/^(\d+)/);
+  if (!volNumMatch) {
+    return defaults;
+  }
+  const volumeNumber = volNumMatch[1];
+  rest = rest.slice(volumeNumber.length);
+
+  // Check if next character is a letter (volumeLetter)
+  let volumeLetter = '';
+  const volLetterMatch = rest.match(/^([A-Za-z]+)/);
+  if (volLetterMatch) {
+    volumeLetter = volLetterMatch[1];
+    rest = rest.slice(volumeLetter.length);
+  }
+
+  // Now we have remaining digits that could be: volumeYear + serialNumber + serialYear + pageNumber
+  // or just: serialNumber + pageNumber
+  // or: volumeYear + serialNumber + pageNumber
+  // etc.
+
+  // Since parsing is ambiguous without separators, we'll use heuristics:
+  // - If we have a 4-digit sequence, treat first occurrence as volumeYear
+  // - 4-digit sequence later could be serialYear
+  // - Numbers between are serialNumber
+  // - Last number is pageNumber
+
+  // For now, use a simple approach: split remaining digits intelligently
+  // We assume typical formats and try to extract reasonably
+
+  let volumeYear = '';
+  let serialNumber = '';
+  let serialYear = '';
+  let pageNumber = '';
+
+  // If remaining is just digits, try to parse
+  if (/^\d+$/.test(rest)) {
+    const digits = rest;
+    const len = digits.length;
+
+    // Minimum is serialNumber + pageNumber (at least 2 chars each? flexible)
+    if (len >= 2) {
+      // Check if starts with 4-digit year
+      if (len >= 6 && /^\d{4}/.test(digits)) {
+        volumeYear = digits.slice(0, 4);
+        const afterVolYear = digits.slice(4);
+
+        // Check if there's another 4-digit year in the middle
+        if (afterVolYear.length >= 6) {
+          // Could be serialNum + serialYear(4) + page or other combinations
+          // Try: serialNum (1-3 digits) + serialYear(4) + page (rest)
+          const serialYearMatch = afterVolYear.match(/^(\d{1,3})(\d{4})(\d+)$/);
+          if (serialYearMatch) {
+            serialNumber = serialYearMatch[1];
+            serialYear = serialYearMatch[2];
+            pageNumber = serialYearMatch[3];
+          } else {
+            // Just split in half-ish
+            const mid = Math.floor(afterVolYear.length / 2);
+            serialNumber = afterVolYear.slice(0, mid) || afterVolYear.slice(0, 1);
+            pageNumber = afterVolYear.slice(mid) || afterVolYear.slice(-1);
+          }
+        } else {
+          // Short remaining: just serialNumber + pageNumber
+          const mid = Math.floor(afterVolYear.length / 2);
+          serialNumber = afterVolYear.slice(0, mid || 1);
+          pageNumber = afterVolYear.slice(mid || 1);
+        }
+      } else {
+        // No 4-digit year at start, just serialNumber + pageNumber
+        // Assume last 1-3 digits are pageNumber, rest is serialNumber
+        const pageLen = Math.min(3, Math.floor(len / 2)) || 1;
+        serialNumber = digits.slice(0, len - pageLen);
+        pageNumber = digits.slice(-pageLen);
+      }
+    }
+  }
+
+  return {
+    bookNumber,
+    volumeNumber,
+    volumeLetter,
+    volumeYear,
+    serialNumber,
+    serialYear,
+    pageNumber,
   };
 };
 
@@ -263,21 +295,19 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
   const certificateNumberPreview = useMemo(() => {
     const { bookNumber, volumeNumber, volumeLetter, volumeYear, serialNumber, serialYear, pageNumber } = formValues;
     if (bookNumber && volumeNumber && serialNumber && pageNumber) {
-      // Build certificate number, handling optional volumeLetter, volumeYear and serialYear
-      // Filter out empty strings to prevent consecutive dashes
+      // Build certificate number without hyphens
+      // Filter out all empty/falsy values
       const parts = [
-        'WB',
-        'MSD',
-        'BRW',
+        'WBMSDBRW',
         bookNumber,
         volumeNumber,
-        ...(volumeLetter ? [volumeLetter] : []), // Only include if not empty
-        ...(volumeYear ? [volumeYear] : []), // Only include if not empty
+        volumeLetter,
+        volumeYear,
         serialNumber,
-        ...(serialYear ? [serialYear] : []), // Only include if not empty
+        serialYear,
         pageNumber
-      ];
-      return parts.join('-');
+      ].filter(Boolean);
+      return parts.join(''); // No hyphens
     }
     return '';
   }, [formValues]);
@@ -308,21 +338,18 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Construct the full certificate number, handling optional volumeLetter, volumeYear and serialYear
-      // Filter out empty strings to prevent consecutive dashes
+      // Construct the full certificate number without hyphens
       const parts = [
-        'WB',
-        'MSD',
-        'BRW',
+        'WBMSDBRW',
         data.bookNumber,
         data.volumeNumber,
-        ...(data.volumeLetter ? [data.volumeLetter] : []), // Only include if not empty
-        ...(data.volumeYear ? [data.volumeYear] : []), // Only include if not empty
+        data.volumeLetter,
+        data.volumeYear,
         data.serialNumber,
-        ...(data.serialYear ? [data.serialYear] : []), // Only include if not empty
+        data.serialYear,
         data.pageNumber
-      ];
-      const fullCertificateNumber = parts.join('-');
+      ].filter(Boolean);
+      const fullCertificateNumber = parts.join(''); // No hyphens
 
       // check if certificate number already exists
       const exists = await adminService.checkCertificateNumber(fullCertificateNumber, applicationId);

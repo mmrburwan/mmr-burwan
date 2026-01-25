@@ -133,7 +133,7 @@ const AdminDashboardPage: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Pending Review</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Draft</p>
               <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
                 {stats.pending}
               </p>

@@ -73,11 +73,15 @@ export const certificateService = {
   },
 
   async getCertificateByCertificateNumber(certificateNumber: string): Promise<any | null> {
+    // Normalize input: remove all hyphens to match database format
+    // This allows both old format (WB-MSD-BRW-...) and new format (WBMSDBRW...) to work
+    const normalizedCertNumber = certificateNumber.replace(/-/g, '');
+
     // Find the application by certificate_number with all details
     const { data: application, error: appError } = await supabase
       .from('applications')
       .select('*')
-      .eq('certificate_number', certificateNumber)
+      .eq('certificate_number', normalizedCertNumber)
       .eq('verified', true)
       .maybeSingle();
 

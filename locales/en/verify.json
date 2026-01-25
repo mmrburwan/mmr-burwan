@@ -2,7 +2,7 @@
   "title": "Verify Certificate",
   "subtitle": "Enter certificate number to verify details",
   "certificateNumber": "Certificate Number",
-  "certificateNumberPlaceholder": "e.g., WB-MSD-BRW-V-5-C-2025-257-2026-599",
+  "certificateNumberPlaceholder": "e.g., WBMSDBRWV5C20252572026599",
   "verify": "Verify Certificate",
   "verifying": "Verifying...",
   "notFound": "Certificate Not Found",

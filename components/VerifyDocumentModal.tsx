@@ -47,9 +47,10 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
       return;
     }
 
-    // Validate certificate number format
-    if (!certificateNumber.trim().startsWith('WB-MSD-BRW-')) {
-      setError('Please enter a valid certificate number starting with WB-MSD-BRW-');
+    // Validate certificate number format - accept both compact (WBMSDBRW) and legacy (WB-MSD-BRW-) formats
+    const isValidFormat = certificateNumber.trim().startsWith('WBMSDBRW') || certificateNumber.trim().startsWith('WB-MSD-BRW-');
+    if (!isValidFormat) {
+      setError('Please enter a valid certificate number starting with WBMSDBRW or WB-MSD-BRW-');
       return;
     }
 
@@ -126,7 +127,7 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
           <div className="space-y-6">
             <Input
               label="Certificate Number"
-              placeholder="Enter certificate number (e.g., WB-MSD-BRW-V-5-C-2025-257-2026-599)"
+              placeholder="Enter certificate number (e.g., WBMSDBRWV5C20252572026599)"
               value={certificateNumber}
               onChange={(e) => {
                 setCertificateNumber(e.target.value);

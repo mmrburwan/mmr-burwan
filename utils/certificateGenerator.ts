@@ -63,112 +63,23 @@ const formatAddress = (address: any): string => {
   return parts.length > 0 ? parts.join(', ') : 'N/A';
 };
 
-// Parse certificate number: 
-// "WB-MSD-BRW-I-1-C-2024-16-2025-21" (with both optional fields)
-// "WB-MSD-BRW-I-1-C-2024-16-21" (with only volumeYear)
-// "WB-MSD-BRW-I-1-C-16-2025-21" (with only serialYear)
-// "WB-MSD-BRW-I-1-C-16-21" (without optional fields)
-// Also handles old format with consecutive dashes for backward compatibility
+// Normalize certificate number - convert hyphenated format to compact format
+const normalizeCertificateNumber = (certNumber: string): string => {
+  // If already compact (starts with WBMSDBRW without hyphen), return as is
+  if (certNumber.startsWith('WBMSDBRW') && !certNumber.includes('-')) {
+    return certNumber;
+  }
+  // If hyphenated, remove all hyphens
+  if (certNumber.includes('-')) {
+    // Convert WB-MSD-BRW-... to WBMSDBRW...
+    return certNumber.replace(/-/g, '').replace('WBMSDBRW', 'WBMSDBRW');
+  }
+  return certNumber;
+};
+
+// Parse certificate number with support for both compact (no hyphens) and legacy (hyphenated) formats
 const parseCertificateNumber = (certNumber: string | undefined) => {
-  if (!certNumber) {
-    return {
-      book: 'I',
-      volumeNumber: '1',
-      volumeLetter: '',
-      volumeYear: '', // Optional, default to empty
-      serialNumber: '1',
-      serialYear: '', // Optional, default to empty
-      pageNumber: '1',
-    };
-  }
-
-  // Format: WB-MSD-BRW-{book}-{volumeNumber}-{volumeLetter}-{volumeYear?}-{serialNumber}-{serialYear?}-{pageNumber}
-  // volumeYear and serialYear are optional
-  const parts = certNumber.split('-');
-
-  // Must start with WB-MSD-BRW
-  if (parts.length < 8 || parts[0] !== 'WB' || parts[1] !== 'MSD' || parts[2] !== 'BRW') {
-    return {
-      book: 'I',
-      volumeNumber: '1',
-      volumeLetter: '',
-      volumeYear: '',
-      serialNumber: '1',
-      serialYear: '',
-      pageNumber: '1',
-    };
-  }
-
-  // Base structure: WB-MSD-BRW-book-volNum-volLet-[volYear?]-serialNum-[serialYear?]-pageNum
-  // 8 parts = no optional fields: WB-MSD-BRW-book-volNum-volLet-serialNum-pageNum
-  // 9 parts = one optional field
-  // 10 parts = both optional fields
-  if (parts.length === 8) {
-    // No optional fields: WB-MSD-BRW-book-volNum-volLet-serialNum-pageNum
-    return {
-      book: parts[3] || 'I',
-      volumeNumber: parts[4] || '1',
-      volumeLetter: parts[5] || '',
-      volumeYear: '',
-      serialNumber: parts[6] || '1',
-      serialYear: '',
-      pageNumber: parts[7] || '1',
-    };
-  } else if (parts.length === 9) {
-    // One optional field - need to determine which one
-    // Check if part[6] looks like a year (4 digits) or serial number
-    const part6 = parts[6] || '';
-    const isYear = /^\d{4}$/.test(part6);
-
-    if (isYear) {
-      // volumeYear present: WB-MSD-BRW-book-volNum-volLet-volYear-serialNum-pageNum
-      return {
-        book: parts[3] || 'I',
-        volumeNumber: parts[4] || '1',
-        volumeLetter: parts[5] || '',
-        volumeYear: part6,
-        serialNumber: parts[7] || '1',
-        serialYear: '',
-        pageNumber: parts[8] || '1',
-      };
-    } else {
-      // serialYear present: WB-MSD-BRW-book-volNum-volLet-serialNum-serialYear-pageNum
-      return {
-        book: parts[3] || 'I',
-        volumeNumber: parts[4] || '1',
-        volumeLetter: parts[5] || '',
-        volumeYear: '',
-        serialNumber: part6,
-        serialYear: parts[7] || '',
-        pageNumber: parts[8] || '1',
-      };
-    }
-  } else if (parts.length === 10) {
-    // Both optional fields: WB-MSD-BRW-book-volNum-volLet-volYear-serialNum-serialYear-pageNum
-    return {
-      book: parts[3] || 'I',
-      volumeNumber: parts[4] || '1',
-      volumeLetter: parts[5] || '',
-      volumeYear: parts[6] || '',
-      serialNumber: parts[7] || '1',
-      serialYear: parts[8] || '',
-      pageNumber: parts[9] || '1',
-    };
-  } else if (parts.length >= 11) {
-    // Old format with consecutive dashes (backward compatibility)
-    return {
-      book: parts[3] || 'I',
-      volumeNumber: parts[4] || '1',
-      volumeLetter: parts[5] || '',
-      volumeYear: parts[6] || '',
-      serialNumber: parts[7] || '1',
-      serialYear: parts[8] || '',
-      pageNumber: parts[9] || '1',
-    };
-  }
-
-  // Fallback to defaults
-  return {
+  const defaults = {
     book: 'I',
     volumeNumber: '1',
     volumeLetter: '',
@@ -176,6 +87,111 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     serialNumber: '1',
     serialYear: '',
     pageNumber: '1',
+  };
+
+  if (!certNumber) {
+    return defaults;
+  }
+
+  // Check if it's legacy hyphenated format
+  if (certNumber.includes('-')) {
+    const parts = certNumber.split('-');
+    if (parts.length >= 7 && parts[0] === 'WB' && parts[1] === 'MSD' && parts[2] === 'BRW') {
+      // Handle legacy format - simplified extraction
+      const afterPrefix = parts.slice(3);
+      return {
+        book: afterPrefix[0] || 'I',
+        volumeNumber: afterPrefix[1] || '1',
+        volumeLetter: afterPrefix[2] && /^[A-Za-z]+$/.test(afterPrefix[2]) ? afterPrefix[2] : '',
+        volumeYear: afterPrefix[3] && /^\d+$/.test(afterPrefix[3]) ? afterPrefix[3] : '',
+        serialNumber: afterPrefix[4] || afterPrefix[2] || '1',
+        serialYear: afterPrefix[5] || '',
+        pageNumber: afterPrefix[afterPrefix.length - 1] || '1',
+      };
+    }
+    return defaults;
+  }
+
+  // New compact format: WBMSDBRW followed by components
+  if (!certNumber.startsWith('WBMSDBRW')) {
+    return defaults;
+  }
+
+  // Remove the prefix
+  const remainder = certNumber.slice(8); // "WBMSDBRW".length = 8
+
+  // Extract book number (Roman numerals at the start)
+  const bookMatch = remainder.match(/^([IVXLCDM]+)/);
+  if (!bookMatch) {
+    return defaults;
+  }
+  const book = bookMatch[1];
+  let rest = remainder.slice(book.length);
+
+  // Match volumeNumber (1+ digits at the start of rest)
+  const volNumMatch = rest.match(/^(\d+)/);
+  if (!volNumMatch) {
+    return { ...defaults, book };
+  }
+  const volumeNumber = volNumMatch[1];
+  rest = rest.slice(volumeNumber.length);
+
+  // Check if next characters are letters (volumeLetter)
+  let volumeLetter = '';
+  const volLetterMatch = rest.match(/^([A-Za-z]+)/);
+  if (volLetterMatch) {
+    volumeLetter = volLetterMatch[1];
+    rest = rest.slice(volumeLetter.length);
+  }
+
+  // Parse remaining digits
+  let volumeYear = '';
+  let serialNumber = '1';
+  let serialYear = '';
+  let pageNumber = '1';
+
+  if (/^\d+$/.test(rest)) {
+    const digits = rest;
+    const len = digits.length;
+
+    if (len >= 2) {
+      if (len >= 8 && /^\d{4}/.test(digits)) {
+        // volumeYear(4) + serialNumber + serialYear(4) + pageNumber
+        volumeYear = digits.slice(0, 4);
+        const afterVolYear = digits.slice(4);
+        const serialYearMatch = afterVolYear.match(/^(\d{1,3})(\d{4})(\d+)$/);
+        if (serialYearMatch) {
+          serialNumber = serialYearMatch[1];
+          serialYear = serialYearMatch[2];
+          pageNumber = serialYearMatch[3];
+        } else {
+          const mid = Math.floor(afterVolYear.length / 2);
+          serialNumber = afterVolYear.slice(0, mid || 1);
+          pageNumber = afterVolYear.slice(mid || 1) || '1';
+        }
+      } else if (len >= 6 && /^\d{4}/.test(digits)) {
+        volumeYear = digits.slice(0, 4);
+        const afterVolYear = digits.slice(4);
+        const mid = Math.floor(afterVolYear.length / 2);
+        serialNumber = afterVolYear.slice(0, mid || 1);
+        pageNumber = afterVolYear.slice(mid || 1) || '1';
+      } else {
+        // No 4-digit year, just serialNumber + pageNumber
+        const pageLen = Math.min(3, Math.floor(len / 2)) || 1;
+        serialNumber = digits.slice(0, len - pageLen) || '1';
+        pageNumber = digits.slice(-pageLen) || '1';
+      }
+    }
+  }
+
+  return {
+    book,
+    volumeNumber: volumeNumber || '1',
+    volumeLetter,
+    volumeYear,
+    serialNumber: serialNumber || '1',
+    serialYear,
+    pageNumber: pageNumber || '1',
   };
 };
 
@@ -192,17 +208,22 @@ export const generateCertificateData = (application: Application) => {
   const registrationDate = application.registrationDate || application.verifiedAt || application.submittedAt || new Date().toISOString();
   const marriageDate = (application.declarations as any)?.marriageDate || application.submittedAt || new Date().toISOString();
 
-  // Use stored certificate number if available, otherwise generate a default
-  const consecutiveNumber = application.certificateNumber || `WB-MSD-BRW-I-1-C-${currentYear}-${Math.floor(Math.random() * 50) + 1}-${currentYear + 1}-${Math.floor(Math.random() * 30) + 1}`;
+  // Use stored certificate number if available, otherwise generate a default (compact format)
+  // Normalize to convert any legacy hyphenated format
+  const rawCertNumber = application.certificateNumber || `WBMSDBRWI1C${currentYear}${Math.floor(Math.random() * 50) + 1}${currentYear + 1}${Math.floor(Math.random() * 30) + 1}`;
+  const consecutiveNumber = normalizeCertificateNumber(rawCertNumber);
   const verificationId = `MMR-BW-${currentYear}-${String(Date.now()).slice(-6)}`;
 
-  // Parse certificate number to extract components
-  const certParts = parseCertificateNumber(application.certificateNumber || consecutiveNumber);
+  // Parse certificate number to extract components (parse the normalized version)
+  const certParts = parseCertificateNumber(consecutiveNumber);
 
-  // Format volume number: "1-C/2024" or "1-C" if volumeYear is empty
-  const volNo = certParts.volumeYear
-    ? `${certParts.volumeNumber}-${certParts.volumeLetter}/${certParts.volumeYear}`
-    : `${certParts.volumeNumber}-${certParts.volumeLetter}`;
+  // Format volume number: "1-C/2024", "1-C", "1/2024", or "1"
+  // Handle empty volumeLetter to avoid trailing dashes
+  const volNo = (() => {
+    const parts = [certParts.volumeNumber, certParts.volumeLetter].filter(Boolean);
+    const basePart = parts.join('-');
+    return certParts.volumeYear ? `${basePart}/${certParts.volumeYear}` : basePart;
+  })();
 
   // Format serial number: "3/2026" or "3" if serialYear is empty
   const serialNo = certParts.serialYear

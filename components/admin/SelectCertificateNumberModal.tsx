@@ -37,92 +37,9 @@ const generateRomanNumerals = (): string[] => {
 
 const ROMAN_NUMERALS = generateRomanNumerals();
 
-// Parse certificate number
+// Parse certificate number with flexible format support
 const parseCertificateNumber = (certNumber: string | undefined) => {
-  if (!certNumber) {
-    return {
-      bookNumber: 'I',
-      volumeNumber: '',
-      volumeLetter: '',
-      volumeYear: '',
-      serialNumber: '',
-      serialYear: '',
-      pageNumber: '',
-    };
-  }
-
-  const parts = certNumber.split('-');
-
-  if (parts.length < 8 || parts[0] !== 'WB' || parts[1] !== 'MSD' || parts[2] !== 'BRW') {
-    return {
-      bookNumber: 'I',
-      volumeNumber: '',
-      volumeLetter: '',
-      volumeYear: '',
-      serialNumber: '',
-      serialYear: '',
-      pageNumber: '',
-    };
-  }
-
-  if (parts.length === 8) {
-    return {
-      bookNumber: parts[3] || 'I',
-      volumeNumber: parts[4] || '',
-      volumeLetter: parts[5] || '',
-      volumeYear: '',
-      serialNumber: parts[6] || '',
-      serialYear: '',
-      pageNumber: parts[7] || '',
-    };
-  } else if (parts.length === 9) {
-    const part6 = parts[6] || '';
-    const isYear = /^\d{4}$/.test(part6);
-
-    if (isYear) {
-      return {
-        bookNumber: parts[3] || 'I',
-        volumeNumber: parts[4] || '',
-        volumeLetter: parts[5] || '',
-        volumeYear: part6,
-        serialNumber: parts[7] || '',
-        serialYear: '',
-        pageNumber: parts[8] || '',
-      };
-    } else {
-      return {
-        bookNumber: parts[3] || 'I',
-        volumeNumber: parts[4] || '',
-        volumeLetter: parts[5] || '',
-        volumeYear: '',
-        serialNumber: part6,
-        serialYear: parts[7] || '',
-        pageNumber: parts[8] || '',
-      };
-    }
-  } else if (parts.length === 10) {
-    return {
-      bookNumber: parts[3] || 'I',
-      volumeNumber: parts[4] || '',
-      volumeLetter: parts[5] || '',
-      volumeYear: parts[6] || '',
-      serialNumber: parts[7] || '',
-      serialYear: parts[8] || '',
-      pageNumber: parts[9] || '',
-    };
-  } else if (parts.length >= 10) {
-    return {
-      bookNumber: parts[3] || 'I',
-      volumeNumber: parts[4] || '',
-      volumeLetter: parts[5] || '',
-      volumeYear: parts[6] || '',
-      serialNumber: parts[7] || '',
-      serialYear: parts[8] || '',
-      pageNumber: parts[9] || '',
-    };
-  }
-
-  return {
+  const defaults = {
     bookNumber: 'I',
     volumeNumber: '',
     volumeLetter: '',
@@ -130,6 +47,118 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     serialNumber: '',
     serialYear: '',
     pageNumber: '',
+  };
+
+  if (!certNumber) {
+    return defaults;
+  }
+
+  const parts = certNumber.split('-');
+
+  // Must start with WB-MSD-BRW and have at least 7 parts
+  if (parts.length < 7 || parts[0] !== 'WB' || parts[1] !== 'MSD' || parts[2] !== 'BRW') {
+    return defaults;
+  }
+
+  const bookNumber = parts[3] || 'I';
+  const remainingParts = parts.slice(4);
+
+  const isYear = (val: string) => /^\d{4}$/.test(val);
+  const isLetter = (val: string) => /^[A-Za-z]+$/.test(val);
+
+  let volumeNumber = '';
+  let volumeLetter = '';
+  let volumeYear = '';
+  let serialNumber = '';
+  let serialYear = '';
+  let pageNumber = '';
+
+  const len = remainingParts.length;
+
+  if (len >= 3) {
+    volumeNumber = remainingParts[0] || '';
+    pageNumber = remainingParts[len - 1] || '';
+
+    const middleParts = remainingParts.slice(1, len - 1);
+
+    if (middleParts.length === 1) {
+      serialNumber = middleParts[0];
+    } else if (middleParts.length === 2) {
+      const [p1, p2] = middleParts;
+
+      if (isLetter(p1)) {
+        volumeLetter = p1;
+        serialNumber = p2;
+      } else if (isYear(p1)) {
+        volumeYear = p1;
+        serialNumber = p2;
+      } else if (isYear(p2)) {
+        serialNumber = p1;
+        serialYear = p2;
+      } else {
+        volumeLetter = p1;
+        serialNumber = p2;
+      }
+    } else if (middleParts.length === 3) {
+      const [p1, p2, p3] = middleParts;
+
+      if (isLetter(p1)) {
+        volumeLetter = p1;
+        if (isYear(p2)) {
+          volumeYear = p2;
+          serialNumber = p3;
+        } else if (isYear(p3)) {
+          serialNumber = p2;
+          serialYear = p3;
+        } else {
+          // Neither is a 4-digit year - treat as volLetter-serialNum-serialYear
+          serialNumber = p2;
+          serialYear = p3;
+        }
+      } else if (isYear(p1)) {
+        volumeYear = p1;
+        serialNumber = p2;
+        serialYear = p3;
+      } else {
+        volumeLetter = p1;
+        serialNumber = p2;
+        serialYear = p3;
+      }
+    } else if (middleParts.length === 4) {
+      const [p1, p2, p3, p4] = middleParts;
+      if (isLetter(p1)) {
+        volumeLetter = p1;
+        volumeYear = p2;
+        serialNumber = p3;
+        serialYear = p4;
+      } else {
+        if (isYear(p1)) {
+          volumeYear = p1;
+          serialNumber = p2;
+          serialYear = p3;
+        } else {
+          volumeLetter = p1;
+          volumeYear = p2;
+          serialNumber = p3;
+          serialYear = p4;
+        }
+      }
+    } else if (middleParts.length >= 5) {
+      volumeLetter = middleParts[0];
+      volumeYear = middleParts[1];
+      serialNumber = middleParts[2];
+      serialYear = middleParts[3];
+    }
+  }
+
+  return {
+    bookNumber,
+    volumeNumber,
+    volumeLetter,
+    volumeYear,
+    serialNumber,
+    serialYear,
+    pageNumber,
   };
 };
 
@@ -186,11 +215,9 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
     }
     const { bookNumber, volumeNumber, volumeLetter, volumeYear, serialNumber, serialYear, pageNumber } = formValues;
 
-    // Construct parts array with available values
+    // Construct parts array with available values (no hyphens)
     const parts = [
-      'WB',
-      'MSD',
-      'BRW',
+      'WBMSDBRW',
       bookNumber || 'I',
       volumeNumber,
       volumeLetter,
@@ -198,10 +225,10 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
       serialNumber,
       serialYear,
       pageNumber
-    ].filter(Boolean); // Remove empty values to avoid double dashes
+    ].filter(Boolean); // Remove empty values
 
-    if (parts.length > 3) { // Only return if we have more than just the prefix keys
-      return parts.join('-');
+    if (parts.length > 1) { // Only return if we have more than just the prefix
+      return parts.join(''); // No hyphens
     }
     return '';
   }, [formValues, manualEntry, useManualEntry]);
