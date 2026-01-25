@@ -440,6 +440,27 @@ export const downloadCertificate = async (application: Application) => {
   return certificateData;
 };
 
+export const downloadStoredCertificate = async (pdfUrl: string, filename: string) => {
+  try {
+    const response = await fetch(pdfUrl);
+    if (!response.ok) throw new Error('Failed to fetch certificate file');
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error downloading stored certificate:', error);
+    // Fallback to opening in new tab if download fails (e.g. CORS issues)
+    window.open(pdfUrl, '_blank');
+  }
+};
+
 // Generate and upload certificate PDF to storage (for server-side use)
 export const generateAndUploadCertificate = async (
   application: Application,

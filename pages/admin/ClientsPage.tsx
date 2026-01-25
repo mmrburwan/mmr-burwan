@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { adminService } from '../../services/admin';
 import { certificateService } from '../../services/certificates';
-import { Application, CertificateDetails } from '../../types';
+import { Application, CertificateDetails, Certificate } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
@@ -13,6 +13,53 @@ import VerifyApplicationModal from '../../components/admin/VerifyApplicationModa
 import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
+import { downloadCertificate } from '../../utils/certificateGenerator';
+
+const CircularProgress = ({
+  progress,
+  size = 48,
+  strokeWidth = 3,
+  children
+}: {
+  progress: number;
+  size?: number;
+  strokeWidth?: number;
+  children: React.ReactNode;
+}) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg className="absolute w-full h-full transform -rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#E5E7EB"
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#D4AF37"
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="transition-all duration-300 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center p-1">
+        {children}
+      </div>
+    </div>
+  );
+};
 
 interface ClientWithApplication {
   userId: string;
@@ -30,7 +77,7 @@ const ClientsPage: React.FC = () => {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [verifiedFilter, setVerifiedFilter] = useState<string>('all'); // 'all', 'verified', 'unverified', 'draft'
   const [isLoading, setIsLoading] = useState(true);
-  const [certificatesMap, setCertificatesMap] = useState<Record<string, boolean>>({});
+  const [certificatesMap, setCertificatesMap] = useState<Record<string, Certificate | null>>({});
   const [generatingCert, setGeneratingCert] = useState<string | null>(null);
   const [verifyModalState, setVerifyModalState] = useState<{
     isOpen: boolean;
@@ -65,14 +112,14 @@ const ClientsPage: React.FC = () => {
         setFilteredClients(clientsData);
 
         // Check which applications have certificates
-        const certMap: Record<string, boolean> = {};
+        const certMap: Record<string, Certificate | null> = {};
         await Promise.all(
           clientsData
             .filter(client => client.application?.verified && client.application?.id)
             .map(async (client) => {
               if (client.application?.id) {
                 const cert = await certificateService.getCertificateByApplicationId(client.application.id);
-                certMap[client.application.id] = !!cert;
+                certMap[client.application.id] = cert || null;
               }
             })
         );
@@ -115,14 +162,14 @@ const ClientsPage: React.FC = () => {
       setFilteredClients(clientsData);
 
       // Reload certificate map
-      const certMap: Record<string, boolean> = {};
+      const certMap: Record<string, Certificate | null> = {};
       await Promise.all(
         clientsData
           .filter(client => client.application?.verified && client.application?.id)
           .map(async (client) => {
             if (client.application?.id) {
               const cert = await certificateService.getCertificateByApplicationId(client.application.id);
-              certMap[client.application.id] = !!cert;
+              certMap[client.application.id] = cert || null;
             }
           })
       );
@@ -270,9 +317,14 @@ const ClientsPage: React.FC = () => {
                   {/* Header with Status Badge */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-100 to-gold-200 flex items-center justify-center shadow-sm">
-                        <Users size={18} className="text-gold-600" />
-                      </div>
+                      <CircularProgress
+                        progress={client.application?.progress || 0}
+                        size={52}
+                      >
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-gold-100 to-gold-200 flex items-center justify-center shadow-sm">
+                          <Users size={18} className="text-gold-600" />
+                        </div>
+                      </CircularProgress>
                       <div>
                         <p className="text-[10px] font-medium text-gold-600 uppercase tracking-wide">Couple</p>
                       </div>
@@ -324,23 +376,7 @@ const ClientsPage: React.FC = () => {
                   </div>
 
                   {/* Status Info Row */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="text-center p-2 bg-gray-50 rounded-lg">
-                      <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1">Progress</p>
-                      {client.application ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="w-full bg-gray-200 rounded-full h-1.5">
-                            <div
-                              className="bg-gold-500 h-1.5 rounded-full transition-all duration-300"
-                              style={{ width: `${client.application.progress}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] font-medium text-gray-700">{client.application.progress}%</span>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] text-gray-400">-</span>
-                      )}
-                    </div>
+                  <div className="grid grid-cols-1 gap-2">
                     <div className="text-center p-2 bg-gray-50 rounded-lg">
                       <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1">Updated</p>
                       <p className="text-[10px] font-medium text-gray-700">
@@ -368,7 +404,6 @@ const ClientsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
                     {client.application && (
                       <Button
@@ -427,7 +462,7 @@ const ClientsPage: React.FC = () => {
                               <XCircle size={14} className="mr-1" />
                               Unverify
                             </Button>
-                            {!certificatesMap[client.application.id] && (
+                            {!certificatesMap[client.application.id] ? (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -443,10 +478,11 @@ const ClientsPage: React.FC = () => {
                                       user.name || user.email
                                     );
                                     showToast('Certificate generated successfully', 'success');
-                                    // Update certificate map
+                                    // Refresh logic to get the new certificate
+                                    const cert = await certificateService.getCertificateByApplicationId(client.application!.id);
                                     setCertificatesMap(prev => ({
                                       ...prev,
-                                      [client.application!.id]: true,
+                                      [client.application!.id]: cert || null,
                                     }));
                                   } catch (error: any) {
                                     showToast(error.message || 'Failed to generate certificate', 'error');
@@ -458,6 +494,32 @@ const ClientsPage: React.FC = () => {
                                 <FileText size={14} className="mr-1" />
                                 {generatingCert === client.application.id ? 'Generating...' : 'Generate'}
                               </Button>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 flex-1"
+                                  onClick={() => {
+                                    const cert = certificatesMap[client.application!.id];
+                                    if (cert?.pdfUrl) {
+                                      window.open(cert.pdfUrl, '_blank');
+                                    }
+                                  }}
+                                >
+                                  <FileText size={14} className="mr-1" />
+                                  View Cert
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex-1"
+                                  onClick={() => downloadCertificate(client.application!)}
+                                >
+                                  <FileCheck size={14} className="mr-1" />
+                                  Download
+                                </Button>
+                              </>
                             )}
                           </>
                         ) : (
@@ -496,7 +558,6 @@ const ClientsPage: React.FC = () => {
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Phone & Email</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Status</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Actions</th>
-                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Progress</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Last Updated</th>
               </tr>
             </thead>
@@ -516,9 +577,14 @@ const ClientsPage: React.FC = () => {
                   <tr key={client.application?.id || client.userId} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
                       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
-                          <Users size={14} className="sm:w-5 sm:h-5 text-gold-600" />
-                        </div>
+                        <CircularProgress
+                          progress={client.application?.progress || 0}
+                          size={46}
+                        >
+                          <div className="w-full h-full rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
+                            <Users size={16} className="text-gold-600" />
+                          </div>
+                        </CircularProgress>
                         <div className="flex flex-col">
                           <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">🤵 {groomName}</span>
                           <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">👰 {brideName}</span>
@@ -610,7 +676,7 @@ const ClientsPage: React.FC = () => {
                                   <XCircle size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
                                   <span className="hidden sm:inline">Unverify</span>
                                 </Button>
-                                {!certificatesMap[client.application.id] && (
+                                {!certificatesMap[client.application.id] ? (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -626,10 +692,11 @@ const ClientsPage: React.FC = () => {
                                           user.name || user.email
                                         );
                                         showToast('Certificate generated successfully', 'success');
-                                        // Update certificate map
+                                        // Refresh certificate map
+                                        const cert = await certificateService.getCertificateByApplicationId(client.application!.id);
                                         setCertificatesMap(prev => ({
                                           ...prev,
-                                          [client.application!.id]: true,
+                                          [client.application!.id]: cert || null,
                                         }));
                                       } catch (error: any) {
                                         showToast(error.message || 'Failed to generate certificate', 'error');
@@ -643,6 +710,32 @@ const ClientsPage: React.FC = () => {
                                       {generatingCert === client.application.id ? 'Generating...' : 'Generate Cert'}
                                     </span>
                                   </Button>
+                                ) : (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-blue-600 hover:bg-blue-50"
+                                      onClick={() => {
+                                        const cert = certificatesMap[client.application!.id];
+                                        if (cert?.pdfUrl) {
+                                          window.open(cert.pdfUrl, '_blank');
+                                        }
+                                      }}
+                                    >
+                                      <FileText size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                      <span className="hidden sm:inline">View</span>
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-indigo-600 hover:bg-indigo-50"
+                                      onClick={() => downloadCertificate(client.application!)}
+                                    >
+                                      <FileCheck size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                      <span className="hidden sm:inline">Download</span>
+                                    </Button>
+                                  </>
                                 )}
                               </>
                             ) : (
@@ -667,21 +760,7 @@ const ClientsPage: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
-                      {client.application ? (
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                          <div className="w-16 sm:w-20 lg:w-24 bg-gray-200 rounded-full h-1.5 sm:h-2">
-                            <div
-                              className="bg-gold-500 h-1.5 sm:h-2 rounded-full"
-                              style={{ width: `${client.application.progress}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] sm:text-xs text-gray-500">{client.application.progress}%</span>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] sm:text-xs text-gray-400">-</span>
-                      )}
-                    </td>
+
                     <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm text-gray-600">
                       {client.application?.lastUpdated
                         ? safeFormatDateObject(new Date(client.application.lastUpdated), 'dd-MM-yyyy')
