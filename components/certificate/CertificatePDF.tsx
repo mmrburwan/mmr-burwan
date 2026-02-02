@@ -2,6 +2,7 @@ import React from 'react';
 import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer';
 import { Application } from '../../types';
 import { safeFormatDate } from '../../utils/dateUtils';
+import { formatAadhaar } from '../../utils/formatUtils';
 
 // Helper function to get image URL for local assets
 const getImageUrl = (path: string): string => {
@@ -60,15 +61,7 @@ Font.register({
   src: '/fonts/SCRIPTBL.TTF',
 });
 
-// Format Aadhaar number with spaces
-const formatAadhaar = (aadhaar: string | undefined): string => {
-  if (!aadhaar || aadhaar === 'N/A') return 'N/A';
-  const cleaned = aadhaar.replace(/\s/g, '');
-  if (cleaned.length === 12) {
-    return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 8)} ${cleaned.slice(8, 12)}`;
-  }
-  return aadhaar;
-};
+
 
 // Format address matching original format
 // Uses the exact address fields from the application form

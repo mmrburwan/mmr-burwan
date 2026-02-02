@@ -9,6 +9,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { documentService } from '../../services/documents';
 import { safeFormatDate, calculateAge } from '../../utils/dateUtils';
+import { formatAadhaar, handleAadhaarInput } from '../../utils/formatUtils';
 import Stepper from '../../components/ui/Stepper';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -29,8 +30,8 @@ const createGroomSchema = (isAdminContext: boolean = false) => z.object({
   firstName: z.string().min(2, 'First name is required'),
   lastName: z.string().optional(),
   fatherName: z.string().min(2, 'Father name is required'),
-  dateOfBirth: z.string().min(1, 'Date of birth is required').refine((val) => calculateAge(val) >= 18, 'Groom must be at least 18 years old'),
-  aadhaarNumber: z.string().regex(/^\d{12}$/, 'Aadhaar number must be exactly 12 digits'),
+  dateOfBirth: z.string().min(1, 'Date of birth is required'),
+  aadhaarNumber: z.string().refine((val) => val.replace(/\s/g, '').length === 12, 'Aadhaar number must be exactly 12 digits'),
   mobileNumber: z.string().regex(/^\d{10}$/, 'Mobile number must be exactly 10 digits'),
   voterOrRollNo: isAdminContext
     ? z.string().optional()
@@ -55,6 +56,14 @@ const createGroomSchema = (isAdminContext: boolean = false) => z.object({
     const today = new Date().toISOString().split('T')[0];
     return val <= today;
   }, 'Marriage date cannot be in the future'),
+}).refine((data) => {
+  if (data.dateOfBirth && data.marriageDate) {
+    return calculateAge(data.dateOfBirth, new Date(data.marriageDate)) >= 18;
+  }
+  return true;
+}, {
+  message: 'Applicant has not attained the minimum legal age (18 years) on the date of marriage',
+  path: ['dateOfBirth'],
 });
 
 // Default schema (for clients - voterOrRollNo is required)
@@ -62,13 +71,18 @@ const groomSchema = createGroomSchema(false);
 
 // Bride Details Schema (Partner personal + address)
 // Factory function to create schema with optional voterOrRollNo for admin context
-const createBrideSchema = (isAdminContext: boolean = false) => z.object({
+const createBrideSchema = (isAdminContext: boolean = false, marriageDate?: string) => z.object({
   // Personal details
   firstName: z.string().min(2, 'First name is required'),
   lastName: z.string().optional(),
   fatherName: z.string().min(2, 'Father name is required'),
-  dateOfBirth: z.string().min(1, 'Date of birth is required').refine((val) => calculateAge(val) >= 18, 'Bride must be at least 18 years old'),
-  aadhaarNumber: z.string().regex(/^\d{12}$/, 'Aadhaar number must be exactly 12 digits'),
+  dateOfBirth: z.string().min(1, 'Date of birth is required').refine((val) => {
+    const refDate = marriageDate ? new Date(marriageDate) : new Date();
+    return calculateAge(val, refDate) >= 18;
+  }, marriageDate
+    ? 'Applicant has not attained the minimum legal age (18 years) on the date of marriage'
+    : 'Bride must be at least 18 years old'),
+  aadhaarNumber: z.string().refine((val) => val.replace(/\s/g, '').length === 12, 'Aadhaar number must be exactly 12 digits'),
   mobileNumber: z.string().regex(/^\d{10}$/, 'Mobile number must be exactly 10 digits'),
   voterOrRollNo: isAdminContext
     ? z.string().optional()
@@ -317,9 +331,9 @@ const ApplicationFormContent: React.FC = () => {
 
       // Update declarations form
       declarationsForm.reset({
-        consent: application?.declarations?.consent || false,
-        accuracy: application?.declarations?.accuracy || false,
-        legal: application?.declarations?.legal || false,
+        consent: (application?.declarations as any)?.consent || false,
+        accuracy: (application?.declarations as any)?.accuracy || false,
+        legal: (application?.declarations as any)?.legal || false,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -388,9 +402,9 @@ const ApplicationFormContent: React.FC = () => {
             calculatedStep = 2;
           } else {
             // Check if declarations are filled
-            const hasDeclarations = application.declarations?.consent &&
-              application.declarations?.accuracy &&
-              application.declarations?.legal;
+            const hasDeclarations = (application.declarations as any)?.consent &&
+              (application.declarations as any)?.accuracy &&
+              (application.declarations as any)?.legal;
 
             if (!hasDeclarations) {
               calculatedStep = 3;
@@ -468,7 +482,7 @@ const ApplicationFormContent: React.FC = () => {
       return documents.length > 0 && documents.length !== savedDocs.length;
     } else if (currentStep === 3) {
       const values = declarationsFormValues;
-      const saved = application.declarations || {};
+      const saved = (application.declarations as any) || {};
       return !!(
         (values.consent && values.consent !== saved.consent) ||
         (values.accuracy && values.accuracy !== saved.accuracy) ||
@@ -505,15 +519,18 @@ const ApplicationFormContent: React.FC = () => {
         values.currentState?.trim() &&
         values.currentZipCode?.trim() &&
         values.currentCountry?.trim() &&
-        values.marriageDate
+        values.marriageDate &&
+        calculateAge(values.dateOfBirth, new Date(values.marriageDate)) >= 18
       );
     } else if (currentStep === 1) {
       // Check if all required bride form fields are filled (lastName is optional)
       const values = brideFormValues;
+      const marriageDate = groomForm.getValues('marriageDate') || (application?.declarations as any)?.marriageDate || (application?.declarations as any)?.marriageRegistrationDate;
       return !!(
         values.firstName?.trim() &&
         values.fatherName?.trim() &&
         values.dateOfBirth &&
+        calculateAge(values.dateOfBirth, marriageDate ? new Date(marriageDate) : new Date()) >= 18 &&
         values.aadhaarNumber?.trim() &&
         values.mobileNumber?.trim() &&
         values.permanentVillageStreet?.trim() &&
@@ -570,6 +587,13 @@ const ApplicationFormContent: React.FC = () => {
       if (currentStep === 0) {
         await groomForm.trigger();
         const errors = groomForm.formState.errors;
+
+        // Specifically check for age error
+        if (errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
+          showToast('Applicant has not attained the minimum legal age (18 years) on the date of marriage', 'error');
+          return;
+        }
+
         const errorFields = Object.keys(errors).filter(key => errors[key as keyof typeof errors]);
         if (errorFields.length > 0) {
           const fieldNames = errorFields.map(field => {
@@ -584,6 +608,13 @@ const ApplicationFormContent: React.FC = () => {
       } else if (currentStep === 1) {
         await brideForm.trigger();
         const errors = brideForm.formState.errors;
+
+        // Specifically check for age error
+        if (errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
+          showToast('Applicant has not attained the minimum legal age (18 years) on the date of marriage', 'error');
+          return;
+        }
+
         const errorFields = Object.keys(errors).filter(key => errors[key as keyof typeof errors]);
         if (errorFields.length > 0) {
           const fieldNames = errorFields.map(field => {
@@ -1101,10 +1132,10 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="Aadhaar Number"
                     type="text"
-                    maxLength={12}
+                    maxLength={14}
                     {...groomForm.register('aadhaarNumber', {
                       onChange: (e) => {
-                        e.target.value = e.target.value.replace(/\D/g, '');
+                        e.target.value = handleAadhaarInput(e.target.value);
                       },
                     })}
                     error={groomForm.formState.errors.aadhaarNumber?.message}
@@ -1318,10 +1349,10 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="Aadhaar Number"
                     type="text"
-                    maxLength={12}
+                    maxLength={14}
                     {...brideForm.register('aadhaarNumber', {
                       onChange: (e) => {
-                        e.target.value = e.target.value.replace(/\D/g, '');
+                        e.target.value = handleAadhaarInput(e.target.value);
                       },
                     })}
                     error={brideForm.formState.errors.aadhaarNumber?.message}
@@ -2201,7 +2232,7 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Aadhaar Number</p>
-                  <p className="font-medium text-gray-900">{groomData.aadhaarNumber}</p>
+                  <p className="font-medium text-gray-900">{formatAadhaar(groomData.aadhaarNumber)}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Mobile Number</p>
@@ -2269,7 +2300,7 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Aadhaar Number</p>
-                  <p className="font-medium text-gray-900">{brideData.aadhaarNumber}</p>
+                  <p className="font-medium text-gray-900">{formatAadhaar(brideData.aadhaarNumber)}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Mobile Number</p>

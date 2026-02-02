@@ -8,6 +8,7 @@ import Button from '../ui/Button';
 import { CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { adminService } from '../../services/admin';
 import { CertificateDetails } from '../../types';
+import { safeFormatDate } from '../../utils/dateUtils';
 
 // Generate roman numerals from 1 to 50
 const generateRomanNumerals = (): string[] => {
@@ -216,6 +217,7 @@ interface VerifyApplicationModalProps {
     isReuploaded?: boolean;
   }>;
   initialCertificateDetails?: CertificateDetails;
+  marriageDate?: string;
 }
 
 const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
@@ -227,6 +229,7 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
   currentRegistrationDate,
   documents = [],
   initialCertificateDetails,
+  marriageDate,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -403,6 +406,31 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4 lg:space-y-6">
         <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+          {/* Certificate Number Preview */}
+          {certificateNumberPreview && (
+            <div className="bg-gold-50 border border-gold-200 rounded-lg p-3 sm:p-4">
+              <p className="text-[10px] sm:text-xs font-bold text-gold-700 uppercase tracking-wider mb-1">
+                Certificate Number Preview
+              </p>
+              <p className="text-sm sm:text-base font-mono font-bold text-gray-900 break-all bg-white border border-gold-100 rounded-md px-3 py-2">
+                {certificateNumberPreview}
+              </p>
+            </div>
+          )}
+
+          {/* Marriage Date Display (Non-editable) */}
+          <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-2.5 sm:p-3 lg:p-4">
+            <label className="block text-[10px] sm:text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">
+              Marriage Date (বিবাহের তারিখ)
+            </label>
+            <p className="text-xs sm:text-sm font-medium text-blue-900 bg-white border border-blue-200 rounded-md px-3 py-2">
+              {marriageDate ? safeFormatDate(marriageDate, 'dd-MM-yyyy') : 'Not Provided'}
+            </p>
+            <p className="text-[10px] text-blue-500 mt-1.5 flex items-center gap-1">
+              <AlertTriangle size={10} />
+              This date is from the application and cannot be edited here.
+            </p>
+          </div>
 
           {/* Rejected Documents Warning */}
           {hasRejectedDocuments && (
@@ -454,13 +482,20 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
             </div>
           )}
 
-          {/* Certificate Number Preview */}
-          {certificateNumberPreview && (
-            <div className="bg-gold-50 border border-gold-200 rounded-lg p-2 sm:p-2.5 lg:p-3">
-              <p className="text-[10px] sm:text-xs font-medium text-gray-600 mb-0.5 sm:mb-1">Certificate Number Preview:</p>
-              <p className="text-xs sm:text-sm font-mono font-semibold text-gray-900 break-all">{certificateNumberPreview}</p>
-            </div>
-          )}
+          {/* Registration Date */}
+          <div>
+            <Input
+              label="Registration Date"
+              type="date"
+              {...register('registrationDate')}
+              error={errors.registrationDate?.message}
+              required
+              disabled={isSubmitting}
+            />
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
+              This date will be displayed on the certificate PDF
+            </p>
+          </div>
 
           {/* Book Number */}
           <div>
@@ -512,7 +547,6 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
               <div>
                 <input
                   {...register('volumeYear')}
-                  placeholder="Optional"
                   disabled={isSubmitting}
                   className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
                 />
@@ -545,7 +579,6 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
               <div>
                 <input
                   {...register('serialYear')}
-                  placeholder="Optional"
                   disabled={isSubmitting}
                   className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
                 />
@@ -571,21 +604,6 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
             />
             <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
               Page number in the register
-            </p>
-          </div>
-
-          {/* Registration Date */}
-          <div>
-            <Input
-              label="Registration Date"
-              type="date"
-              {...register('registrationDate')}
-              error={errors.registrationDate?.message}
-              required
-              disabled={isSubmitting}
-            />
-            <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
-              This date will be displayed on the certificate PDF
             </p>
           </div>
 

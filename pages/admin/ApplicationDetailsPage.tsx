@@ -14,7 +14,8 @@ import Input from '../../components/ui/Input';
 import VerifyApplicationModal from '../../components/admin/VerifyApplicationModal';
 import RejectDocumentModal from '../../components/admin/RejectDocumentModal';
 import { ArrowLeft, FileText, CheckCircle, X, Eye, Edit2, Save, XCircle, Download, Copy, Check, Upload } from 'lucide-react';
-import { safeFormatDate } from '../../utils/dateUtils';
+import { safeFormatDate, calculateAge } from '../../utils/dateUtils';
+import { formatAadhaar, handleAadhaarInput } from '../../utils/formatUtils';
 import ImageCropModal from '../../components/ui/ImageCropModal';
 
 const ApplicationDetailsPage: React.FC = () => {
@@ -209,6 +210,29 @@ const ApplicationDetailsPage: React.FC = () => {
 
   const handleSaveEdit = async () => {
     if (!application || !user) return;
+
+    // Validate legal age at marriage
+    const marriageDate = editForm.declarations?.marriageDate || (application.declarations as any)?.marriageDate || (application.declarations as any)?.marriageRegistrationDate;
+
+    if (marriageDate) {
+      const marriageDateObj = new Date(marriageDate);
+
+      // Groom check
+      if (editForm.userDetails?.dateOfBirth) {
+        if (calculateAge(editForm.userDetails.dateOfBirth, marriageDateObj) < 18) {
+          showToast('Applicant (Groom) has not attained the minimum legal age (18 years) on the date of marriage', 'error');
+          return;
+        }
+      }
+
+      // Bride check
+      if (editForm.partnerForm?.dateOfBirth) {
+        if (calculateAge(editForm.partnerForm.dateOfBirth, marriageDateObj) < 18) {
+          showToast('Applicant (Bride) has not attained the minimum legal age (18 years) on the date of marriage', 'error');
+          return;
+        }
+      }
+    }
 
     try {
       const updated = await adminService.updateApplication(
@@ -640,12 +664,12 @@ const ApplicationDetailsPage: React.FC = () => {
                   value={userDetails.aadhaarNumber || ''}
                   onChange={(e) => setEditForm({
                     ...editForm,
-                    userDetails: { ...userDetails, aadhaarNumber: e.target.value }
+                    userDetails: { ...userDetails, aadhaarNumber: handleAadhaarInput(e.target.value) }
                   })}
                   placeholder="Aadhaar Number"
                 />
               ) : (
-                <p className="font-medium text-gray-900">{userDetails.aadhaarNumber || '-'}</p>
+                <p className="font-medium text-gray-900">{formatAadhaar(userDetails.aadhaarNumber) || '-'}</p>
               )}
             </div>
             <div>
@@ -960,14 +984,17 @@ const ApplicationDetailsPage: React.FC = () => {
               {isEditing ? (
                 <Input
                   value={(partnerForm as any).aadhaarNumber || partnerForm.idNumber || ''}
-                  onChange={(e) => setEditForm({
-                    ...editForm,
-                    partnerForm: { ...partnerForm, aadhaarNumber: e.target.value, idNumber: e.target.value }
-                  })}
+                  onChange={(e) => {
+                    const formattedValue = handleAadhaarInput(e.target.value);
+                    setEditForm({
+                      ...editForm,
+                      partnerForm: { ...partnerForm, aadhaarNumber: formattedValue, idNumber: formattedValue }
+                    });
+                  }}
                   placeholder="Aadhaar Number"
                 />
               ) : (
-                <p className="font-medium text-gray-900">{(partnerForm as any).aadhaarNumber || partnerForm.idNumber || '-'}</p>
+                <p className="font-medium text-gray-900">{formatAadhaar((partnerForm as any).aadhaarNumber || partnerForm.idNumber) || '-'}</p>
               )}
             </div>
             <div>
@@ -1795,6 +1822,7 @@ const ApplicationDetailsPage: React.FC = () => {
         currentRegistrationDate={application?.registrationDate}
         documents={documents}
         initialCertificateDetails={application?.certificateDetails}
+        marriageDate={(application?.declarations as any)?.marriageDate || (application?.declarations as any)?.marriageRegistrationDate}
       />
 
       {/* Reject Document Modal */}

@@ -15,7 +15,7 @@ interface ApplicationContextType {
     partnerCurrentAddress?: Address;
     address?: Address;
     currentAddress?: Address;
-    declarations?: Record<string, boolean>;
+    declarations?: Record<string, boolean | string>;
   }) => Promise<void>;
   submitApplication: () => Promise<void>;
   refreshApplication: () => Promise<void>;
@@ -31,7 +31,7 @@ export const useApplication = () => {
   return context;
 };
 
-export const ApplicationProvider: React.FC<{ 
+export const ApplicationProvider: React.FC<{
   children: React.ReactNode;
   userId: string;
 }> = ({ children, userId }) => {
@@ -62,7 +62,7 @@ export const ApplicationProvider: React.FC<{
     partnerCurrentAddress?: Address;
     address?: Address;
     currentAddress?: Address;
-    declarations?: Record<string, boolean>;
+    declarations?: Record<string, boolean | string>;
   }) => {
     if (!userId) return;
     try {

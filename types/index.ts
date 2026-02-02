@@ -95,6 +95,7 @@ export interface Application {
   };
   proxyUserEmail?: string;
   certificateDetails?: CertificateDetails;
+  adminComment?: string;
 }
 
 export interface CertificateDetails {

@@ -297,6 +297,7 @@ export const applicationService = {
       offlineApplicantContact: data.offline_applicant_contact,
       proxyUserEmail: data.proxy_user_email,
       certificateDetails: data.certificate_details,
+      adminComment: data.admin_comment,
     };
   },
 };

@@ -84,16 +84,21 @@ export const safeParseISO = (dateString: string | null | undefined): Date | null
 };
 
 /**
- * Calculates age from a date string
+ * Calculates age from a date string relative to a reference date
  * @param dateString - Date of birth string
+ * @param referenceDate - Date to calculate age against (defaults to current date)
  * @returns Age in years, or 0 if invalid
  */
-export const calculateAge = (dateString: string): number => {
+export const calculateAge = (dateString: string, referenceDate: Date = new Date()): number => {
   if (!dateString) return 0;
   try {
-    const date = new Date(dateString);
-    if (!isValid(date)) return 0;
-    return differenceInYears(new Date(), date);
+    const dob = new Date(dateString);
+    if (!isValid(dob)) return 0;
+
+    // Ensure referenceDate is valid
+    if (!isValid(referenceDate)) return 0;
+
+    return differenceInYears(referenceDate, dob);
   } catch (error) {
     return 0;
   }

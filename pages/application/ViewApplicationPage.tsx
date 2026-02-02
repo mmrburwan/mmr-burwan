@@ -10,6 +10,7 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import { ArrowLeft, FileText, Eye, X, CheckCircle } from 'lucide-react';
 import { safeFormatDate } from '../../utils/dateUtils';
+import { formatAadhaar } from '../../utils/formatUtils';
 
 const ViewApplicationPage: React.FC = () => {
   const navigate = useNavigate();
@@ -107,7 +108,7 @@ const ViewApplicationPage: React.FC = () => {
   const partnerForm = application.partnerForm || {};
   const userAddress = application.userAddress || application.address || {};
   const userCurrentAddress = application.userCurrentAddress || (application as any).currentAddress || {};
-  const partnerAddress = application.partnerAddress || partnerForm.address || {};
+  const partnerAddress = application.partnerAddress || (partnerForm as any).address || {};
   const partnerCurrentAddress = application.partnerCurrentAddress || {};
   const declarations = application.declarations || {};
 
@@ -205,7 +206,7 @@ const ViewApplicationPage: React.FC = () => {
             </div>
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Aadhaar Number</p>
-              <p className="font-medium text-gray-900">{userDetails.aadhaarNumber || '-'}</p>
+              <p className="font-medium text-gray-900">{formatAadhaar(userDetails.aadhaarNumber) || '-'}</p>
             </div>
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Mobile Number</p>
@@ -243,8 +244,8 @@ const ViewApplicationPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-3 lg:gap-4 text-xs sm:text-sm">
             <div className="min-w-0">
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Full Name</p>
-              <p className="font-medium text-xs sm:text-sm text-gray-900 truncate" title={`${partnerForm.firstName || ''} ${partnerForm.lastName || ''}`}>
-                {partnerForm.firstName || '-'} {partnerForm.lastName || ''}
+              <p className="font-medium text-xs sm:text-sm text-gray-900 truncate" title={`${(partnerForm as any).firstName || ''} ${(partnerForm as any).lastName || ''}`}>
+                {(partnerForm as any).firstName || '-'} {(partnerForm as any).lastName || ''}
               </p>
             </div>
             <div className="min-w-0">
@@ -254,13 +255,13 @@ const ViewApplicationPage: React.FC = () => {
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
               <p className="font-medium text-gray-900">
-                {partnerForm.dateOfBirth ? safeFormatDate(partnerForm.dateOfBirth, 'dd-MM-yyyy') : '-'}
+                {(partnerForm as any).dateOfBirth ? safeFormatDate((partnerForm as any).dateOfBirth, 'dd-MM-yyyy') : '-'}
               </p>
             </div>
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Aadhaar Number</p>
               <p className="font-medium text-gray-900">
-                {(partnerForm as any).aadhaarNumber || (partnerForm as any).idNumber || '-'}
+                {formatAadhaar((partnerForm as any).aadhaarNumber || (partnerForm as any).idNumber) || '-'}
               </p>
             </div>
             <div>

@@ -108,6 +108,34 @@ export const adminService = {
     };
   },
 
+  async updateApplicationComment(applicationId: string, comment: string, actorId: string, actorName: string): Promise<Application> {
+    const { data, error } = await supabase
+      .from('applications')
+      .update({ admin_comment: comment, last_updated: new Date().toISOString() })
+      .eq('id', applicationId)
+      .select(`
+        *,
+        documents (*)
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await auditService.createLog({
+      actorId,
+      actorName,
+      actorRole: 'admin',
+      action: 'application_comment_updated',
+      resourceType: 'application',
+      resourceId: applicationId,
+      details: { comment },
+    });
+
+    return applicationService.mapApplication(data);
+  },
+
   async getApplicationStats(): Promise<{
     total: number;
     pending: number;

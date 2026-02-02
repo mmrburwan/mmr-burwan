@@ -11,7 +11,7 @@ import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
 import VerifyApplicationModal from '../../components/admin/VerifyApplicationModal';
 import DeleteApplicationModal from '../../components/admin/DeleteApplicationModal';
-import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText, Trash2 } from 'lucide-react';
+import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText, Trash2, StickyNote } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
 
@@ -86,6 +86,7 @@ const ClientsPage: React.FC = () => {
     certificateNumber?: string;
     registrationDate?: string;
     certificateDetails?: CertificateDetails;
+    marriageDate?: string;
   }>({
     isOpen: false,
     applicationId: '',
@@ -100,6 +101,62 @@ const ClientsPage: React.FC = () => {
     isOpen: false,
     applicationId: '',
   });
+
+  const [commentModalState, setCommentModalState] = useState<{
+    isOpen: boolean;
+    applicationId: string;
+    comment: string;
+  }>({
+    isOpen: false,
+    applicationId: '',
+    comment: '',
+  });
+
+  const handleUpdateComment = async () => {
+    if (!user) return;
+    try {
+      await adminService.updateApplicationComment(
+        commentModalState.applicationId,
+        commentModalState.comment,
+        user.id,
+        user.name || user.email
+      );
+      showToast('Comment updated successfully', 'success');
+
+      // Update local state
+      const updatedClients = clients.map(c => {
+        if (c.application?.id === commentModalState.applicationId) {
+          return {
+            ...c,
+            application: {
+              ...c.application,
+              adminComment: commentModalState.comment
+            }
+          };
+        }
+        return c;
+      });
+      setClients(updatedClients);
+      // Re-apply filters if needed, but for simplicity we rely on next render or complex state mgmt
+      // For now just updating filteredClients as well if it contains the target
+      setFilteredClients(prev => prev.map(c => {
+        if (c.application?.id === commentModalState.applicationId) {
+          return {
+            ...c,
+            application: {
+              ...c.application,
+              adminComment: commentModalState.comment
+            }
+          };
+        }
+        return c;
+      }));
+
+      setCommentModalState({ isOpen: false, applicationId: '', comment: '' });
+    } catch (error: any) {
+      showToast(error.message || 'Failed to update comment', 'error');
+    }
+  };
 
   useEffect(() => {
     const loadClients = async () => {
@@ -268,12 +325,20 @@ const ClientsPage: React.FC = () => {
         // Bride email (check if it exists in partnerForm - for future use)
         const brideEmail = ((client.application?.partnerForm as any)?.email || '').trim().toLowerCase();
 
+        // Groom phone
+        const groomPhone = client.application?.userDetails?.mobileNumber?.trim() || '';
+
+        // Bride phone
+        const bridePhone = client.application?.partnerForm?.mobileNumber?.trim() || '';
+
         // Only check fields that have actual values
         return (
           (groomName && groomName.includes(searchLower)) ||
           (brideName && brideName.includes(searchLower)) ||
           (groomEmail && groomEmail.includes(searchLower)) ||
-          (brideEmail && brideEmail.includes(searchLower))
+          (brideEmail && brideEmail.includes(searchLower)) ||
+          (groomPhone && groomPhone.includes(searchLower)) ||
+          (bridePhone && bridePhone.includes(searchLower))
         );
       });
     }
@@ -289,6 +354,16 @@ const ClientsPage: React.FC = () => {
           (client.application.status === 'submitted' || client.application.status === 'under_review') &&
           (client.application.verified === false || client.application.verified === undefined)
         );
+      } else if (verifiedFilter === 'rejected') {
+        // Show applications with rejected documents that haven't been re-uploaded
+        // Note: When a document is re-uploaded, its status changes to 'pending'.
+        // So checking for status === 'rejected' is sufficient.
+        filtered = filtered.filter((client) => {
+          if (!client.application || !client.application.documents) return false;
+          return client.application.documents.some(
+            (doc) => doc.status === 'rejected'
+          );
+        });
       } else if (verifiedFilter === 'draft') {
         filtered = filtered.filter((client) => client.application?.status === 'draft');
       }
@@ -338,7 +413,7 @@ const ClientsPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4">
           <div className="flex-1 min-w-0">
             <Input
-              placeholder="Search by groom/bride name or email..."
+              placeholder="Search by groom/bride name, email or phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               leftIcon={<Search size={16} className="sm:w-5 sm:h-5" />}
@@ -352,6 +427,7 @@ const ClientsPage: React.FC = () => {
             <option value="all">All Verification</option>
             <option value="verified">Verified</option>
             <option value="unverified">Unverified</option>
+            <option value="rejected">Rejected Documents</option>
             <option value="draft">Draft</option>
           </select>
         </div>
@@ -396,6 +472,18 @@ const ClientsPage: React.FC = () => {
                   </div>
 
                   {/* Groom & Bride Names */}
+                  {client.application?.adminComment && (
+                    <div className="mb-2 bg-amber-50 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
+                      <div className="flex items-start gap-2.5">
+                        <div className="bg-amber-100 p-1 rounded-md mt-0.5">
+                          <StickyNote size={12} className="text-amber-700 fill-amber-300/50" />
+                        </div>
+                        <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                          {client.application.adminComment}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="bg-gray-50 rounded-xl p-3 space-y-2">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
@@ -464,6 +552,7 @@ const ClientsPage: React.FC = () => {
                     </div>
                   </div>
 
+
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
                     {client.application && (
                       <Button
@@ -487,6 +576,23 @@ const ClientsPage: React.FC = () => {
                       <MessageSquare size={14} className="mr-1" />
                       Message
                     </Button>
+                    {client.application && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`!text-[11px] !px-3 !py-1.5 !rounded-lg ${client.application.adminComment ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'} flex-1`}
+                        onClick={() => {
+                          setCommentModalState({
+                            isOpen: true,
+                            applicationId: client.application!.id,
+                            comment: client.application!.adminComment || '',
+                          });
+                        }}
+                      >
+                        <StickyNote size={14} className={`mr-1 ${client.application.adminComment ? 'fill-current' : ''}`} />
+                        {client.application.adminComment ? 'Edit Note' : 'Add Note'}
+                      </Button>
+                    )}
                     {client.application && client.application.status === 'submitted' && (
                       <>
                         {client.application.verified ? (
@@ -667,8 +773,17 @@ const ClientsPage: React.FC = () => {
                           </div>
                         </CircularProgress>
                         <div className="flex flex-col">
+                          {client.application?.adminComment && (
+                            <div className="mb-1.5 flex items-start gap-1.5 p-1.5 bg-amber-50/80 border border-amber-200/60 rounded-md shadow-sm w-fit max-w-[240px]">
+                              <StickyNote size={11} className="mt-0.5 text-amber-600 fill-amber-100 flex-shrink-0" />
+                              <span className="text-[10px] text-amber-900 font-medium line-clamp-2 leading-tight" title={client.application.adminComment}>
+                                {client.application.adminComment}
+                              </span>
+                            </div>
+                          )}
                           <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">🤵 {groomName}</span>
                           <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">👰 {brideName}</span>
+
                         </div>
                       </div>
                     </td>
@@ -722,6 +837,24 @@ const ClientsPage: React.FC = () => {
                           <MessageSquare size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
                           <span className="hidden sm:inline">Message</span>
                         </Button>
+                        {client.application && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 ${client.application.adminComment ? 'text-amber-700 hover:bg-amber-50' : ''}`}
+                            onClick={() => {
+                              setCommentModalState({
+                                isOpen: true,
+                                applicationId: client.application!.id,
+                                comment: client.application!.adminComment || '',
+                              });
+                            }}
+                            title={client.application.adminComment}
+                          >
+                            <StickyNote size={12} className={`sm:w-4 sm:h-4 mr-0.5 sm:mr-1 ${client.application.adminComment ? 'fill-current' : ''}`} />
+                            <span className="hidden sm:inline">{client.application.adminComment ? 'Note' : 'Note'}</span>
+                          </Button>
+                        )}
                         {client.application && client.application.status === 'submitted' && (
                           <>
                             {client.application.verified ? (
@@ -826,6 +959,7 @@ const ClientsPage: React.FC = () => {
                                     certificateNumber: client.application?.certificateNumber,
                                     registrationDate: client.application?.registrationDate,
                                     certificateDetails: client.application?.certificateDetails,
+                                    marriageDate: (client.application?.declarations as any)?.marriageDate || (client.application?.declarations as any)?.marriageRegistrationDate,
                                   });
                                 }}
                               >
@@ -885,6 +1019,49 @@ const ClientsPage: React.FC = () => {
         )}
       </Card>
 
+      {/* Comment Modal */}
+      {commentModalState.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl transform transition-all">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              {commentModalState.comment ? 'Edit Application Note' : 'Add Application Note'}
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Private Admin Note
+                </label>
+                <textarea
+                  className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent resize-none"
+                  placeholder="Enter internal notes about this application..."
+                  value={commentModalState.comment}
+                  onChange={(e) => setCommentModalState(prev => ({ ...prev, comment: e.target.value }))}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This note is only visible to admins.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCommentModalState(prev => ({ ...prev, isOpen: false }))}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdateComment}
+                  className="flex-1"
+                >
+                  Save Note
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Verify Application Modal */}
       <VerifyApplicationModal
         isOpen={verifyModalState.isOpen}
@@ -894,6 +1071,7 @@ const ClientsPage: React.FC = () => {
         currentCertificateNumber={verifyModalState.certificateNumber}
         currentRegistrationDate={verifyModalState.registrationDate}
         initialCertificateDetails={verifyModalState.certificateDetails}
+        marriageDate={verifyModalState.marriageDate}
       />
 
       {/* Delete Application Confirmation Modal */}

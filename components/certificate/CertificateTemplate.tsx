@@ -1,39 +1,40 @@
 import React from 'react';
 import { Application } from '../../types';
 import { safeFormatDate } from '../../utils/dateUtils';
+import { formatAadhaar } from '../../utils/formatUtils';
 
 // Format address using exact fields from the application form
 const formatAddressDisplay = (address: any): string => {
   if (!address) return 'N/A';
-  
+
   const parts = [];
-  
+
   // Village/Street - use villageStreet field first, fallback to street
   const village = address.villageStreet || address.street || '';
   if (village) {
     const cleanVillage = village.toUpperCase().replace(/^VILL-?\s*/i, '').trim();
     parts.push(`VILL- ${cleanVillage}`);
   }
-  
+
   // Post Office - use postOffice field first, fallback to city
   const postOffice = address.postOffice || address.city || '';
   if (postOffice) parts.push(`P.O- ${postOffice.toUpperCase()}`);
-  
+
   // Police Station - use policeStation field
   const policeStation = address.policeStation || '';
   if (policeStation) parts.push(`P.S- ${policeStation.toUpperCase()}`);
-  
+
   // District - use district field first, fallback to city
   const district = address.district || address.city || '';
   if (district) parts.push(`DIST- ${district.toUpperCase()}`);
-  
+
   // State - use actual state from address
   const state = address.state || '';
   if (state) parts.push(state.toUpperCase());
-  
+
   // PIN code
   if (address.zipCode) parts.push(`PIN- ${address.zipCode}`);
-  
+
   return parts.length > 0 ? parts.join(', ') : 'N/A';
 };
 
@@ -83,7 +84,7 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
   const wbLogoImage = '/assets/certificate/west-bengal-logo.png';
 
   return (
-    <div 
+    <div
       className="certificate-container"
       style={{
         width: '210mm',
@@ -116,29 +117,29 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
       <div style={{ position: 'relative', zIndex: 1, paddingTop: '15px' }}>
         {/* Header Section */}
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <h1 style={{ 
-            fontSize: '18px', 
-            fontWeight: 'bold', 
+          <h1 style={{
+            fontSize: '18px',
+            fontWeight: 'bold',
             marginBottom: '8px',
             letterSpacing: '1px',
             color: '#1a1a1a'
           }}>
             GOVERNMENT OF WEST BENGAL
           </h1>
-          <h2 style={{ 
-            fontSize: '16px', 
-            fontWeight: 'bold', 
+          <h2 style={{
+            fontSize: '16px',
+            fontWeight: 'bold',
             marginBottom: '15px',
             color: '#1a1a1a'
           }}>
             LAW DEPARTMENT
           </h2>
-          
+
           {/* Emblem */}
           <div style={{ margin: '15px auto', width: '80px', height: '80px' }}>
-            <img 
-              src={emblemImage} 
-              alt="Emblem of India" 
+            <img
+              src={emblemImage}
+              alt="Emblem of India"
               style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
@@ -162,9 +163,9 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
 
         {/* Certificate Title */}
         <div style={{ textAlign: 'center', marginTop: '25px', marginBottom: '20px' }}>
-          <h2 style={{ 
-            fontSize: '28px', 
-            fontWeight: 'bold', 
+          <h2 style={{
+            fontSize: '28px',
+            fontWeight: 'bold',
             color: '#8b6914',
             textDecoration: 'underline',
             marginBottom: '15px',
@@ -172,18 +173,18 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
           }}>
             Certificate Of Marriage
           </h2>
-          <p style={{ 
-            fontSize: '12px', 
-            fontStyle: 'italic', 
+          <p style={{
+            fontSize: '12px',
+            fontStyle: 'italic',
             lineHeight: '1.6',
             marginBottom: '15px',
             padding: '0 20px'
           }}>
             This is to certify that the marriage has been Registered in between the following bridegroom and bride details under the Bengal Muhammadan Marriages and Divorces Registration Act- 1876 & Under the Indian Qaazi's Act-1880.
           </p>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             fontSize: '11px',
             marginTop: '10px',
             padding: '0 30px'
@@ -198,23 +199,23 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
         </div>
 
         {/* Groom and Bride Details */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: '1fr 1fr', 
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
           gap: '20px',
           marginTop: '25px',
           marginBottom: '20px'
         }}>
           {/* Groom Details */}
-          <div style={{ 
+          <div style={{
             border: '1px solid #d4af37',
             padding: '15px',
             borderRadius: '5px',
             backgroundColor: 'rgba(255, 255, 255, 0.7)'
           }}>
-            <h3 style={{ 
-              fontSize: '14px', 
-              fontWeight: 'bold', 
+            <h3 style={{
+              fontSize: '14px',
+              fontWeight: 'bold',
               marginBottom: '12px',
               textAlign: 'center',
               color: '#8b6914',
@@ -227,7 +228,7 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
               <p><strong>Name:</strong> {userDetails.firstName || 'N/A'} {userDetails.lastName || ''}</p>
               <p><strong>S/O:</strong> {userDetails.fatherName || 'N/A'}</p>
               <p><strong>DOB:</strong> {userDetails.dateOfBirth ? safeFormatDate(userDetails.dateOfBirth, 'dd-MM-yyyy') : 'N/A'}</p>
-              <p><strong>Aadhaar:</strong> {userDetails.aadhaarNumber || 'N/A'}</p>
+              <p><strong>Aadhaar:</strong> {formatAadhaar(userDetails.aadhaarNumber)}</p>
               <p><strong>Phone No:</strong> {userDetails.mobileNumber || 'N/A'}</p>
               <p style={{ marginTop: '8px' }}><strong>Present Address:</strong></p>
               <p style={{ fontSize: '10px', marginLeft: '10px' }}>
@@ -241,15 +242,15 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
           </div>
 
           {/* Bride Details */}
-          <div style={{ 
+          <div style={{
             border: '1px solid #d4af37',
             padding: '15px',
             borderRadius: '5px',
             backgroundColor: 'rgba(255, 255, 255, 0.7)'
           }}>
-            <h3 style={{ 
-              fontSize: '14px', 
-              fontWeight: 'bold', 
+            <h3 style={{
+              fontSize: '14px',
+              fontWeight: 'bold',
               marginBottom: '12px',
               textAlign: 'center',
               color: '#8b6914',
@@ -262,7 +263,7 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
               <p><strong>Name:</strong> {partnerDetails.firstName || 'N/A'} {partnerDetails.lastName || ''}</p>
               <p><strong>D/O:</strong> {(partnerDetails as any).fatherName || 'N/A'}</p>
               <p><strong>DOB:</strong> {partnerDetails.dateOfBirth ? safeFormatDate(partnerDetails.dateOfBirth, 'dd-MM-yyyy') : 'N/A'}</p>
-              <p><strong>Aadhaar:</strong> {partnerDetails.aadhaarNumber || (partnerDetails as any).idNumber || 'N/A'}</p>
+              <p><strong>Aadhaar:</strong> {formatAadhaar(partnerDetails.aadhaarNumber || (partnerDetails as any).idNumber)}</p>
               <p><strong>Phone No:</strong> {partnerDetails.mobileNumber || 'N/A'}</p>
               <p style={{ marginTop: '8px' }}><strong>Present Address:</strong></p>
               <p style={{ fontSize: '10px', marginLeft: '10px' }}>
@@ -277,16 +278,16 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
         </div>
 
         {/* Social Marriage Details */}
-        <div style={{ 
+        <div style={{
           marginTop: '20px',
           padding: '12px',
           backgroundColor: 'rgba(255, 255, 255, 0.7)',
           borderRadius: '5px',
           border: '1px solid #d4af37'
         }}>
-          <h3 style={{ 
-            fontSize: '13px', 
-            fontWeight: 'bold', 
+          <h3 style={{
+            fontSize: '13px',
+            fontWeight: 'bold',
             marginBottom: '8px',
             color: '#8b6914'
           }}>
@@ -298,16 +299,16 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
         </div>
 
         {/* Registration Details */}
-        <div style={{ 
+        <div style={{
           marginTop: '15px',
           padding: '12px',
           backgroundColor: 'rgba(255, 255, 255, 0.7)',
           borderRadius: '5px',
           border: '1px solid #d4af37'
         }}>
-          <h3 style={{ 
-            fontSize: '13px', 
-            fontWeight: 'bold', 
+          <h3 style={{
+            fontSize: '13px',
+            fontWeight: 'bold',
             marginBottom: '8px',
             color: '#8b6914'
           }}>
@@ -323,14 +324,14 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
         </div>
 
         {/* Wish Statement */}
-        <div style={{ 
-          textAlign: 'center', 
+        <div style={{
+          textAlign: 'center',
           marginTop: '25px',
           marginBottom: '20px'
         }}>
-          <p style={{ 
-            fontSize: '14px', 
-            fontStyle: 'italic', 
+          <p style={{
+            fontSize: '14px',
+            fontStyle: 'italic',
             color: '#8b6914',
             fontWeight: '500'
           }}>
@@ -339,16 +340,16 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
         </div>
 
         {/* Registrar Details */}
-        <div style={{ 
+        <div style={{
           marginTop: '30px',
           padding: '15px',
           backgroundColor: 'rgba(255, 255, 255, 0.7)',
           borderRadius: '5px',
           border: '1px solid #d4af37'
         }}>
-          <h3 style={{ 
-            fontSize: '13px', 
-            fontWeight: 'bold', 
+          <h3 style={{
+            fontSize: '13px',
+            fontWeight: 'bold',
             marginBottom: '12px',
             color: '#8b6914'
           }}>
@@ -365,8 +366,8 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
         </div>
 
         {/* Photo and QR Code Section */}
-        <div style={{ 
-          display: 'flex', 
+        <div style={{
+          display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
           marginTop: '25px',
@@ -417,7 +418,7 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
         </div>
 
         {/* Signature Section */}
-        <div style={{ 
+        <div style={{
           marginTop: '40px',
           textAlign: 'right',
           paddingRight: '30px'
