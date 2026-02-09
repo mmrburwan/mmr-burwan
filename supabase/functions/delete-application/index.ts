@@ -16,6 +16,8 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 serve(async (req) => {
+    console.log(`Request received: ${req.method} ${req.url}`);
+
     const corsHeaders = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
