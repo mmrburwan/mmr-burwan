@@ -57,6 +57,9 @@ const createGroomSchema = (isAdminContext: boolean = false) => z.object({
     return val <= today;
   }, 'Marriage date cannot be in the future'),
 }).refine((data) => {
+  // Skip age validation for admin context
+  if (isAdminContext) return true;
+
   if (data.dateOfBirth && data.marriageDate) {
     return calculateAge(data.dateOfBirth, new Date(data.marriageDate)) >= 18;
   }
@@ -78,6 +81,8 @@ const createBrideSchema = (isAdminContext: boolean = false, marriageDate?: strin
   fatherName: z.string().min(2, 'Father name is required'),
   dateOfBirth: z.string().min(1, 'Date of birth is required').refine((val) => {
     const refDate = marriageDate ? new Date(marriageDate) : new Date();
+    // Skip age validation for admin context
+    if (isAdminContext) return true;
     return calculateAge(val, refDate) >= 18;
   }, marriageDate
     ? 'Applicant has not attained the minimum legal age (18 years) on the date of marriage'
@@ -520,7 +525,7 @@ const ApplicationFormContent: React.FC = () => {
         values.currentZipCode?.trim() &&
         values.currentCountry?.trim() &&
         values.marriageDate &&
-        calculateAge(values.dateOfBirth, new Date(values.marriageDate)) >= 18
+        (isAdminContext || calculateAge(values.dateOfBirth, new Date(values.marriageDate)) >= 18)
       );
     } else if (currentStep === 1) {
       // Check if all required bride form fields are filled (lastName is optional)
@@ -530,7 +535,7 @@ const ApplicationFormContent: React.FC = () => {
         values.firstName?.trim() &&
         values.fatherName?.trim() &&
         values.dateOfBirth &&
-        calculateAge(values.dateOfBirth, marriageDate ? new Date(marriageDate) : new Date()) >= 18 &&
+        (isAdminContext || calculateAge(values.dateOfBirth, marriageDate ? new Date(marriageDate) : new Date()) >= 18) &&
         values.aadhaarNumber?.trim() &&
         values.mobileNumber?.trim() &&
         values.permanentVillageStreet?.trim() &&
@@ -589,7 +594,7 @@ const ApplicationFormContent: React.FC = () => {
         const errors = groomForm.formState.errors;
 
         // Specifically check for age error
-        if (errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
+        if (!isAdminContext && errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
           showToast('Applicant has not attained the minimum legal age (18 years) on the date of marriage', 'error');
           return;
         }
@@ -610,7 +615,7 @@ const ApplicationFormContent: React.FC = () => {
         const errors = brideForm.formState.errors;
 
         // Specifically check for age error
-        if (errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
+        if (!isAdminContext && errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
           showToast('Applicant has not attained the minimum legal age (18 years) on the date of marriage', 'error');
           return;
         }

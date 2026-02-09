@@ -1041,28 +1041,46 @@ export const adminService = {
       throw new Error('Application not found');
     }
 
-    // Direct deletion from Supabase (bypassing Edge Function as requested)
-    // First remove proxy credentials if they exist
-    const { error: credError } = await supabase
-      .from('proxy_user_credentials')
-      .delete()
-      .eq('application_id', applicationId);
+    // Call the delete-application Edge Function
+    // This ensures that the user is also deleted from auth.users (hard delete)
+    // We use supabase.functions.invoke to handle auth headers and token refresh automatically
+    const { data: functionData, error: functionError } = await supabase.functions.invoke('delete-application', {
+      body: {
+        applicationId,
+        adminId: actorId,
+      }
+    });
 
-    if (credError) {
-      console.warn('Error deleting proxy credentials:', credError);
-      // We continue even if this fails, as the main goal is to delete the application
+    if (functionError) {
+      console.error('Error calling delete-application edge function:', functionError);
+
+      // Try to extract a meaningful message
+      let errorMessage = functionError.message || 'Failed to delete application';
+
+      // Sometimes the error context is in the response body which invoke() might parse into context
+      if (functionError.context && typeof functionError.context === 'object') {
+        const context = functionError.context as any;
+        // Check standard HTTP error response format
+        if (context.error) errorMessage = context.error;
+        // Check Supabase Edge Function error structure
+        if (context.message) errorMessage = context.message;
+      }
+
+      // Manual check for 401 to give better feedback
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        errorMessage = 'Unauthorized: Please verify you are logged in as an admin.';
+      }
+
+      throw new Error(errorMessage);
     }
 
-    // Then delete the application
-    const { error: deleteError } = await supabase
-      .from('applications')
-      .delete()
-      .eq('id', applicationId);
-
-    if (deleteError) {
-      console.error("Direct delete failed:", deleteError);
-      throw new Error(deleteError.message || 'Failed to delete application');
+    // Check for success in the response data
+    if (!functionData || !functionData.success) {
+      const msg = functionData?.error || 'Failed to delete application (unknown error)';
+      throw new Error(msg);
     }
+
+    // Application deleted successfully via Edge Function
 
     // Only audit log if delete was successful
     await auditService.createLog({
@@ -1075,7 +1093,7 @@ export const adminService = {
       details: {
         previousStatus: appData.status,
         userId: appData.user_id,
-        note: 'Deleted via direct client action'
+        note: 'Deleted via admin action (hard delete)'
       }
     });
   },
