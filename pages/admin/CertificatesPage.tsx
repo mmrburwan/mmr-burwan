@@ -179,26 +179,26 @@ const CertificatesPage: React.FC = () => {
     try {
       const newPermission = !cert.canDownload;
       await certificateService.updateDownloadPermission(cert.id, newPermission);
-      
+
       // Update local state
       setCertificates(prevCerts =>
         prevCerts.map(c =>
           c.id === cert.id ? { ...c, canDownload: newPermission } : c
         )
       );
-      
+
       // Send notification to user when download permission is enabled
       if (newPermission) {
         try {
           // Get user profile to personalize notification
           const profile = await profileService.getProfile(cert.userId);
-          const userName = profile 
+          const userName = profile
             ? `${profile.firstName} ${profile.lastName || ''}`.trim() || 'Applicant'
             : 'Applicant';
-          
+
           // Get certificate number for the notification
           const certNumber = cert.certificateNumber || cert.verificationId;
-          
+
           await notificationService.createNotification({
             userId: cert.userId,
             applicationId: cert.applicationId,
@@ -211,10 +211,10 @@ const CertificatesPage: React.FC = () => {
           console.error('Failed to send download enabled notification:', notificationError);
         }
       }
-      
+
       showToast(
-        newPermission 
-          ? 'Download permission enabled for user' 
+        newPermission
+          ? 'Download permission enabled for user'
           : 'Download permission disabled for user',
         'success'
       );
@@ -423,55 +423,47 @@ const CertificatesPage: React.FC = () => {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
-                        <p className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900">{cert.name}</p>
+                        <p className="font-bold text-xs sm:text-sm lg:text-base text-gray-900 uppercase">
+                          {cert.groomName && cert.brideName
+                            ? `${cert.groomName} & ${cert.brideName}`
+                            : cert.groomName || cert.brideName || 'N/A'}
+                        </p>
                         <Badge variant="success" className="!text-[10px] sm:!text-xs">
                           Verified
                         </Badge>
                       </div>
-                      
+
                       {cert.certificateNumber && (
                         <div className="flex items-center gap-1.5 mb-1 sm:mb-1.5">
-                          <Hash size={12} className="sm:w-3.5 sm:h-3.5 text-gray-400 flex-shrink-0" />
-                          <p className="text-[10px] sm:text-xs lg:text-sm text-gray-700 font-mono">
-                            {cert.certificateNumber}
+                          <p className="text-[11px] sm:text-sm lg:text-base text-gray-900 font-mono font-bold uppercase tracking-wider">
+                            Certificate: {cert.certificateNumber}
                           </p>
                         </div>
                       )}
-                      
-                      {(cert.groomName || cert.brideName) && (
-                        <div className="flex items-center gap-1.5 mb-1 sm:mb-1.5">
-                          <Users size={12} className="sm:w-3.5 sm:h-3.5 text-gray-400 flex-shrink-0" />
-                          <p className="text-[10px] sm:text-xs lg:text-sm text-gray-600">
-                            {cert.groomName && cert.brideName 
-                              ? `${cert.groomName} & ${cert.brideName}`
-                              : cert.groomName || cert.brideName || 'N/A'}
-                          </p>
-                        </div>
-                      )}
-                      
+
                       <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
                         <div className="flex items-center gap-1.5">
                           <Calendar size={12} className="sm:w-3.5 sm:h-3.5 text-gray-400 flex-shrink-0" />
                           <p className="text-[10px] sm:text-xs text-gray-500">
-                            Issued: {safeFormatDateObject(new Date(cert.issuedOn), 'MMM d, yyyy')}
+                            Issued: {safeFormatDateObject(new Date(cert.issuedOn), 'dd-MM-yyyy')}
                           </p>
                         </div>
                         {cert.registrationDate && (
                           <div className="flex items-center gap-1.5">
                             <Calendar size={12} className="sm:w-3.5 sm:h-3.5 text-gray-400 flex-shrink-0" />
                             <p className="text-[10px] sm:text-xs text-gray-500">
-                              Registered: {safeFormatDateObject(new Date(cert.registrationDate), 'MMM d, yyyy')}
+                              Registered: {safeFormatDateObject(new Date(cert.registrationDate), 'dd-MM-yyyy')}
                             </p>
                           </div>
                         )}
                       </div>
-                      
+
                       <p className="text-[10px] sm:text-xs text-gray-400 mt-1.5 sm:mt-2 truncate">
                         Verification ID: {cert.verificationId}
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 sm:ml-4">
                     {/* Download Permission Toggle */}
                     <div className="flex flex-col items-center gap-1 sm:gap-1.5">
@@ -506,7 +498,7 @@ const CertificatesPage: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     <Button
                       variant="ghost"
                       size="sm"

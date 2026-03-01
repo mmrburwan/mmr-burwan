@@ -9,6 +9,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { documentService } from '../../services/documents';
 import { safeFormatDate, calculateAge } from '../../utils/dateUtils';
+import { formatAadhaar, handleAadhaarInput } from '../../utils/formatUtils';
 import Stepper from '../../components/ui/Stepper';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -23,15 +24,18 @@ import { ArrowRight, ArrowLeft, Save, Upload, X, FileText, Edit, CheckCircle, Ey
 import ImageCropModal from '../../components/ui/ImageCropModal';
 
 // Groom Details Schema (User personal + address)
-const groomSchema = z.object({
+// Factory function to create schema with optional voterOrRollNo for admin context
+const createGroomSchema = (isAdminContext: boolean = false) => z.object({
   // Personal details
   firstName: z.string().min(2, 'First name is required'),
   lastName: z.string().optional(),
   fatherName: z.string().min(2, 'Father name is required'),
-  dateOfBirth: z.string().min(1, 'Date of birth is required').refine((val) => calculateAge(val) >= 18, 'Groom must be at least 18 years old'),
-  aadhaarNumber: z.string().regex(/^\d{12}$/, 'Aadhaar number must be exactly 12 digits'),
+  dateOfBirth: z.string().min(1, 'Date of birth is required'),
+  aadhaarNumber: z.string().refine((val) => val.replace(/\s/g, '').length === 12, 'Aadhaar number must be exactly 12 digits'),
   mobileNumber: z.string().regex(/^\d{10}$/, 'Mobile number must be exactly 10 digits'),
-  voterOrRollNo: z.string().min(1, 'Voter EPIC No or Roll No is required'),
+  voterOrRollNo: isAdminContext
+    ? z.string().optional()
+    : z.string().min(1, 'Voter EPIC No or Roll No is required'),
   // Address details
   permanentVillageStreet: z.string().min(3, 'Village/Street is required'),
   permanentPostOffice: z.string().min(2, 'Post Office is required'),
@@ -52,18 +56,42 @@ const groomSchema = z.object({
     const today = new Date().toISOString().split('T')[0];
     return val <= today;
   }, 'Marriage date cannot be in the future'),
+}).refine((data) => {
+  // Skip age validation for admin context
+  if (isAdminContext) return true;
+
+  if (data.dateOfBirth && data.marriageDate) {
+    return calculateAge(data.dateOfBirth, new Date(data.marriageDate)) >= 18;
+  }
+  return true;
+}, {
+  message: 'Applicant has not attained the minimum legal age (18 years) on the date of marriage',
+  path: ['dateOfBirth'],
 });
 
+// Default schema (for clients - voterOrRollNo is required)
+const groomSchema = createGroomSchema(false);
+
 // Bride Details Schema (Partner personal + address)
-const brideSchema = z.object({
+// Factory function to create schema with optional voterOrRollNo for admin context
+const createBrideSchema = (isAdminContext: boolean = false, marriageDate?: string) => z.object({
   // Personal details
   firstName: z.string().min(2, 'First name is required'),
   lastName: z.string().optional(),
   fatherName: z.string().min(2, 'Father name is required'),
-  dateOfBirth: z.string().min(1, 'Date of birth is required').refine((val) => calculateAge(val) >= 18, 'Bride must be at least 18 years old'),
-  aadhaarNumber: z.string().regex(/^\d{12}$/, 'Aadhaar number must be exactly 12 digits'),
+  dateOfBirth: z.string().min(1, 'Date of birth is required').refine((val) => {
+    const refDate = marriageDate ? new Date(marriageDate) : new Date();
+    // Skip age validation for admin context
+    if (isAdminContext) return true;
+    return calculateAge(val, refDate) >= 18;
+  }, marriageDate
+    ? 'Applicant has not attained the minimum legal age (18 years) on the date of marriage'
+    : 'Bride must be at least 18 years old'),
+  aadhaarNumber: z.string().refine((val) => val.replace(/\s/g, '').length === 12, 'Aadhaar number must be exactly 12 digits'),
   mobileNumber: z.string().regex(/^\d{10}$/, 'Mobile number must be exactly 10 digits'),
-  voterOrRollNo: z.string().min(1, 'Voter EPIC No or Roll No is required'),
+  voterOrRollNo: isAdminContext
+    ? z.string().optional()
+    : z.string().min(1, 'Voter EPIC No or Roll No is required'),
   // Address details
   permanentVillageStreet: z.string().min(3, 'Village/Street is required'),
   permanentPostOffice: z.string().min(2, 'Post Office is required'),
@@ -81,6 +109,9 @@ const brideSchema = z.object({
   currentCountry: z.string().min(2, 'Country is required'),
   sameAsPermanent: z.boolean().optional(),
 });
+
+// Default schema (for clients - voterOrRollNo is required)
+const brideSchema = createBrideSchema(false);
 
 const declarationsSchema = z.object({
   consent: z.boolean().refine((val) => val === true, 'You must provide consent'),
@@ -138,7 +169,7 @@ const ApplicationFormContent: React.FC = () => {
   }, [application?.status, currentStep, showToast]);
 
   const groomForm = useForm({
-    resolver: zodResolver(groomSchema),
+    resolver: zodResolver(createGroomSchema(isAdminContext)),
     mode: 'onChange', // Validate on change for real-time feedback
     defaultValues: {
       // For proxy/offline applications (admin context), don't use admin's name - only use saved application data
@@ -171,7 +202,7 @@ const ApplicationFormContent: React.FC = () => {
   });
 
   const brideForm = useForm({
-    resolver: zodResolver(brideSchema),
+    resolver: zodResolver(createBrideSchema(isAdminContext)),
     mode: 'onChange', // Validate on change for real-time feedback
     defaultValues: {
       firstName: application?.partnerForm?.firstName || '',
@@ -305,9 +336,9 @@ const ApplicationFormContent: React.FC = () => {
 
       // Update declarations form
       declarationsForm.reset({
-        consent: application?.declarations?.consent || false,
-        accuracy: application?.declarations?.accuracy || false,
-        legal: application?.declarations?.legal || false,
+        consent: (application?.declarations as any)?.consent || false,
+        accuracy: (application?.declarations as any)?.accuracy || false,
+        legal: (application?.declarations as any)?.legal || false,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -372,13 +403,13 @@ const ApplicationFormContent: React.FC = () => {
           const partnerSecondDoc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
           const jointPhotograph = documents.find(d => d.belongsTo === 'joint' && d.type === 'photo');
 
-          if ((!userAadhaar || !userSecondDoc || !partnerAadhaar || !partnerSecondDoc || !jointPhotograph) && !isAdminContext) {
+          if (!userAadhaar || !userSecondDoc || !partnerAadhaar || !partnerSecondDoc || !jointPhotograph) {
             calculatedStep = 2;
           } else {
             // Check if declarations are filled
-            const hasDeclarations = application.declarations?.consent &&
-              application.declarations?.accuracy &&
-              application.declarations?.legal;
+            const hasDeclarations = (application.declarations as any)?.consent &&
+              (application.declarations as any)?.accuracy &&
+              (application.declarations as any)?.legal;
 
             if (!hasDeclarations) {
               calculatedStep = 3;
@@ -456,7 +487,7 @@ const ApplicationFormContent: React.FC = () => {
       return documents.length > 0 && documents.length !== savedDocs.length;
     } else if (currentStep === 3) {
       const values = declarationsFormValues;
-      const saved = application.declarations || {};
+      const saved = (application.declarations as any) || {};
       return !!(
         (values.consent && values.consent !== saved.consent) ||
         (values.accuracy && values.accuracy !== saved.accuracy) ||
@@ -493,15 +524,18 @@ const ApplicationFormContent: React.FC = () => {
         values.currentState?.trim() &&
         values.currentZipCode?.trim() &&
         values.currentCountry?.trim() &&
-        values.marriageDate
+        values.marriageDate &&
+        (isAdminContext || calculateAge(values.dateOfBirth, new Date(values.marriageDate)) >= 18)
       );
     } else if (currentStep === 1) {
       // Check if all required bride form fields are filled (lastName is optional)
       const values = brideFormValues;
+      const marriageDate = groomForm.getValues('marriageDate') || (application?.declarations as any)?.marriageDate || (application?.declarations as any)?.marriageRegistrationDate;
       return !!(
         values.firstName?.trim() &&
         values.fatherName?.trim() &&
         values.dateOfBirth &&
+        (isAdminContext || calculateAge(values.dateOfBirth, marriageDate ? new Date(marriageDate) : new Date()) >= 18) &&
         values.aadhaarNumber?.trim() &&
         values.mobileNumber?.trim() &&
         values.permanentVillageStreet?.trim() &&
@@ -520,7 +554,6 @@ const ApplicationFormContent: React.FC = () => {
         values.currentCountry?.trim()
       );
     } else if (currentStep === 2) {
-      if (isAdminContext) return true;
       // Check if all documents are uploaded (either in current session or previously saved)
       // Check current session documents
       const userAadhaar = documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
@@ -558,6 +591,13 @@ const ApplicationFormContent: React.FC = () => {
       if (currentStep === 0) {
         await groomForm.trigger();
         const errors = groomForm.formState.errors;
+
+        // Specifically check for age error
+        if (!isAdminContext && errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
+          showToast('Applicant has not attained the minimum legal age (18 years) on the date of marriage', 'error');
+          return;
+        }
+
         const errorFields = Object.keys(errors).filter(key => errors[key as keyof typeof errors]);
         if (errorFields.length > 0) {
           const fieldNames = errorFields.map(field => {
@@ -572,6 +612,13 @@ const ApplicationFormContent: React.FC = () => {
       } else if (currentStep === 1) {
         await brideForm.trigger();
         const errors = brideForm.formState.errors;
+
+        // Specifically check for age error
+        if (!isAdminContext && errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
+          showToast('Applicant has not attained the minimum legal age (18 years) on the date of marriage', 'error');
+          return;
+        }
+
         const errorFields = Object.keys(errors).filter(key => errors[key as keyof typeof errors]);
         if (errorFields.length > 0) {
           const fieldNames = errorFields.map(field => {
@@ -582,7 +629,7 @@ const ApplicationFormContent: React.FC = () => {
         } else {
           showToast('Please complete all required fields before proceeding', 'error');
         }
-      } else if (currentStep === 2 && !isAdminContext) {
+      } else if (currentStep === 2) {
         // Check both current session and saved documents
         const userAadhaar = documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar') || applicationDocuments.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
         const userSecondDoc = documents.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) || applicationDocuments.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
@@ -592,9 +639,9 @@ const ApplicationFormContent: React.FC = () => {
 
         const missingDocs = [];
         if (!userAadhaar) missingDocs.push("Groom's Aadhaar Card");
-        if (!userSecondDoc) missingDocs.push("Groom's 10th Certificate or Voter ID");
+        if (!userSecondDoc) missingDocs.push("Groom's Madhyamik Admit Card or Voter ID");
         if (!partnerAadhaar) missingDocs.push("Bride's Aadhaar Card");
-        if (!partnerSecondDoc) missingDocs.push("Bride's 10th Certificate or Voter ID");
+        if (!partnerSecondDoc) missingDocs.push("Bride's Madhyamik Admit Card or Voter ID");
         if (!jointPhotograph) missingDocs.push("Joint Photograph");
 
         showToast(`Please upload all required documents: ${missingDocs.join(', ')}`, 'error');
@@ -748,7 +795,7 @@ const ApplicationFormContent: React.FC = () => {
 
       const hasAllDocuments = userAadhaar && userSecondDoc && partnerAadhaar && partnerSecondDoc && jointPhotograph;
 
-      if (!hasAllDocuments && !isAdminContext) {
+      if (!hasAllDocuments) {
         showToast('Please upload all required documents including joint photograph', 'error');
         return;
       }
@@ -1014,7 +1061,7 @@ const ApplicationFormContent: React.FC = () => {
   const getDocumentTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       aadhaar: 'Aadhaar Card',
-      tenth_certificate: '10th Certificate',
+      tenth_certificate: 'Madhyamik Admit Card',
       voter_id: 'Voter ID',
       photo: 'Photograph',
       id: 'ID Document',
@@ -1037,6 +1084,21 @@ const ApplicationFormContent: React.FC = () => {
       case 0:
         return (
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+            <div className="pb-4 sm:pb-5 lg:pb-6 border-b border-gray-200 mb-4 sm:mb-5 lg:mb-6">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Marriage Date [বিবাহের তারিখ]</h3>
+              <div className="space-y-3 sm:space-y-4">
+                <Input
+                  label="Marriage Date"
+                  type="date"
+                  max={new Date().toISOString().split('T')[0]}
+                  {...groomForm.register('marriageDate')}
+                  error={groomForm.formState.errors.marriageDate?.message}
+                  required
+                  disabled={isSubmitted}
+                />
+              </div>
+            </div>
+
             <div>
               <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Groom [পাত্র] Personal Details</h3>
               <div className="space-y-3 sm:space-y-4">
@@ -1074,10 +1136,10 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="Aadhaar Number"
                     type="text"
-                    maxLength={12}
+                    maxLength={14}
                     {...groomForm.register('aadhaarNumber', {
                       onChange: (e) => {
-                        e.target.value = e.target.value.replace(/\D/g, '');
+                        e.target.value = handleAadhaarInput(e.target.value);
                       },
                     })}
                     error={groomForm.formState.errors.aadhaarNumber?.message}
@@ -1091,7 +1153,7 @@ const ApplicationFormContent: React.FC = () => {
                     {...groomForm.register('voterOrRollNo')}
                     error={groomForm.formState.errors.voterOrRollNo?.message}
                     placeholder="Enter Voter No or Roll No"
-                    required
+                    required={!isAdminContext}
                     disabled={isSubmitted}
                   />
                 </div>
@@ -1249,20 +1311,6 @@ const ApplicationFormContent: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4">Marriage Date</h3>
-              <div className="space-y-3 sm:space-y-4">
-                <Input
-                  label="Marriage Date"
-                  type="date"
-                  max={new Date().toISOString().split('T')[0]}
-                  {...groomForm.register('marriageDate')}
-                  error={groomForm.formState.errors.marriageDate?.message}
-                  required
-                  disabled={isSubmitted}
-                />
-              </div>
-            </div>
           </div>
         );
       case 1:
@@ -1305,10 +1353,10 @@ const ApplicationFormContent: React.FC = () => {
                   <Input
                     label="Aadhaar Number"
                     type="text"
-                    maxLength={12}
+                    maxLength={14}
                     {...brideForm.register('aadhaarNumber', {
                       onChange: (e) => {
-                        e.target.value = e.target.value.replace(/\D/g, '');
+                        e.target.value = handleAadhaarInput(e.target.value);
                       },
                     })}
                     error={brideForm.formState.errors.aadhaarNumber?.message}
@@ -1322,7 +1370,7 @@ const ApplicationFormContent: React.FC = () => {
                     {...brideForm.register('voterOrRollNo')}
                     error={brideForm.formState.errors.voterOrRollNo?.message}
                     placeholder="Enter Voter No or Roll No"
-                    required
+                    required={!isAdminContext}
                     disabled={isSubmitted}
                   />
                 </div>
@@ -1486,7 +1534,7 @@ const ApplicationFormContent: React.FC = () => {
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             <div>
               <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">Groom's Documents</h3>
-              <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Upload Aadhaar card + 10th certificate or Voter ID</p>
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Upload Aadhaar card + Madhyamik Admit Card or Voter ID</p>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-3 sm:mb-4 lg:mb-6">
                 <span className="text-gold-600 font-medium">Max file size: 250KB</span> per document
               </p>
@@ -1505,12 +1553,16 @@ const ApplicationFormContent: React.FC = () => {
                   <div className="space-y-1.5 sm:space-y-2">
                     {applicationDocuments
                       .filter(d => d.belongsTo === 'user')
+                      .sort((a, b) => {
+                        const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                        return (order[a.type] || 99) - (order[b.type] || 99);
+                      })
                       .map(doc => (
                         <div key={doc.id} className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-600">
                           <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="cursor-pointer hover:text-gray-900 truncate flex-1" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
                             {doc.type === 'aadhaar' && 'Aadhaar'}
-                            {doc.type === 'tenth_certificate' && '10th Cert'}
+                            {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                             {doc.type === 'voter_id' && 'Voter ID'}
                             : {doc.name}
                           </span>
@@ -1619,7 +1671,7 @@ const ApplicationFormContent: React.FC = () => {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-                    10th Certificate / Voter ID <span className="text-rose-600">*</span>
+                    Madhyamik Admit Card / Voter ID <span className="text-rose-600">*</span>
                   </label>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
                     {!secondDocumentExists('user') && (
@@ -1682,7 +1734,7 @@ const ApplicationFormContent: React.FC = () => {
                         <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
                           <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
-                            {doc.name || (doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID')}
+                            {doc.name || (doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID')}
                           </span>
                           <button
                             onClick={() => handlePreviewDocument(doc)}
@@ -1708,7 +1760,7 @@ const ApplicationFormContent: React.FC = () => {
 
             <div className="pt-4 sm:pt-5 lg:pt-6 border-t border-gray-200">
               <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">Bride's Documents</h3>
-              <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Upload Aadhaar card + 10th certificate or Voter ID</p>
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-1">Upload Aadhaar card + Madhyamik Admit Card or Voter ID</p>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-3 sm:mb-4 lg:mb-6">
                 <span className="text-gold-600 font-medium">Max file size: 250KB</span> per document
               </p>
@@ -1727,12 +1779,16 @@ const ApplicationFormContent: React.FC = () => {
                   <div className="space-y-1.5 sm:space-y-2">
                     {applicationDocuments
                       .filter(d => d.belongsTo === 'partner')
+                      .sort((a, b) => {
+                        const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                        return (order[a.type] || 99) - (order[b.type] || 99);
+                      })
                       .map(doc => (
                         <div key={doc.id} className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-600">
                           <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="cursor-pointer hover:text-gray-900 truncate flex-1" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
                             {doc.type === 'aadhaar' && 'Aadhaar'}
-                            {doc.type === 'tenth_certificate' && '10th Cert'}
+                            {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                             {doc.type === 'voter_id' && 'Voter ID'}
                             : {doc.name}
                           </span>
@@ -1841,7 +1897,7 @@ const ApplicationFormContent: React.FC = () => {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-                    10th Certificate / Voter ID <span className="text-rose-600">*</span>
+                    Madhyamik Admit Card / Voter ID <span className="text-rose-600">*</span>
                   </label>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
                     {!secondDocumentExists('partner') && (
@@ -1904,7 +1960,7 @@ const ApplicationFormContent: React.FC = () => {
                         <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-600 min-w-0">
                           <FileText size={12} className="sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="cursor-pointer hover:text-gray-900 truncate max-w-[120px] sm:max-w-[180px]" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }}>
-                            {doc.name || (doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID')}
+                            {doc.name || (doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID')}
                           </span>
                           <button
                             onClick={() => handlePreviewDocument(doc)}
@@ -2143,7 +2199,7 @@ const ApplicationFormContent: React.FC = () => {
                   <p className="text-gray-500 mb-1">Marriage Date</p>
                   <p className="font-medium text-gray-900">
                     {marriageDate && marriageDate.trim() !== ''
-                      ? safeFormatDate(marriageDate, 'MMMM d, yyyy', 'Invalid date format')
+                      ? safeFormatDate(marriageDate, 'dd-MM-yyyy', 'Invalid date format')
                       : 'Not provided'}
                   </p>
                 </div>
@@ -2176,15 +2232,19 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Date of Birth</p>
-                  <p className="font-medium text-gray-900">{safeFormatDate(groomData.dateOfBirth, 'MMMM d, yyyy')}</p>
+                  <p className="font-medium text-gray-900">{safeFormatDate(groomData.dateOfBirth, 'dd-MM-yyyy')}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Aadhaar Number</p>
-                  <p className="font-medium text-gray-900">{groomData.aadhaarNumber}</p>
+                  <p className="font-medium text-gray-900">{formatAadhaar(groomData.aadhaarNumber)}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Mobile Number</p>
                   <p className="font-medium text-gray-900">{groomData.mobileNumber}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 mb-1">Voter EPIC No OR Madhyamik ROLL No</p>
+                  <p className="font-medium text-gray-900">{groomData.voterOrRollNo}</p>
                 </div>
               </div>
               <div className="pt-4 border-t border-gray-200">
@@ -2240,15 +2300,19 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Date of Birth</p>
-                  <p className="font-medium text-gray-900">{safeFormatDate(brideData.dateOfBirth, 'MMMM d, yyyy')}</p>
+                  <p className="font-medium text-gray-900">{safeFormatDate(brideData.dateOfBirth, 'dd-MM-yyyy')}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Aadhaar Number</p>
-                  <p className="font-medium text-gray-900">{brideData.aadhaarNumber}</p>
+                  <p className="font-medium text-gray-900">{formatAadhaar(brideData.aadhaarNumber)}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Mobile Number</p>
                   <p className="font-medium text-gray-900">{brideData.mobileNumber}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 mb-1">Voter EPIC No OR Madhyamik ROLL No</p>
+                  <p className="font-medium text-gray-900">{brideData.voterOrRollNo}</p>
                 </div>
               </div>
               <div className="pt-4 border-t border-gray-200">
@@ -2307,12 +2371,16 @@ const ApplicationFormContent: React.FC = () => {
                         {/* Show saved documents from applicationDocuments */}
                         {applicationDocuments
                           .filter(d => d.belongsTo === 'user')
+                          .sort((a, b) => {
+                            const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                            return (order[a.type] || 99) - (order[b.type] || 99);
+                          })
                           .map(doc => (
                             <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
                               <FileText size={16} className="flex-shrink-0" />
-                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.name}`}>
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID'}: ${doc.name}`}>
                                 {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                                 {doc.type === 'voter_id' && 'Voter ID'}
                                 : {doc.name}
                               </span>
@@ -2341,12 +2409,16 @@ const ApplicationFormContent: React.FC = () => {
                             );
                             return !isAlreadySaved;
                           })
+                          .sort((a, b) => {
+                            const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                            return (order[a.type] || 99) - (order[b.type] || 99);
+                          })
                           .map(doc => (
                             <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
                               <FileText size={16} className="flex-shrink-0" />
-                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.file.name}`}>
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID'}: ${doc.file.name}`}>
                                 {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                                 {doc.type === 'voter_id' && 'Voter ID'}
                                 : {doc.file.name}
                               </span>
@@ -2386,12 +2458,16 @@ const ApplicationFormContent: React.FC = () => {
                         {/* Show saved documents from applicationDocuments */}
                         {applicationDocuments
                           .filter(d => d.belongsTo === 'partner')
+                          .sort((a, b) => {
+                            const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                            return (order[a.type] || 99) - (order[b.type] || 99);
+                          })
                           .map(doc => (
                             <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
                               <FileText size={16} className="flex-shrink-0" />
-                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.name}`}>
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID'}: ${doc.name}`}>
                                 {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                                 {doc.type === 'voter_id' && 'Voter ID'}
                                 : {doc.name}
                               </span>
@@ -2420,12 +2496,16 @@ const ApplicationFormContent: React.FC = () => {
                             );
                             return !isAlreadySaved;
                           })
+                          .sort((a, b) => {
+                            const order: Record<string, number> = { 'aadhaar': 1, 'tenth_certificate': 2, 'voter_id': 3, 'photo': 4 };
+                            return (order[a.type] || 99) - (order[b.type] || 99);
+                          })
                           .map(doc => (
                             <div key={doc.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded min-w-0">
                               <FileText size={16} className="flex-shrink-0" />
-                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? '10th Certificate' : 'Voter ID'}: ${doc.file.name}`}>
+                              <span className="cursor-pointer hover:text-gray-900 truncate flex-1 min-w-0" onClick={(e) => { e.stopPropagation(); handlePreviewDocument(doc); }} title={`${doc.type === 'aadhaar' ? 'Aadhaar Card' : doc.type === 'tenth_certificate' ? 'Madhyamik Admit Card' : 'Voter ID'}: ${doc.file.name}`}>
                                 {doc.type === 'aadhaar' && 'Aadhaar Card'}
-                                {doc.type === 'tenth_certificate' && '10th Certificate'}
+                                {doc.type === 'tenth_certificate' && 'Madhyamik Admit Card'}
                                 {doc.type === 'voter_id' && 'Voter ID'}
                                 : {doc.file.name}
                               </span>
@@ -2601,6 +2681,7 @@ const ApplicationFormContent: React.FC = () => {
             dateOfBirth: data.dateOfBirth || (application?.userDetails as any)?.dateOfBirth || '',
             aadhaarNumber: data.aadhaarNumber || (application?.userDetails as any)?.aadhaarNumber || '',
             mobileNumber: data.mobileNumber || (application?.userDetails as any)?.mobileNumber || '',
+            voterOrRollNo: data.voterOrRollNo || (application?.userDetails as any)?.voterOrRollNo || '',
           },
           userAddress: {
             villageStreet: data.permanentVillageStreet || ((application?.userAddress as any)?.villageStreet || application?.userAddress?.street || ''),
@@ -2645,6 +2726,7 @@ const ApplicationFormContent: React.FC = () => {
             idNumber: data.aadhaarNumber || ((application?.partnerForm as any)?.aadhaarNumber || (application?.partnerForm as any)?.idNumber || ''),
             aadhaarNumber: data.aadhaarNumber || ((application?.partnerForm as any)?.aadhaarNumber || (application?.partnerForm as any)?.idNumber || ''),
             mobileNumber: data.mobileNumber || (application?.partnerForm as any)?.mobileNumber || '',
+            voterOrRollNo: data.voterOrRollNo || (application?.partnerForm as any)?.voterOrRollNo || '',
             address: {
               villageStreet: data.permanentVillageStreet || ((application?.partnerAddress as any)?.villageStreet || application?.partnerAddress?.street || ''),
               postOffice: data.permanentPostOffice || (application?.partnerAddress as any)?.postOffice || '',

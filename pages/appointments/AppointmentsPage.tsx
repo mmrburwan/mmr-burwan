@@ -111,7 +111,7 @@ const AppointmentsPage: React.FC = () => {
                 {isRescheduling ? 'Rescheduling' : 'Current Appointment'}
               </h3>
               <p className="text-xs sm:text-sm text-gray-700">
-                {safeFormatDate(userAppointment.date, 'MMM d, yyyy', userAppointment.date)} at {userAppointment.time}
+                {safeFormatDate(userAppointment.date, 'dd-MM-yyyy', userAppointment.date)} at {userAppointment.time}
               </p>
               {isRescheduling && (
                 <p className="text-[10px] sm:text-xs text-gold-700 mt-1">
@@ -124,7 +124,7 @@ const AppointmentsPage: React.FC = () => {
                 View Pass
               </Button>
               {!isRescheduling && (
-                <Button 
+                <Button
                   variant="outline"
                   size="sm"
                   className="!text-xs sm:!text-sm"
@@ -134,7 +134,7 @@ const AppointmentsPage: React.FC = () => {
                 </Button>
               )}
               {isRescheduling && (
-                <Button 
+                <Button
                   variant="ghost"
                   size="sm"
                   className="!text-xs sm:!text-sm"
@@ -158,8 +158,8 @@ const AppointmentsPage: React.FC = () => {
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
               {dateSlots.map((slot) => {
                 const isAvailable = slot.booked < slot.capacity;
-                const slotDateTime = slot.time.includes(':') 
-                  ? `${slot.date}T${slot.time}:00` 
+                const slotDateTime = slot.time.includes(':')
+                  ? `${slot.date}T${slot.time}:00`
                   : `${slot.date}T${slot.time}`;
                 let isPast = false;
                 try {
@@ -168,7 +168,7 @@ const AppointmentsPage: React.FC = () => {
                 } catch (error) {
                   isPast = false;
                 }
-                
+
                 return (
                   <button
                     key={slot.id}

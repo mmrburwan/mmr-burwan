@@ -143,99 +143,99 @@ export const messageService = {
 
       console.log(`Found ${data.length} conversations in database`);
 
-    // Get last message and user info for each conversation
-    const conversationsWithMessages = await Promise.all(
-      data.map(async (conv: any) => {
-        // Get last message
-        const { data: lastMessage } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('conversation_id', conv.id)
-          .order('timestamp', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        // Get user profile info
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('user_id', conv.user_id)
-          .maybeSingle();
-
-        // Initialize user info
-        let userName = 'User';
-        let userEmail = '';
-        
-        // Try to get name from profile first
-        if (profile) {
-          userName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User';
-        }
-
-        // Get user info from messages - look for the first message from this user
-        const { data: userMessage } = await supabase
-          .from('messages')
-          .select('sender_name')
-          .eq('sender_id', conv.user_id)
-          .order('timestamp', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-
-        if (userMessage?.sender_name) {
-          // Check if sender_name contains email (format: "Name email@example.com")
-          const nameParts = userMessage.sender_name.split(' ');
-          const emailPart = nameParts.find(part => part.includes('@'));
-          
-          if (emailPart) {
-            userEmail = emailPart;
-            // Remove email from name parts
-            userName = nameParts.filter(part => !part.includes('@')).join(' ').trim() || 'User';
-          } else {
-            // No email in sender_name, use it as name if we don't have profile
-            if (!profile || userName === 'User') {
-              userName = userMessage.sender_name;
-            }
-          }
-        }
-
-        // If we still don't have email, try to extract from any message
-        if (!userEmail) {
-          const { data: anyUserMessage } = await supabase
+      // Get last message and user info for each conversation
+      const conversationsWithMessages = await Promise.all(
+        data.map(async (conv: any) => {
+          // Get last message
+          const { data: lastMessage } = await supabase
             .from('messages')
-            .select('sender_name')
+            .select('*')
             .eq('conversation_id', conv.id)
-            .eq('sender_id', conv.user_id)
+            .order('timestamp', { ascending: false })
             .limit(1)
             .maybeSingle();
-          
-          if (anyUserMessage?.sender_name) {
-            const nameParts = anyUserMessage.sender_name.split(' ');
+
+          // Get user profile info
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('user_id', conv.user_id)
+            .maybeSingle();
+
+          // Initialize user info
+          let userName = 'User';
+          let userEmail = '';
+
+          // Try to get name from profile first
+          if (profile) {
+            userName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User';
+          }
+
+          // Get user info from messages - look for the first message from this user
+          const { data: userMessage } = await supabase
+            .from('messages')
+            .select('sender_name')
+            .eq('sender_id', conv.user_id)
+            .order('timestamp', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (userMessage?.sender_name) {
+            // Check if sender_name contains email (format: "Name email@example.com")
+            const nameParts = userMessage.sender_name.split(' ');
             const emailPart = nameParts.find(part => part.includes('@'));
+
             if (emailPart) {
               userEmail = emailPart;
+              // Remove email from name parts
+              userName = nameParts.filter(part => !part.includes('@')).join(' ').trim() || 'User';
+            } else {
+              // No email in sender_name, use it as name if we don't have profile
+              if (!profile || userName === 'User') {
+                userName = userMessage.sender_name;
+              }
             }
           }
-        }
 
-        return {
-          id: conv.id,
-          userId: conv.user_id,
-          adminId: conv.admin_id,
-          lastMessage: lastMessage ? this.mapMessage(lastMessage) : undefined,
-          unreadCount: conv.unread_count || 0,
-          updatedAt: conv.updated_at,
-          userName: userName || 'User',
-          userEmail: userEmail || '',
-        };
-      })
-    );
+          // If we still don't have email, try to extract from any message
+          if (!userEmail) {
+            const { data: anyUserMessage } = await supabase
+              .from('messages')
+              .select('sender_name')
+              .eq('conversation_id', conv.id)
+              .eq('sender_id', conv.user_id)
+              .limit(1)
+              .maybeSingle();
 
-    // Sort by updated_at (most recent first)
-    conversationsWithMessages.sort((a, b) => 
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
+            if (anyUserMessage?.sender_name) {
+              const nameParts = anyUserMessage.sender_name.split(' ');
+              const emailPart = nameParts.find(part => part.includes('@'));
+              if (emailPart) {
+                userEmail = emailPart;
+              }
+            }
+          }
 
-    console.log(`Returning ${conversationsWithMessages.length} conversations with user info`);
-    return conversationsWithMessages;
+          return {
+            id: conv.id,
+            userId: conv.user_id,
+            adminId: conv.admin_id,
+            lastMessage: lastMessage ? this.mapMessage(lastMessage) : undefined,
+            unreadCount: conv.unread_count || 0,
+            updatedAt: conv.updated_at,
+            userName: userName || 'User',
+            userEmail: userEmail || '',
+          };
+        })
+      );
+
+      // Sort by updated_at (most recent first)
+      conversationsWithMessages.sort((a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+
+      console.log(`Returning ${conversationsWithMessages.length} conversations with user info`);
+      return conversationsWithMessages;
     } catch (error: any) {
       console.error('Error in getAllConversationsForAdmin:', error);
       throw error;
@@ -294,7 +294,7 @@ export const messageService = {
       // This ensures conversations appear in the right order in the admin panel
       await supabase
         .from('conversations')
-        .update({ 
+        .update({
           updated_at: new Date().toISOString(),
         })
         .eq('id', conversationId);

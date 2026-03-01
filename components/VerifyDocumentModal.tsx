@@ -38,7 +38,7 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
     if (address.district) parts.push(`Dist. ${address.district}`);
     if (address.state) parts.push(address.state);
     if (address.zipCode) parts.push(`PIN- ${address.zipCode}`);
-    return parts.length > 0 ? parts.join(', ') : 'N/A';
+    return parts.length > 0 ? parts.join(', ').toUpperCase() : 'N/A';
   };
 
   const handleVerify = async () => {
@@ -47,19 +47,20 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
       return;
     }
 
-    // Validate certificate number format
-    if (!certificateNumber.trim().startsWith('WB-MSD-BRW-')) {
-      setError('Please enter a valid certificate number starting with WB-MSD-BRW-');
+    // Validate certificate number format - accept both compact (WBMSDBRW) and legacy (WB-MSD-BRW-) formats
+    const isValidFormat = certificateNumber.trim().startsWith('WBMSDBRW') || certificateNumber.trim().startsWith('WB-MSD-BRW-');
+    if (!isValidFormat) {
+      setError('Please enter a valid certificate number starting with WBMSDBRW or WB-MSD-BRW-');
       return;
     }
 
     setIsLoading(true);
     setError('');
     setHasSearched(false);
-    
+
     try {
       const data = await certificateService.getCertificateByCertificateNumber(certificateNumber.trim());
-      
+
       if (data) {
         setCertificateData(data);
         setIsValid(true);
@@ -67,7 +68,7 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
         setIsValid(false);
         setError('Certificate not found. Please verify the certificate number and try again.');
       }
-      
+
       setHasSearched(true);
     } catch (err: any) {
       console.error('Failed to verify certificate:', err);
@@ -94,8 +95,8 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
+    <Modal
+      isOpen={isOpen}
       onClose={handleClose}
       size="lg"
       showCloseButton={false}
@@ -126,7 +127,7 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
           <div className="space-y-6">
             <Input
               label="Certificate Number"
-              placeholder="Enter certificate number (e.g., WB-MSD-BRW-V-5-C-2025-257-2026-599)"
+              placeholder="Enter certificate number (e.g., WBMSDBRWV5C20252572026599)"
               value={certificateNumber}
               onChange={(e) => {
                 setCertificateNumber(e.target.value);
@@ -137,7 +138,7 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
               error={error}
               disabled={isLoading}
             />
-            
+
             {error && (
               <div className="p-3 rounded-xl bg-rose-50 border border-rose-200">
                 <p className="text-sm text-rose-600">{error}</p>
@@ -190,11 +191,11 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
                     <div className="space-y-3">
                       <div>
                         <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-medium">Name</p>
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-semibold text-gray-900 uppercase">
                           {certificateData.userDetails?.firstName} {certificateData.userDetails?.lastName}
                         </p>
                         {certificateData.userDetails?.fatherName && (
-                          <p className="text-sm text-gray-600">Son of {certificateData.userDetails.fatherName}</p>
+                          <p className="text-sm text-gray-600 uppercase">SON OF {certificateData.userDetails.fatherName}</p>
                         )}
                       </div>
                       <div>
@@ -215,11 +216,11 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
                     <div className="space-y-3">
                       <div>
                         <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-medium">Name</p>
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-semibold text-gray-900 uppercase">
                           {certificateData.partnerForm?.firstName} {certificateData.partnerForm?.lastName}
                         </p>
                         {certificateData.partnerForm?.fatherName && (
-                          <p className="text-sm text-gray-600">Daughter of {certificateData.partnerForm.fatherName}</p>
+                          <p className="text-sm text-gray-600 uppercase">DAUGHTER OF {certificateData.partnerForm.fatherName}</p>
                         )}
                       </div>
                       <div>
@@ -238,8 +239,8 @@ const VerifyDocumentModal: React.FC<VerifyDocumentModalProps> = ({ isOpen, onClo
                       <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Registration Date</p>
                     </div>
                     <p className="font-semibold text-gray-900">
-                      {certificateData.registrationDate 
-                        ? safeFormatDateObject(new Date(certificateData.registrationDate), 'MMMM d, yyyy')
+                      {certificateData.registrationDate
+                        ? safeFormatDateObject(new Date(certificateData.registrationDate), 'dd-MM-yyyy')
                         : 'N/A'}
                     </p>
                   </div>

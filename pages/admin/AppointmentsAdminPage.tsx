@@ -26,6 +26,8 @@ const AppointmentsAdminPage: React.FC = () => {
       email: string;
       name: string;
       phone?: string;
+      dateOfBirth?: string;
+      idNumber?: string;
     };
   } | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -67,7 +69,7 @@ const AppointmentsAdminPage: React.FC = () => {
     setIsDetailsModalOpen(true);
     setIsLoadingDetails(true);
     setSelectedAppointment(null);
-    
+
     try {
       const details = await appointmentService.getAppointmentWithUserDetails(appointmentId);
       setSelectedAppointment(details);
@@ -125,7 +127,7 @@ const AppointmentsAdminPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-xs sm:text-sm lg:text-base text-gray-900 truncate">
-                      {safeFormatDate(slot.date, 'MMM d, yyyy')} at {slot.time}
+                      {safeFormatDate(slot.date, 'dd-MM-yyyy')} at {slot.time}
                     </p>
                     <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500">
                       {slot.capacity - slot.booked} of {slot.capacity} available
@@ -147,8 +149,8 @@ const AppointmentsAdminPage: React.FC = () => {
               </div>
             ) : (
               appointments.map((apt) => (
-                <div 
-                  key={apt.id} 
+                <div
+                  key={apt.id}
                   className="p-2.5 sm:p-3 lg:p-4 bg-gray-50 rounded-lg sm:rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
                   onClick={() => handleViewAppointmentDetails(apt.id)}
                 >
@@ -157,7 +159,7 @@ const AppointmentsAdminPage: React.FC = () => {
                       <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
                         <Calendar size={14} className="sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
                         <p className="font-medium text-xs sm:text-sm lg:text-base text-gray-900 truncate">
-                          {safeFormatDate(apt.date, 'MMM d, yyyy')} at {apt.time}
+                          {safeFormatDate(apt.date, 'dd-MM-yyyy')} at {apt.time}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -270,7 +272,7 @@ const AppointmentsAdminPage: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] sm:text-xs lg:text-sm text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
                         <p className="font-medium text-xs sm:text-sm text-gray-900">
-                          {safeFormatDate(selectedAppointment.user.dateOfBirth, 'MMMM d, yyyy')}
+                          {safeFormatDate(selectedAppointment.user.dateOfBirth, 'dd-MM-yyyy')}
                         </p>
                       </div>
                     </div>
@@ -289,39 +291,39 @@ const AppointmentsAdminPage: React.FC = () => {
                 </div>
               </div>
 
-            {/* Appointment Information */}
-            <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-5">
-              <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4 flex items-center gap-1.5 sm:gap-2">
-                <Calendar size={14} className="sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-gold-600" />
-                Appointment Information
-              </h3>
-              <div className="space-y-2 sm:space-y-3">
-                <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
-                  <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Date</span>
-                  <span className="font-medium text-xs sm:text-sm text-gray-900 truncate ml-2">
-                    {safeFormatDate(selectedAppointment.appointment.date, 'MMMM d, yyyy')}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
-                  <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Time</span>
-                  <span className="font-medium text-xs sm:text-sm text-gray-900">{selectedAppointment.appointment.time}</span>
-                </div>
-                <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
-                  <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Status</span>
-                  {getStatusBadge(selectedAppointment.appointment.status)}
-                </div>
-                <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
-                  <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Appointment ID</span>
-                  <span className="font-mono text-[10px] sm:text-xs text-gray-600 truncate ml-2">{selectedAppointment.appointment.id}</span>
-                </div>
-                <div className="flex items-center justify-between py-1.5 sm:py-2">
-                  <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Booked On</span>
-                  <span className="text-[10px] sm:text-xs text-gray-900 truncate ml-2">
-                    {safeFormatDateObject(new Date(selectedAppointment.appointment.createdAt), 'MMM d, yyyy h:mm a')}
-                  </span>
+              {/* Appointment Information */}
+              <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-5">
+                <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-2 sm:mb-3 lg:mb-4 flex items-center gap-1.5 sm:gap-2">
+                  <Calendar size={14} className="sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-gold-600" />
+                  Appointment Information
+                </h3>
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
+                    <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Date</span>
+                    <span className="font-medium text-xs sm:text-sm text-gray-900 truncate ml-2">
+                      {safeFormatDate(selectedAppointment.appointment.date, 'dd-MM-yyyy')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
+                    <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Time</span>
+                    <span className="font-medium text-xs sm:text-sm text-gray-900">{selectedAppointment.appointment.time}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
+                    <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Status</span>
+                    {getStatusBadge(selectedAppointment.appointment.status)}
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 sm:py-2 border-b border-gray-200">
+                    <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Appointment ID</span>
+                    <span className="font-mono text-[10px] sm:text-xs text-gray-600 truncate ml-2">{selectedAppointment.appointment.id}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 sm:py-2">
+                    <span className="text-[10px] sm:text-xs lg:text-sm text-gray-600">Booked On</span>
+                    <span className="text-[10px] sm:text-xs text-gray-900 truncate ml-2">
+                      {safeFormatDateObject(new Date(selectedAppointment.appointment.createdAt), 'dd-MM-yyyy HH:mm')}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
               {/* QR Code */}
               <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-5">

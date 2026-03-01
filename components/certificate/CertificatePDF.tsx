@@ -2,6 +2,7 @@ import React from 'react';
 import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer';
 import { Application } from '../../types';
 import { safeFormatDate } from '../../utils/dateUtils';
+import { formatAadhaar } from '../../utils/formatUtils';
 
 // Helper function to get image URL for local assets
 const getImageUrl = (path: string): string => {
@@ -60,15 +61,7 @@ Font.register({
   src: '/fonts/SCRIPTBL.TTF',
 });
 
-// Format Aadhaar number with spaces
-const formatAadhaar = (aadhaar: string | undefined): string => {
-  if (!aadhaar || aadhaar === 'N/A') return 'N/A';
-  const cleaned = aadhaar.replace(/\s/g, '');
-  if (cleaned.length === 12) {
-    return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 8)} ${cleaned.slice(8, 12)}`;
-  }
-  return aadhaar;
-};
+
 
 // Format address matching original format
 // Uses the exact address fields from the application form
@@ -270,7 +263,7 @@ const styles = StyleSheet.create({
   },
   consecutiveText: {
     fontFamily: 'Times',
-    fontSize: 10,
+    fontSize: 11,
     color: BLACK,
   },
   boldText: {
@@ -568,7 +561,7 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({
           {/* Certificate Number Row */}
           <View style={styles.consecutiveRow}>
             <Text style={styles.consecutiveText}>
-              <Text style={styles.boldText}>Certificate Number: </Text>{certificateData.consecutiveNumber}
+              <Text style={styles.boldText}>Certificate Number: {certificateData.consecutiveNumber}</Text>
             </Text>
             <Text style={styles.consecutiveText}>
               <Text style={styles.boldText}>Registration Date: {safeFormatDate(certificateData.registrationDate, 'dd-MM-yyyy')}</Text>
@@ -605,11 +598,17 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({
                 </View>
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Present Address:</Text>
-                  <Text style={styles.addressValue}>{userPresentAddr}</Text>
+                  <Text style={{
+                    ...styles.addressValue,
+                    fontSize: userPresentAddr.length > 120 ? 9 : userPresentAddr.length > 85 ? 10 : 12
+                  }}>{userPresentAddr}</Text>
                 </View>
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Permanent Address:</Text>
-                  <Text style={styles.addressValue}>{userPermanentAddr}</Text>
+                  <Text style={{
+                    ...styles.addressValue,
+                    fontSize: userPermanentAddr.length > 120 ? 9 : userPermanentAddr.length > 85 ? 10 : 12
+                  }}>{userPermanentAddr}</Text>
                 </View>
               </View>
             </View>
@@ -642,11 +641,17 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({
                 </View>
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Present Address:</Text>
-                  <Text style={styles.addressValue}>{partnerPresentAddr}</Text>
+                  <Text style={{
+                    ...styles.addressValue,
+                    fontSize: partnerPresentAddr.length > 120 ? 9 : partnerPresentAddr.length > 85 ? 10 : 12
+                  }}>{partnerPresentAddr}</Text>
                 </View>
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Permanent Address:</Text>
-                  <Text style={styles.addressValue}>{partnerPermanentAddr}</Text>
+                  <Text style={{
+                    ...styles.addressValue,
+                    fontSize: partnerPermanentAddr.length > 120 ? 9 : partnerPermanentAddr.length > 85 ? 10 : 12
+                  }}>{partnerPermanentAddr}</Text>
                 </View>
               </View>
             </View>

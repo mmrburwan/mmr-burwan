@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm your signup</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #fffbfb;
+            font-family: Helvetica, Arial, sans-serif;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        table {
+            border-collapse: collapse;
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+
+        .serif-font {
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        @media only screen and (max-width: 600px) {
+            .main-table {
+                width: 100% !important;
+            }
+
+            .padding-mobile {
+                padding: 20px !important;
+            }
+
+            .hero-text {
+                font-size: 28px !important;
+            }
+
+            .stack-mobile {
+                display: block !important;
+                width: 100% !important;
+                padding-bottom: 15px;
+            }
+
+            .border-right-mobile {
+                border-right: none !important;
+            }
+
+            .padding-left-mobile {
+                padding-left: 0 !important;
+            }
+        }
+    </style>
+</head>
+
+<body style="margin: 0; padding: 0; background-color: #fffbfb;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fffbfb;">
+        <tr>
+            <td align="center" style="padding: 40px 10px;">
+                <!-- Card Container -->
+                <table border="0" cellpadding="0" cellspacing="0" width="600" class="main-table"
+                    style="background-color: #fffbfb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #f0f0f0;">
+
+                    <!-- Header -->
+                    <tr>
+                        <td align="center" style="padding: 40px 0 20px 0;">
+                            <!-- CSS Logo M -->
+                            <div
+                                style="width: 44px; height: 44px; background-color: #d4af37; border-radius: 50%; line-height: 44px; text-align: center; color: #ffffff; font-family: 'Times New Roman', serif; font-size: 24px; font-weight: bold; margin-bottom: 12px;">
+                                M</div>
+                            <div class="serif-font"
+                                style="font-size: 18px; color: #0f172a; font-weight: bold; letter-spacing: 0.5px;">MMR
+                                BURWAN</div>
+                            <div
+                                style="font-size: 10px; color: #d4af37; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; font-weight: bold;">
+                                Official Government Service</div>
+                        </td>
+                    </tr>
+
+                    <!-- Hero Section -->
+                    <tr>
+                        <td align="center" class="padding-mobile" style="padding: 10px 60px 30px 60px;">
+                            <h1 class="serif-font hero-text"
+                                style="color: #0f172a; font-size: 32px; line-height: 1.2; margin: 0 0 15px 0; font-weight: 400;">
+                                Confirm your<br>
+                                <span style="font-style: italic; color: #d4af37; font-weight: 700;">signup</span>
+                            </h1>
+                            <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                                Follow this link to confirm your user and activate your account.
+                            </p>
+
+                            <!-- Button -->
+                            <a href="{{ .ConfirmationURL }}"
+                                style="background-color: #0f172a; color: #ffffff; display: inline-block; padding: 16px 40px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 15px; text-align: center; border: 1px solid #0f172a; box-shadow: 0 4px 6px rgba(15, 23, 42, 0.2);">
+                                Confirm your mail &rarr;
+                            </a>
+
+                            <p style="font-size: 12px; color: #94a3b8; margin-top: 25px;">
+                                If you did not sign up for this account, please ignore this email.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Secure Audit Badge Area (Preserved) -->
+                    <tr>
+                        <td class="padding-mobile" style="padding: 0 40px 40px 40px;">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%"
+                                style="background-color: #f0f0f0; border: 1px dashed #cbd5e1; border-radius: 8px;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                            <tr>
+                                                <td class="stack-mobile border-right-mobile" width="50%" valign="top"
+                                                    style="border-right: 1px solid #cbd5e1; padding-right: 15px;">
+                                                    <table border="0" cellpadding="0" cellspacing="0">
+                                                        <tr>
+                                                            <td valign="top" style="padding-top: 2px;">
+                                                                <div style="font-size: 18px;">🔒</div>
+                                                            </td>
+                                                            <td style="padding-left: 10px;">
+                                                                <div
+                                                                    style="color: #0f172a; font-weight: bold; font-size: 13px; margin-bottom: 2px;">
+                                                                    256-bit Encryption</div>
+                                                                <div
+                                                                    style="color: #64748b; font-size: 11px; line-height: 1.4;">
+                                                                    Data is encrypted at rest and in transit.</div>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                                <td class="stack-mobile padding-left-mobile" width="50%" valign="top"
+                                                    style="padding-left: 15px;">
+                                                    <table border="0" cellpadding="0" cellspacing="0">
+                                                        <tr>
+                                                            <td valign="top" style="padding-top: 2px;">
+                                                                <div style="font-size: 18px;">🛡️</div>
+                                                            </td>
+                                                            <td style="padding-left: 10px;">
+                                                                <div
+                                                                    style="color: #0f172a; font-weight: bold; font-size: 13px; margin-bottom: 2px;">
+                                                                    Official Portal</div>
+                                                                <div
+                                                                    style="color: #64748b; font-size: 11px; line-height: 1.4;">
+                                                                    Verified government-grade environment.</div>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #0f172a; padding: 40px; text-align: center;">
+                            <p
+                                style="color: #d4af37; font-size: 12px; font-weight: bold; margin: 0 0 10px 0; text-transform: uppercase;">
+                                Need Help?
+                            </p>
+                            <p style="color: #ffffff; font-size: 14px; margin: 0 0 20px 0;">
+                                Helpline: <strong style="color: #fff;">1800-123-4567</strong> &bull; Email:
+                                mmrburwan@gmail.com
+                            </p>
+
+                            <div style="height: 1px; background-color: #334155; width: 100%; margin: 20px 0;"></div>
+
+                            <p style="color: #94a3b8; font-size: 11px; line-height: 1.5; margin: 0;">
+                                &copy; 2025 MMR Burwan Official Portal.<br>
+                                Disclaimer: Site Contents designed, developed, maintained and updated by
+                                <span style="color: #d4af37;">
+                                    <a href="https://mmrburwan.com/epplicon" target="_blank"
+                                        style="color: #d4af37; text-decoration: none;">Epplicon Technologies</a>
+                                </span>.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Bottom Unsubscribe -->
+                <p style="text-align: center; color: #94a3b8; font-size: 12px; margin-top: 20px;">
+                    Verified & Secure Environment
+                </p>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

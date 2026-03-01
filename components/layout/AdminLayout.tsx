@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Calendar, 
-  FileText, 
-  MessageSquare, 
-  QrCode, 
+import {
+  LayoutDashboard,
+  Users,
+  Calendar,
+  FileText,
+  MessageSquare,
+  QrCode,
   ShieldCheck,
   Settings,
   LogOut,
@@ -71,9 +71,9 @@ const AdminLayout: React.FC = () => {
           <nav className="flex-1 px-2 sm:px-4 py-3 sm:py-4 lg:py-6 space-y-1.5 sm:space-y-2 min-h-0 overflow-y-auto">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path || 
-                              (item.path !== '/admin' && location.pathname.startsWith(item.path));
-              
+              const isActive = location.pathname === item.path ||
+                (item.path !== '/admin' && location.pathname.startsWith(item.path));
+
               return (
                 <Link
                   key={item.path}
@@ -82,8 +82,8 @@ const AdminLayout: React.FC = () => {
                   className={`
                     flex items-center gap-2 sm:gap-3 px-2.5 sm:px-4 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl
                     transition-all duration-200
-                    ${isActive 
-                      ? 'bg-gold-50 text-gold-700 font-medium shadow-sm' 
+                    ${isActive
+                      ? 'bg-gold-50 text-gold-700 font-medium shadow-sm'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }
                   `}
@@ -110,7 +110,7 @@ const AdminLayout: React.FC = () => {
 
       {/* Overlay for mobile */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/20 z-40 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -126,7 +126,7 @@ const AdminLayout: React.FC = () => {
           >
             {sidebarOpen ? <X size={20} className="sm:w-6 sm:h-6" /> : <Menu size={20} className="sm:w-6 sm:h-6" />}
           </button>
-          
+
           <div className="flex items-center gap-2 sm:gap-4 ml-auto">
             <div className="text-xs sm:text-sm text-gray-600">
               <span className="font-medium text-gray-900 truncate max-w-[120px] sm:max-w-none">{user?.name || 'Admin User'}</span>

@@ -4,15 +4,63 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { adminService } from '../../services/admin';
 import { certificateService } from '../../services/certificates';
-import { Application } from '../../types';
+import { Application, CertificateDetails, Certificate } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
 import VerifyApplicationModal from '../../components/admin/VerifyApplicationModal';
-import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText } from 'lucide-react';
+import DeleteApplicationModal from '../../components/admin/DeleteApplicationModal';
+import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText, Trash2, StickyNote } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
+
+
+const CircularProgress = ({
+  progress,
+  size = 48,
+  strokeWidth = 3,
+  children
+}: {
+  progress: number;
+  size?: number;
+  strokeWidth?: number;
+  children: React.ReactNode;
+}) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg className="absolute w-full h-full transform -rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#E5E7EB"
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#D4AF37"
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="transition-all duration-300 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center p-1">
+        {children}
+      </div>
+    </div>
+  );
+};
 
 interface ClientWithApplication {
   userId: string;
@@ -30,17 +78,85 @@ const ClientsPage: React.FC = () => {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [verifiedFilter, setVerifiedFilter] = useState<string>('all'); // 'all', 'verified', 'unverified', 'draft'
   const [isLoading, setIsLoading] = useState(true);
-  const [certificatesMap, setCertificatesMap] = useState<Record<string, boolean>>({});
+  const [certificatesMap, setCertificatesMap] = useState<Record<string, Certificate | null>>({});
   const [generatingCert, setGeneratingCert] = useState<string | null>(null);
   const [verifyModalState, setVerifyModalState] = useState<{
     isOpen: boolean;
     applicationId: string;
     certificateNumber?: string;
     registrationDate?: string;
+    certificateDetails?: CertificateDetails;
+    marriageDate?: string;
   }>({
     isOpen: false,
     applicationId: '',
   });
+
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isOpen: boolean;
+    applicationId: string;
+    groomName?: string;
+    brideName?: string;
+  }>({
+    isOpen: false,
+    applicationId: '',
+  });
+
+  const [commentModalState, setCommentModalState] = useState<{
+    isOpen: boolean;
+    applicationId: string;
+    comment: string;
+  }>({
+    isOpen: false,
+    applicationId: '',
+    comment: '',
+  });
+
+  const handleUpdateComment = async () => {
+    if (!user) return;
+    try {
+      await adminService.updateApplicationComment(
+        commentModalState.applicationId,
+        commentModalState.comment,
+        user.id,
+        user.name || user.email
+      );
+      showToast('Comment updated successfully', 'success');
+
+      // Update local state
+      const updatedClients = clients.map(c => {
+        if (c.application?.id === commentModalState.applicationId) {
+          return {
+            ...c,
+            application: {
+              ...c.application,
+              adminComment: commentModalState.comment
+            }
+          };
+        }
+        return c;
+      });
+      setClients(updatedClients);
+      // Re-apply filters if needed, but for simplicity we rely on next render or complex state mgmt
+      // For now just updating filteredClients as well if it contains the target
+      setFilteredClients(prev => prev.map(c => {
+        if (c.application?.id === commentModalState.applicationId) {
+          return {
+            ...c,
+            application: {
+              ...c.application,
+              adminComment: commentModalState.comment
+            }
+          };
+        }
+        return c;
+      }));
+
+      setCommentModalState({ isOpen: false, applicationId: '', comment: '' });
+    } catch (error: any) {
+      showToast(error.message || 'Failed to update comment', 'error');
+    }
+  };
 
   useEffect(() => {
     const loadClients = async () => {
@@ -65,14 +181,14 @@ const ClientsPage: React.FC = () => {
         setFilteredClients(clientsData);
 
         // Check which applications have certificates
-        const certMap: Record<string, boolean> = {};
+        const certMap: Record<string, Certificate | null> = {};
         await Promise.all(
           clientsData
             .filter(client => client.application?.verified && client.application?.id)
             .map(async (client) => {
               if (client.application?.id) {
                 const cert = await certificateService.getCertificateByApplicationId(client.application.id);
-                certMap[client.application.id] = !!cert;
+                certMap[client.application.id] = cert || null;
               }
             })
         );
@@ -87,7 +203,7 @@ const ClientsPage: React.FC = () => {
     loadClients();
   }, []);
 
-  const handleVerify = async (certificateNumber: string, registrationDate: string, registrarName: string) => {
+  const handleVerify = async (certificateNumber: string, registrationDate: string, registrarName: string, certificateDetails: CertificateDetails) => {
     if (!user) return;
 
     try {
@@ -97,7 +213,8 @@ const ClientsPage: React.FC = () => {
         user.name || user.email,
         certificateNumber,
         registrationDate,
-        registrarName
+        registrarName,
+        certificateDetails
       );
       showToast('Application verified successfully', 'success');
 
@@ -114,14 +231,14 @@ const ClientsPage: React.FC = () => {
       setFilteredClients(clientsData);
 
       // Reload certificate map
-      const certMap: Record<string, boolean> = {};
+      const certMap: Record<string, Certificate | null> = {};
       await Promise.all(
         clientsData
           .filter(client => client.application?.verified && client.application?.id)
           .map(async (client) => {
             if (client.application?.id) {
               const cert = await certificateService.getCertificateByApplicationId(client.application.id);
-              certMap[client.application.id] = !!cert;
+              certMap[client.application.id] = cert || null;
             }
           })
       );
@@ -130,6 +247,54 @@ const ClientsPage: React.FC = () => {
       setVerifyModalState({ isOpen: false, applicationId: '' });
     } catch (error: any) {
       showToast(error.message || 'Failed to verify application', 'error');
+      throw error;
+    }
+  };
+
+  const handleViewCertificate = async (cert: Certificate) => {
+    try {
+      const url = await certificateService.getSignedUrl(cert.id);
+      window.open(url, '_blank');
+    } catch (error) {
+      showToast('Failed to open certificate', 'error');
+    }
+  };
+
+  const handleDownloadCertificate = async (cert: Certificate) => {
+    try {
+      const url = await certificateService.getSignedUrl(cert.id);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Marriage-Certificate-${cert.certificateNumber || cert.verificationId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Certificate downloaded successfully', 'success');
+    } catch (error) {
+      showToast('Failed to generate download link', 'error');
+    }
+  };
+
+  const handleDeleteApplication = async (applicationId: string) => {
+    if (!user) return;
+
+    try {
+      await adminService.deleteApplication(applicationId, user.id, user.name || user.email);
+      showToast('Application deleted successfully', 'success');
+
+      // Refresh the list
+      const applications = await adminService.getAllApplications();
+      const userIds = [...new Set(applications.map(app => app.userId))];
+      const emailMap = await adminService.getUserEmails(userIds);
+      const clientsData: ClientWithApplication[] = applications.map((application) => ({
+        userId: application.userId,
+        email: emailMap[application.userId] || 'N/A',
+        application,
+      }));
+      setClients(clientsData);
+      setFilteredClients(clientsData);
+    } catch (error: any) {
+      showToast(error.message || 'Failed to delete application', 'error');
       throw error;
     }
   };
@@ -160,12 +325,20 @@ const ClientsPage: React.FC = () => {
         // Bride email (check if it exists in partnerForm - for future use)
         const brideEmail = ((client.application?.partnerForm as any)?.email || '').trim().toLowerCase();
 
+        // Groom phone
+        const groomPhone = client.application?.userDetails?.mobileNumber?.trim() || '';
+
+        // Bride phone
+        const bridePhone = client.application?.partnerForm?.mobileNumber?.trim() || '';
+
         // Only check fields that have actual values
         return (
           (groomName && groomName.includes(searchLower)) ||
           (brideName && brideName.includes(searchLower)) ||
           (groomEmail && groomEmail.includes(searchLower)) ||
-          (brideEmail && brideEmail.includes(searchLower))
+          (brideEmail && brideEmail.includes(searchLower)) ||
+          (groomPhone && groomPhone.includes(searchLower)) ||
+          (bridePhone && bridePhone.includes(searchLower))
         );
       });
     }
@@ -181,6 +354,16 @@ const ClientsPage: React.FC = () => {
           (client.application.status === 'submitted' || client.application.status === 'under_review') &&
           (client.application.verified === false || client.application.verified === undefined)
         );
+      } else if (verifiedFilter === 'rejected') {
+        // Show applications with rejected documents that haven't been re-uploaded
+        // Note: When a document is re-uploaded, its status changes to 'pending'.
+        // So checking for status === 'rejected' is sufficient.
+        filtered = filtered.filter((client) => {
+          if (!client.application || !client.application.documents) return false;
+          return client.application.documents.some(
+            (doc) => doc.status === 'rejected'
+          );
+        });
       } else if (verifiedFilter === 'draft') {
         filtered = filtered.filter((client) => client.application?.status === 'draft');
       }
@@ -230,7 +413,7 @@ const ClientsPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4">
           <div className="flex-1 min-w-0">
             <Input
-              placeholder="Search by groom/bride name or email..."
+              placeholder="Search by groom/bride name, email or phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               leftIcon={<Search size={16} className="sm:w-5 sm:h-5" />}
@@ -244,6 +427,7 @@ const ClientsPage: React.FC = () => {
             <option value="all">All Verification</option>
             <option value="verified">Verified</option>
             <option value="unverified">Unverified</option>
+            <option value="rejected">Rejected Documents</option>
             <option value="draft">Draft</option>
           </select>
         </div>
@@ -269,9 +453,14 @@ const ClientsPage: React.FC = () => {
                   {/* Header with Status Badge */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-100 to-gold-200 flex items-center justify-center shadow-sm">
-                        <Users size={18} className="text-gold-600" />
-                      </div>
+                      <CircularProgress
+                        progress={client.application?.progress || 0}
+                        size={52}
+                      >
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-gold-100 to-gold-200 flex items-center justify-center shadow-sm">
+                          <Users size={18} className="text-gold-600" />
+                        </div>
+                      </CircularProgress>
                       <div>
                         <p className="text-[10px] font-medium text-gold-600 uppercase tracking-wide">Couple</p>
                       </div>
@@ -283,6 +472,18 @@ const ClientsPage: React.FC = () => {
                   </div>
 
                   {/* Groom & Bride Names */}
+                  {client.application?.adminComment && (
+                    <div className="mb-2 bg-amber-50 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
+                      <div className="flex items-start gap-2.5">
+                        <div className="bg-amber-100 p-1 rounded-md mt-0.5">
+                          <StickyNote size={12} className="text-amber-700 fill-amber-300/50" />
+                        </div>
+                        <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                          {client.application.adminComment}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="bg-gray-50 rounded-xl p-3 space-y-2">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
@@ -323,28 +524,12 @@ const ClientsPage: React.FC = () => {
                   </div>
 
                   {/* Status Info Row */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="text-center p-2 bg-gray-50 rounded-lg">
-                      <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1">Progress</p>
-                      {client.application ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="w-full bg-gray-200 rounded-full h-1.5">
-                            <div
-                              className="bg-gold-500 h-1.5 rounded-full transition-all duration-300"
-                              style={{ width: `${client.application.progress}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] font-medium text-gray-700">{client.application.progress}%</span>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] text-gray-400">-</span>
-                      )}
-                    </div>
+                  <div className="grid grid-cols-1 gap-2">
                     <div className="text-center p-2 bg-gray-50 rounded-lg">
                       <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1">Updated</p>
                       <p className="text-[10px] font-medium text-gray-700">
                         {client.application?.lastUpdated
-                          ? safeFormatDateObject(new Date(client.application.lastUpdated), 'MMM d')
+                          ? safeFormatDateObject(new Date(client.application.lastUpdated), 'dd-MM-yyyy')
                           : '-'
                         }
                       </p>
@@ -367,7 +552,7 @@ const ClientsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
+
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
                     {client.application && (
                       <Button
@@ -391,6 +576,23 @@ const ClientsPage: React.FC = () => {
                       <MessageSquare size={14} className="mr-1" />
                       Message
                     </Button>
+                    {client.application && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`!text-[11px] !px-3 !py-1.5 !rounded-lg ${client.application.adminComment ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'} flex-1`}
+                        onClick={() => {
+                          setCommentModalState({
+                            isOpen: true,
+                            applicationId: client.application!.id,
+                            comment: client.application!.adminComment || '',
+                          });
+                        }}
+                      >
+                        <StickyNote size={14} className={`mr-1 ${client.application.adminComment ? 'fill-current' : ''}`} />
+                        {client.application.adminComment ? 'Edit Note' : 'Add Note'}
+                      </Button>
+                    )}
                     {client.application && client.application.status === 'submitted' && (
                       <>
                         {client.application.verified ? (
@@ -426,7 +628,7 @@ const ClientsPage: React.FC = () => {
                               <XCircle size={14} className="mr-1" />
                               Unverify
                             </Button>
-                            {!certificatesMap[client.application.id] && (
+                            {!certificatesMap[client.application.id] ? (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -442,10 +644,11 @@ const ClientsPage: React.FC = () => {
                                       user.name || user.email
                                     );
                                     showToast('Certificate generated successfully', 'success');
-                                    // Update certificate map
+                                    // Refresh logic to get the new certificate
+                                    const cert = await certificateService.getCertificateByApplicationId(client.application!.id);
                                     setCertificatesMap(prev => ({
                                       ...prev,
-                                      [client.application!.id]: true,
+                                      [client.application!.id]: cert || null,
                                     }));
                                   } catch (error: any) {
                                     showToast(error.message || 'Failed to generate certificate', 'error');
@@ -457,6 +660,27 @@ const ClientsPage: React.FC = () => {
                                 <FileText size={14} className="mr-1" />
                                 {generatingCert === client.application.id ? 'Generating...' : 'Generate'}
                               </Button>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 flex-1"
+                                  onClick={() => handleViewCertificate(certificatesMap[client.application!.id]!)}
+                                >
+                                  <FileText size={14} className="mr-1" />
+                                  View Cert
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex-1"
+                                  onClick={() => handleDownloadCertificate(certificatesMap[client.application!.id]!)}
+                                >
+                                  <FileCheck size={14} className="mr-1" />
+                                  Download
+                                </Button>
+                              </>
                             )}
                           </>
                         ) : (
@@ -470,6 +694,7 @@ const ClientsPage: React.FC = () => {
                                 applicationId: client.application!.id,
                                 certificateNumber: client.application?.certificateNumber,
                                 registrationDate: client.application?.registrationDate,
+                                certificateDetails: client.application?.certificateDetails,
                               });
                             }}
                           >
@@ -478,6 +703,31 @@ const ClientsPage: React.FC = () => {
                           </Button>
                         )}
                       </>
+                    )}
+                    {client.application && client.application.status === 'draft' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex-1"
+                        onClick={() => {
+                          const groomName = client.application?.userDetails
+                            ? `${client.application.userDetails.firstName}${client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''}`
+                            : undefined;
+                          const brideName = client.application?.partnerForm
+                            ? `${client.application.partnerForm.firstName}${client.application.partnerForm.lastName ? ' ' + client.application.partnerForm.lastName : ''}`
+                            : undefined;
+
+                          setDeleteModalState({
+                            isOpen: true,
+                            applicationId: client.application!.id,
+                            groomName,
+                            brideName,
+                          });
+                        }}
+                      >
+                        <Trash2 size={14} className="mr-1" />
+                        Delete
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -495,7 +745,6 @@ const ClientsPage: React.FC = () => {
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Phone & Email</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Status</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Actions</th>
-                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Progress</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Last Updated</th>
               </tr>
             </thead>
@@ -515,12 +764,26 @@ const ClientsPage: React.FC = () => {
                   <tr key={client.application?.id || client.userId} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
                       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
-                          <Users size={14} className="sm:w-5 sm:h-5 text-gold-600" />
-                        </div>
+                        <CircularProgress
+                          progress={client.application?.progress || 0}
+                          size={46}
+                        >
+                          <div className="w-full h-full rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
+                            <Users size={16} className="text-gold-600" />
+                          </div>
+                        </CircularProgress>
                         <div className="flex flex-col">
+                          {client.application?.adminComment && (
+                            <div className="mb-1.5 flex items-start gap-1.5 p-1.5 bg-amber-50/80 border border-amber-200/60 rounded-md shadow-sm w-fit max-w-[240px]">
+                              <StickyNote size={11} className="mt-0.5 text-amber-600 fill-amber-100 flex-shrink-0" />
+                              <span className="text-[10px] text-amber-900 font-medium line-clamp-2 leading-tight" title={client.application.adminComment}>
+                                {client.application.adminComment}
+                              </span>
+                            </div>
+                          )}
                           <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">🤵 {groomName}</span>
                           <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">👰 {brideName}</span>
+
                         </div>
                       </div>
                     </td>
@@ -574,6 +837,24 @@ const ClientsPage: React.FC = () => {
                           <MessageSquare size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
                           <span className="hidden sm:inline">Message</span>
                         </Button>
+                        {client.application && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 ${client.application.adminComment ? 'text-amber-700 hover:bg-amber-50' : ''}`}
+                            onClick={() => {
+                              setCommentModalState({
+                                isOpen: true,
+                                applicationId: client.application!.id,
+                                comment: client.application!.adminComment || '',
+                              });
+                            }}
+                            title={client.application.adminComment}
+                          >
+                            <StickyNote size={12} className={`sm:w-4 sm:h-4 mr-0.5 sm:mr-1 ${client.application.adminComment ? 'fill-current' : ''}`} />
+                            <span className="hidden sm:inline">{client.application.adminComment ? 'Note' : 'Note'}</span>
+                          </Button>
+                        )}
                         {client.application && client.application.status === 'submitted' && (
                           <>
                             {client.application.verified ? (
@@ -609,7 +890,7 @@ const ClientsPage: React.FC = () => {
                                   <XCircle size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
                                   <span className="hidden sm:inline">Unverify</span>
                                 </Button>
-                                {!certificatesMap[client.application.id] && (
+                                {!certificatesMap[client.application.id] ? (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -625,10 +906,11 @@ const ClientsPage: React.FC = () => {
                                           user.name || user.email
                                         );
                                         showToast('Certificate generated successfully', 'success');
-                                        // Update certificate map
+                                        // Refresh certificate map
+                                        const cert = await certificateService.getCertificateByApplicationId(client.application!.id);
                                         setCertificatesMap(prev => ({
                                           ...prev,
-                                          [client.application!.id]: true,
+                                          [client.application!.id]: cert || null,
                                         }));
                                       } catch (error: any) {
                                         showToast(error.message || 'Failed to generate certificate', 'error');
@@ -642,6 +924,27 @@ const ClientsPage: React.FC = () => {
                                       {generatingCert === client.application.id ? 'Generating...' : 'Generate Cert'}
                                     </span>
                                   </Button>
+                                ) : (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-blue-600 hover:bg-blue-50"
+                                      onClick={() => handleViewCertificate(certificatesMap[client.application!.id]!)}
+                                    >
+                                      <FileText size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                      <span className="hidden sm:inline">View</span>
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-indigo-600 hover:bg-indigo-50"
+                                      onClick={() => handleDownloadCertificate(certificatesMap[client.application!.id]!)}
+                                    >
+                                      <FileCheck size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                      <span className="hidden sm:inline">Download</span>
+                                    </Button>
+                                  </>
                                 )}
                               </>
                             ) : (
@@ -655,6 +958,8 @@ const ClientsPage: React.FC = () => {
                                     applicationId: client.application!.id,
                                     certificateNumber: client.application?.certificateNumber,
                                     registrationDate: client.application?.registrationDate,
+                                    certificateDetails: client.application?.certificateDetails,
+                                    marriageDate: (client.application?.declarations as any)?.marriageDate || (client.application?.declarations as any)?.marriageRegistrationDate,
                                   });
                                 }}
                               >
@@ -664,26 +969,38 @@ const ClientsPage: React.FC = () => {
                             )}
                           </>
                         )}
+                        {client.application && client.application.status === 'draft' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-red-600 hover:bg-red-50"
+                            onClick={() => {
+                              const groomName = client.application?.userDetails
+                                ? `${client.application.userDetails.firstName}${client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''}`
+                                : undefined;
+                              const brideName = client.application?.partnerForm
+                                ? `${client.application.partnerForm.firstName}${client.application.partnerForm.lastName ? ' ' + client.application.partnerForm.lastName : ''}`
+                                : undefined;
+
+                              setDeleteModalState({
+                                isOpen: true,
+                                applicationId: client.application!.id,
+                                groomName,
+                                brideName,
+                              });
+                            }}
+                            title="Delete Draft"
+                          >
+                            <Trash2 size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                            <span className="hidden sm:inline">Delete</span>
+                          </Button>
+                        )}
                       </div>
                     </td>
-                    <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
-                      {client.application ? (
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                          <div className="w-16 sm:w-20 lg:w-24 bg-gray-200 rounded-full h-1.5 sm:h-2">
-                            <div
-                              className="bg-gold-500 h-1.5 sm:h-2 rounded-full"
-                              style={{ width: `${client.application.progress}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] sm:text-xs text-gray-500">{client.application.progress}%</span>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] sm:text-xs text-gray-400">-</span>
-                      )}
-                    </td>
+
                     <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm text-gray-600">
                       {client.application?.lastUpdated
-                        ? safeFormatDateObject(new Date(client.application.lastUpdated), 'MMM d, yyyy')
+                        ? safeFormatDateObject(new Date(client.application.lastUpdated), 'dd-MM-yyyy')
                         : '-'
                       }
                     </td>
@@ -702,6 +1019,49 @@ const ClientsPage: React.FC = () => {
         )}
       </Card>
 
+      {/* Comment Modal */}
+      {commentModalState.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl transform transition-all">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              {commentModalState.comment ? 'Edit Application Note' : 'Add Application Note'}
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Private Admin Note
+                </label>
+                <textarea
+                  className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent resize-none"
+                  placeholder="Enter internal notes about this application..."
+                  value={commentModalState.comment}
+                  onChange={(e) => setCommentModalState(prev => ({ ...prev, comment: e.target.value }))}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This note is only visible to admins.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCommentModalState(prev => ({ ...prev, isOpen: false }))}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdateComment}
+                  className="flex-1"
+                >
+                  Save Note
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Verify Application Modal */}
       <VerifyApplicationModal
         isOpen={verifyModalState.isOpen}
@@ -710,6 +1070,18 @@ const ClientsPage: React.FC = () => {
         applicationId={verifyModalState.applicationId}
         currentCertificateNumber={verifyModalState.certificateNumber}
         currentRegistrationDate={verifyModalState.registrationDate}
+        initialCertificateDetails={verifyModalState.certificateDetails}
+        marriageDate={verifyModalState.marriageDate}
+      />
+
+      {/* Delete Application Confirmation Modal */}
+      <DeleteApplicationModal
+        isOpen={deleteModalState.isOpen}
+        onClose={() => setDeleteModalState({ ...deleteModalState, isOpen: false })}
+        onConfirm={() => handleDeleteApplication(deleteModalState.applicationId)}
+        applicationId={deleteModalState.applicationId}
+        groomName={deleteModalState.groomName}
+        brideName={deleteModalState.brideName}
       />
     </div>
   );

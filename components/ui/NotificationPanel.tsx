@@ -33,7 +33,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ userId, isOpen, o
     const handleClickOutside = (event: MouseEvent) => {
       // Don't close the panel if the modal is open (clicks on modal are outside panelRef)
       if (isModalOpen) return;
-      
+
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
         onClose();
       }
@@ -221,9 +221,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ userId, isOpen, o
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
                             <h3
-                              className={`text-xs sm:text-sm font-semibold ${
-                                !notification.read ? 'text-gray-900' : 'text-gray-700'
-                              }`}
+                              className={`text-xs sm:text-sm font-semibold ${!notification.read ? 'text-gray-900' : 'text-gray-700'
+                                }`}
                             >
                               {notification.title}
                             </h3>
@@ -235,7 +234,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ userId, isOpen, o
                             {truncateText(notification.message, 100)}
                           </p>
                           <p className="text-[10px] sm:text-xs text-gray-400">
-                            {safeFormatDate(notification.createdAt, 'MMM d, h:mm a')}
+                            {safeFormatDate(notification.createdAt, 'dd-MM-yyyy HH:mm')}
                           </p>
                         </div>
                       </div>

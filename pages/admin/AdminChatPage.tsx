@@ -62,7 +62,7 @@ const AdminChatPage: React.FC = () => {
         console.log('Loaded conversations for admin:', convs);
         setConversations(convs);
         setFilteredConversations(convs);
-        
+
         // If userId param exists, select that conversation
         const userId = searchParams.get('userId');
         if (userId) {
@@ -92,14 +92,14 @@ const AdminChatPage: React.FC = () => {
         if (index >= 0) {
           const updated = [...prev];
           updated[index] = updatedConv;
-          const sorted = updated.sort((a, b) => 
+          const sorted = updated.sort((a, b) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           );
           setFilteredConversations(sorted);
           return sorted;
         } else {
           // New conversation - add it
-          const newList = [updatedConv, ...prev].sort((a, b) => 
+          const newList = [updatedConv, ...prev].sort((a, b) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           );
           setFilteredConversations(newList);
@@ -141,7 +141,7 @@ const AdminChatPage: React.FC = () => {
         const msgs = await messageService.getMessages(selectedConversation);
         setMessages(msgs);
         await messageService.markAsRead(selectedConversation, user.id);
-        
+
         // Update conversation unread count
         setConversations((prev) =>
           prev.map((conv) =>
@@ -169,7 +169,7 @@ const AdminChatPage: React.FC = () => {
           return updated;
         }
         // Add new message and sort by timestamp
-        return [...prev, newMessage].sort((a, b) => 
+        return [...prev, newMessage].sort((a, b) =>
           new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
         );
       });
@@ -239,28 +239,28 @@ const AdminChatPage: React.FC = () => {
         adminName,
         textToSend
       );
-      
+
       // Update conversation's last message immediately for better UX
       setConversations((prev) =>
         prev.map((conv) =>
           conv.id === selectedConversation
-            ? { 
-                ...conv, 
-                lastMessage: {
-                  id: `temp-${Date.now()}`,
-                  conversationId: selectedConversation,
-                  senderId: user.id,
-                  senderName: adminName,
-                  content: textToSend,
-                  status: 'sent',
-                  timestamp: new Date().toISOString(),
-                },
-                updatedAt: new Date().toISOString(),
-              }
+            ? {
+              ...conv,
+              lastMessage: {
+                id: `temp-${Date.now()}`,
+                conversationId: selectedConversation,
+                senderId: user.id,
+                senderName: adminName,
+                content: textToSend,
+                status: 'sent',
+                timestamp: new Date().toISOString(),
+              },
+              updatedAt: new Date().toISOString(),
+            }
             : conv
         )
       );
-      
+
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
@@ -299,7 +299,7 @@ const AdminChatPage: React.FC = () => {
     } else if (days < 7) {
       return safeFormatDateObject(date, 'EEE');
     } else {
-      return safeFormatDateObject(date, 'MMM d');
+      return safeFormatDateObject(date, 'dd-MM-yyyy');
     }
   };
 
@@ -435,7 +435,7 @@ const AdminChatPage: React.FC = () => {
                           try {
                             // Find the user's application
                             const application = await applicationService.getApplication(currentConversation.userId);
-                            
+
                             if (application) {
                               // Navigate to application details page
                               navigate(`/admin/applications/${application.id}`);
@@ -463,7 +463,7 @@ const AdminChatPage: React.FC = () => {
                     messages.map((msg, index) => {
                       const isOwn = msg.senderId === user?.id;
                       const showAvatar = index === 0 || messages[index - 1].senderId !== msg.senderId;
-                      const showTime = index === messages.length - 1 || 
+                      const showTime = index === messages.length - 1 ||
                         new Date(msg.timestamp).getTime() - new Date(messages[index + 1].timestamp).getTime() > 300000;
 
                       return (
@@ -534,8 +534,8 @@ const AdminChatPage: React.FC = () => {
                       className="flex-1 !text-xs sm:!text-sm"
                       disabled={!user || isSending}
                     />
-                    <Button 
-                      variant="primary" 
+                    <Button
+                      variant="primary"
                       onClick={handleSend}
                       disabled={!messageText.trim() || !user || isSending}
                       isLoading={isSending}

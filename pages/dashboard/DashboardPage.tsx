@@ -357,7 +357,7 @@ const DashboardPage: React.FC = () => {
                 <div className="space-y-2">
                   {appointment.date && (
                     <p className="font-medium text-xs sm:text-sm text-gray-900">
-                      {safeFormatDate(appointment.date, 'MMM d, yyyy')} at {appointment.time}
+                      {safeFormatDate(appointment.date, 'dd-MM-yyyy')} at {appointment.time}
                     </p>
                   )}
                   <div className="flex gap-2">
@@ -413,7 +413,7 @@ const DashboardPage: React.FC = () => {
                 </p>
                 {application.verifiedAt && (
                   <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
-                    {t('cards.certificate.verifiedOn', { date: safeFormatDate(application.verifiedAt, 'MMM d, yyyy') })}
+                    {t('cards.certificate.verifiedOn', { date: safeFormatDate(application.verifiedAt, 'dd-MM-yyyy') })}
                   </p>
                 )}
                 {application.certificateNumber && (

@@ -116,7 +116,7 @@ const AuditPage: React.FC = () => {
                   {log.resourceType}: {log.resourceId}
                 </p>
                 <p className="text-[10px] sm:text-xs text-gray-500 flex-shrink-0">
-                  {safeFormatDateObject(new Date(log.timestamp), 'MMM d, yyyy HH:mm')}
+                  {safeFormatDateObject(new Date(log.timestamp), 'dd-MM-yyyy HH:mm')}
                 </p>
               </div>
             </div>

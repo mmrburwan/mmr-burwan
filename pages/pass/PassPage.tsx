@@ -115,7 +115,7 @@ const PassPage: React.FC = () => {
                 <span className="text-xs sm:text-sm text-gray-700 font-medium">Date</span>
               </div>
               <span className="font-bold text-xs sm:text-sm text-gray-900">
-                {safeFormatDate(appointment.date, 'EEE, MMM d, yyyy')}
+                {safeFormatDate(appointment.date, 'dd-MM-yyyy')}
               </span>
             </div>
             <div className="flex items-center justify-between py-2 sm:py-2.5 border-b border-gray-200">
@@ -187,7 +187,7 @@ const PassPage: React.FC = () => {
             variant="outline"
             size="sm"
             className="flex-1 !text-xs sm:!text-sm"
-            onClick={() => { if (navigator.share) { navigator.share({ title: 'Appointment Pass', text: `Appointment on ${safeFormatDate(appointment.date, 'MMM d, yyyy')} at ${appointment.time}` }); } }}
+            onClick={() => { if (navigator.share) { navigator.share({ title: 'Appointment Pass', text: `Appointment on ${safeFormatDate(appointment.date, 'dd-MM-yyyy')} at ${appointment.time}` }); } }}
           >
             <Share2 size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             Share

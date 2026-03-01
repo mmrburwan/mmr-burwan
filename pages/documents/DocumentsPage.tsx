@@ -189,7 +189,7 @@ const DocumentsPage: React.FC = () => {
         });
       }
 
-      // Groom's Second Doc (10th Certificate or Voter ID)
+      // Groom's Second Doc (Madhyamik Admit Card or Voter ID)
       if (selectedFiles.has(documentTypes.userSecondDoc)) {
         const file = selectedFiles.get(documentTypes.userSecondDoc)!;
         const fileName = file.name.toLowerCase();
@@ -210,7 +210,7 @@ const DocumentsPage: React.FC = () => {
         });
       }
 
-      // Bride's Second Doc (10th Certificate or Voter ID)
+      // Bride's Second Doc (Madhyamik Admit Card or Voter ID)
       if (selectedFiles.has(documentTypes.partnerSecondDoc)) {
         const file = selectedFiles.get(documentTypes.partnerSecondDoc)!;
         const fileName = file.name.toLowerCase();
@@ -417,7 +417,7 @@ const DocumentsPage: React.FC = () => {
   const getDocumentTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       aadhaar: 'Aadhaar Card',
-      tenth_certificate: '10th Certificate',
+      tenth_certificate: 'Madhyamik Admit Card',
       voter_id: 'Voter ID',
       id: 'ID Document',
       photo: 'Photo',
@@ -639,7 +639,7 @@ const DocumentsPage: React.FC = () => {
           {/* Groom's Documents */}
           <div className="mb-5 sm:mb-6">
             <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">Groom's Documents</h3>
-            <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">Aadhaar card + 10th certificate or Voter ID</p>
+            <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">Aadhaar card + Madhyamik Admit Card or Voter ID</p>
 
             <div className="space-y-3 sm:space-y-4">
               {/* Groom's Aadhaar */}
@@ -666,7 +666,7 @@ const DocumentsPage: React.FC = () => {
               {/* Groom's Second Document */}
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-                  10th Certificate / Voter ID <span className="text-rose-600">*</span>
+                  Madhyamik Admit Card / Voter ID <span className="text-rose-600">*</span>
                 </label>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <input type="file" accept="image/*,.pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const fileName = file.name.toLowerCase(); const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate'; handleFileSelection(file, documentTypes.userSecondDoc, 'user', type); } }} className="hidden" id="user-second-doc" disabled={!isUploadEnabled} />
@@ -689,7 +689,7 @@ const DocumentsPage: React.FC = () => {
           {/* Bride's Documents */}
           <div className="mb-5 sm:mb-6 pt-4 sm:pt-5 border-t border-gray-200">
             <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">Bride's Documents</h3>
-            <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">Aadhaar card + 10th certificate or Voter ID</p>
+            <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">Aadhaar card + Madhyamik Admit Card or Voter ID</p>
 
             <div className="space-y-3 sm:space-y-4">
               {/* Bride's Aadhaar */}
@@ -716,7 +716,7 @@ const DocumentsPage: React.FC = () => {
               {/* Bride's Second Document */}
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-                  10th Certificate / Voter ID <span className="text-rose-600">*</span>
+                  Madhyamik Admit Card / Voter ID <span className="text-rose-600">*</span>
                 </label>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <input type="file" accept="image/*,.pdf" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const fileName = file.name.toLowerCase(); const type = fileName.includes('voter') || fileName.includes('voterid') ? 'voter_id' : 'tenth_certificate'; handleFileSelection(file, documentTypes.partnerSecondDoc, 'partner', type); } }} className="hidden" id="partner-second-doc" disabled={!isUploadEnabled} />

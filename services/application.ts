@@ -296,6 +296,8 @@ export const applicationService = {
       isProxyApplication: data.is_proxy_application || false,
       offlineApplicantContact: data.offline_applicant_contact,
       proxyUserEmail: data.proxy_user_email,
+      certificateDetails: data.certificate_details,
+      adminComment: data.admin_comment,
     };
   },
 };

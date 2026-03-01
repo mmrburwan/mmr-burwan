@@ -47,8 +47,8 @@ const AcknowledgementSlipTemplate: React.FC<AcknowledgementSlipTemplateProps> = 
                 </h4>
                 <div className="bg-red-50 p-3 rounded-lg border border-red-100 text-xs text-gray-800 leading-relaxed font-serif print:bg-transparent print:border print:border-gray-200">
                     <p className="text-[15px] font-bold">বি.দ্র. ম্যারেজ রেজিস্ট্রি অফিসে নিকাহ রেজিস্ট্রেশনের জন্য নিম্নলিখিত ডকুমেন্ট গুলো আনা বাধ্যতামূলক </p>
-                    <p className="text-[13px] mb-2 font-bold"> 1. পাত্র-পাত্রী উভয়ের আধার কার্ড। </p>
-                    <p className="text-[13px] mb-2 font-bold"> 2. পাত্র-পাত্রী উভয়ের দশম শ্রেণীর এডমিট কার্ড অথবা ভোটার আইডি যেটা ওয়েবসাইটে আপলোড করা হয়েছে। </p>
+                    <p className="text-[13px] mb-2 font-bold"> 1. পাত্র-পাত্রী উভয়ের আধার কার্ডের জেরক্স। </p>
+                    <p className="text-[13px] mb-2 font-bold"> 2. পাত্র-পাত্রী উভয়ের দশম শ্রেণীর এডমিট কার্ড অথবা ভোটার আইডি যেটা ওয়েবসাইটে আপলোড করা হয়েছে সেটার জেরক্স। </p>
                     <p className="text-[13px] mb-2 font-bold"> 3. তিন কপি জয়েন্ট রঙিন পাসপোর্ট সাইজ ছবি। </p>
                     <p className="text-[13px] mb-2 font-bold"> 4. ফর্ম পূরণ করার পর Acknowledgement Slip টার এক কপি জেরক্স সঙ্গে আনুন। </p>
                 </div>
@@ -145,13 +145,10 @@ const AcknowledgementSlipTemplate: React.FC<AcknowledgementSlipTemplateProps> = 
                 </div>
             </div>
 
-
-
             {/* Footer */}
             <div className="mt-8 text-center text-[10px] text-gray-400 print:mt-auto print:pt-4 print:fixed print:bottom-4 print:left-0 print:right-0">
                 <p>© MMR Burwan Official Portal. This is a computer generated slip.</p>
             </div>
-
         </div>
     );
 };

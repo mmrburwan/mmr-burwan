@@ -111,7 +111,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
               )}
             </div>
             <p className="text-[10px] sm:text-xs text-gray-500">
-              {safeFormatDate(notification.createdAt, 'MMM d, yyyy h:mm a')}
+              {safeFormatDate(notification.createdAt, 'dd-MM-yyyy HH:mm')}
             </p>
           </div>
         </div>
@@ -181,19 +181,19 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
                       const application = await applicationService.getApplication(user.id);
                       if (!application) throw new Error('Application not found');
                       if (!application.verified) throw new Error('Application is not yet verified');
-                      
+
                       // Check if certificate exists and download is enabled (double-check)
                       const { certificateService } = await import('../../services/certificates');
                       const certificate = await certificateService.getCertificateByApplicationId(application.id);
                       if (!certificate) {
                         throw new Error('Certificate is not yet available. Please wait for the administrator to generate it.');
                       }
-                      
+
                       // Check if download is enabled by admin
                       if (!certificate.canDownload) {
                         throw new Error('Download permission has not been granted yet. Please contact administrator.');
                       }
-                      
+
                       await downloadCertificate(application);
                       onClose();
                       if (onNavigate) onNavigate();

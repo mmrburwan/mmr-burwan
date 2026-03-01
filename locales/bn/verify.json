@@ -2,7 +2,7 @@
   "title": "সার্টিফিকেট যাচাই করুন",
   "subtitle": "বিবরণ যাচাই করতে সার্টিফিকেট নম্বর লিখুন",
   "certificateNumber": "সার্টিফিকেট নম্বর",
-  "certificateNumberPlaceholder": "যেমন, WB-MSD-BRW-V-5-C-2025-257-2026-599",
+  "certificateNumberPlaceholder": "যেমন, WBMSDBRWV5C20252572026599",
   "verify": "সার্টিফিকেট যাচাই করুন",
   "verifying": "যাচাই করা হচ্ছে...",
   "notFound": "সার্টিফিকেট পাওয়া যায়নি",

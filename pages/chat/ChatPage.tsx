@@ -35,7 +35,7 @@ const ChatPage: React.FC = () => {
     const loadConversations = async () => {
       try {
         let convs = await messageService.getConversations(user.id);
-        
+
         // Remove duplicates - keep only the most recent one for each user_id/admin_id combination
         const uniqueConvs = convs.reduce((acc, conv) => {
           const key = `${conv.userId}-${conv.adminId || 'null'}`;
@@ -51,17 +51,17 @@ const ChatPage: React.FC = () => {
           }
           return acc;
         }, [] as Conversation[]);
-        
+
         // Sort by updated_at
-        uniqueConvs.sort((a, b) => 
+        uniqueConvs.sort((a, b) =>
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
-        
+
         if (uniqueConvs.length === 0) {
           const newConv = await messageService.getOrCreateConversation(user.id);
           uniqueConvs.push(newConv);
         }
-        
+
         setConversations(uniqueConvs);
         if (!selectedConversation && uniqueConvs.length > 0) {
           setSelectedConversation(uniqueConvs[0].id);
@@ -93,23 +93,23 @@ const ChatPage: React.FC = () => {
           }
           return acc;
         }, [] as Conversation[]);
-        
+
         const index = unique.findIndex((c) => c.id === updatedConv.id);
         if (index >= 0) {
           unique[index] = updatedConv;
         } else {
           // Check if this is a duplicate before adding
-          const isDuplicate = unique.some(c => 
-            c.userId === updatedConv.userId && 
+          const isDuplicate = unique.some(c =>
+            c.userId === updatedConv.userId &&
             c.adminId === updatedConv.adminId
           );
           if (!isDuplicate) {
             unique.push(updatedConv);
           }
         }
-        
+
         // Sort by updated_at
-        return unique.sort((a, b) => 
+        return unique.sort((a, b) =>
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
       });
@@ -133,7 +133,7 @@ const ChatPage: React.FC = () => {
         const msgs = await messageService.getMessages(selectedConversation);
         setMessages(msgs);
         await messageService.markAsRead(selectedConversation, user.id);
-        
+
         // Update conversation unread count
         setConversations((prev) =>
           prev.map((conv) =>
@@ -164,7 +164,7 @@ const ChatPage: React.FC = () => {
       if (newMessage.senderId !== user.id) {
         messageService.markAsRead(selectedConversation, user.id);
       }
-      
+
       // Remove failed temporary messages with same content when a new message arrives
       setMessages((prev) => {
         const filtered = prev.filter((m) => {
@@ -218,7 +218,7 @@ const ChatPage: React.FC = () => {
       // Include email in sender_name so admin can see it
       const senderName = user.name ? `${user.name} ${user.email}` : user.email;
       await messageService.sendMessage(convId, user.id, senderName, textToSend);
-      
+
       // Message will be added via realtime subscription
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -227,7 +227,7 @@ const ChatPage: React.FC = () => {
       console.error('Failed to send message:', error);
       showToast(error.message || t('messages.sendFailed'), 'error');
       setMessageText(textToSend);
-      
+
       // Add failed message to UI immediately
       const failedMessage: Message = {
         id: `temp-${Date.now()}`,
@@ -246,12 +246,12 @@ const ChatPage: React.FC = () => {
 
   const handleRetry = async (messageId: string, content: string) => {
     if (!user || !selectedConversation || isSending) return;
-    
+
     setIsSending(true);
-    
+
     // Remove the failed message from UI
     setMessages((prev) => prev.filter((m) => m.id !== messageId));
-    
+
     try {
       await messageService.sendMessage(selectedConversation, user.id, user.name || user.email, content);
       // Message will be added via realtime subscription
@@ -261,7 +261,7 @@ const ChatPage: React.FC = () => {
     } catch (error: any) {
       console.error('Failed to resend message:', error);
       showToast(error.message || 'Failed to resend message', 'error');
-      
+
       // Add failed message back to UI
       const failedMessage: Message = {
         id: messageId.startsWith('temp-') ? messageId : `temp-${Date.now()}`,
@@ -291,7 +291,7 @@ const ChatPage: React.FC = () => {
     } else if (days < 7) {
       return safeFormatDateObject(date, 'EEE');
     } else {
-      return safeFormatDateObject(date, 'MMM d');
+      return safeFormatDateObject(date, 'dd-MM-yyyy');
     }
   };
 

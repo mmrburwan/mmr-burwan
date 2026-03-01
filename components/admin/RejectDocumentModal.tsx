@@ -68,7 +68,7 @@ const RejectDocumentModal: React.FC<RejectDocumentModalProps> = ({
   const getDocumentTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       aadhaar: 'Aadhaar Card',
-      tenth_certificate: '10th Certificate',
+      tenth_certificate: 'Madhyamik Admit Card',
       voter_id: 'Voter ID',
       id: 'ID Document',
       photo: 'Photo',
@@ -110,8 +110,8 @@ const RejectDocumentModal: React.FC<RejectDocumentModalProps> = ({
               rows={4}
               className={`
                 w-full px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 text-xs sm:text-sm rounded-lg sm:rounded-xl border transition-all duration-200
-                ${errors.reason 
-                  ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500' 
+                ${errors.reason
+                  ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500'
                   : 'border-gray-200 focus:border-gold-500 focus:ring-gold-500'
                 }
                 focus:outline-none focus:ring-2 focus:ring-offset-0
