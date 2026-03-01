@@ -16,7 +16,7 @@ const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   // State for data
   const [applications, setApplications] = useState<Application[]>([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, verified: 0, unverified: 0 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, verified: 0, unverified: 0, draft: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   // State for pagination and filters
@@ -123,11 +123,7 @@ const AdminDashboardPage: React.FC = () => {
         <Card
           className="p-3 sm:p-4 lg:p-6 cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] border-l-2 border-l-gray-900"
           onClick={() => {
-            setVerifiedFilter('unverified'); // 'unverified' in filter logic maps to submitted/under_view pending verification
-            // Actually stats.pending maps to status in [submitted, under_review].
-            // To emulate "Pending Review" click, we might want 'submitted' filter or similar.
-            // Let's assume 'submitted' filter covers pending review items effectively.
-            setVerifiedFilter('submitted');
+            setVerifiedFilter('draft');
             setSearchTerm('');
           }}
         >
@@ -135,7 +131,7 @@ const AdminDashboardPage: React.FC = () => {
             <div className="min-w-0 flex-1">
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Draft</p>
               <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
-                {stats.pending}
+                {stats.draft}
               </p>
             </div>
             <Users size={20} className="sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-blue-600 flex-shrink-0" />

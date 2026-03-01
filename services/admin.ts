@@ -5,7 +5,7 @@ import { notificationService } from './notifications';
 import { emailService } from './email';
 import { certificateService } from './certificates';
 import { supabase } from '../lib/supabase';
-import { Application } from '../types';
+import { Application, CertificateDetails } from '../types';
 import { generateAndUploadCertificate } from '../utils/certificateGenerator';
 
 export const adminService = {
@@ -108,11 +108,40 @@ export const adminService = {
     };
   },
 
+  async updateApplicationComment(applicationId: string, comment: string, actorId: string, actorName: string): Promise<Application> {
+    const { data, error } = await supabase
+      .from('applications')
+      .update({ admin_comment: comment, last_updated: new Date().toISOString() })
+      .eq('id', applicationId)
+      .select(`
+        *,
+        documents (*)
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await auditService.createLog({
+      actorId,
+      actorName,
+      actorRole: 'admin',
+      action: 'application_comment_updated',
+      resourceType: 'application',
+      resourceId: applicationId,
+      details: { comment },
+    });
+
+    return applicationService.mapApplication(data);
+  },
+
   async getApplicationStats(): Promise<{
     total: number;
     pending: number;
     verified: number;
     unverified: number;
+    draft: number;
   }> {
     // We run parallel count queries. 
     // This is much lighter than fetching all rows.
@@ -122,7 +151,7 @@ export const adminService = {
       .from('applications')
       .select('id', { count: 'exact', head: true });
 
-    // 2. Pending (submitted or under_review)
+    // 2. Pending Review (submitted or under_review)
     const pendingPromise = supabase
       .from('applications')
       .select('id', { count: 'exact', head: true })
@@ -141,11 +170,18 @@ export const adminService = {
       .in('status', ['submitted', 'under_review'])
       .or('verified.is.false,verified.is.null');
 
-    const [totalRes, pendingRes, verifiedRes, unverifiedRes] = await Promise.all([
+    // 5. Draft
+    const draftPromise = supabase
+      .from('applications')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'draft');
+
+    const [totalRes, pendingRes, verifiedRes, unverifiedRes, draftRes] = await Promise.all([
       totalPromise,
       pendingPromise,
       verifiedPromise,
-      unverifiedPromise
+      unverifiedPromise,
+      draftPromise
     ]);
 
     return {
@@ -153,6 +189,7 @@ export const adminService = {
       pending: pendingRes.count || 0,
       verified: verifiedRes.count || 0,
       unverified: unverifiedRes.count || 0,
+      draft: draftRes.count || 0,
     };
   },
 
@@ -337,7 +374,8 @@ export const adminService = {
     actorName: string,
     certificateNumber: string,
     registrationDate: string,
-    registrarName: string
+    registrarName: string,
+    certificateDetails: CertificateDetails
   ): Promise<Application> {
     // First, check for rejected documents that haven't been re-uploaded
     const { data: documentsData, error: docsError } = await supabase
@@ -356,7 +394,6 @@ export const adminService = {
     );
 
     if (rejectedNotReuploaded.length > 0) {
-      // Get document type labels
       const getDocumentTypeLabel = (type: string): string => {
         const labels: Record<string, string> = {
           aadhaar: 'Aadhaar Card',
@@ -395,7 +432,7 @@ export const adminService = {
       );
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('applications')
       .update({
         verified: true,
@@ -404,16 +441,26 @@ export const adminService = {
         certificate_number: certificateNumber,
         registration_date: registrationDate,
         registrar_name: registrarName,
+        certificate_details: certificateDetails,
       })
-      .eq('id', applicationId)
+      .eq('id', applicationId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // Refetch the application to ensure we get the updated certificate_details
+    const { data, error: fetchError } = await supabase
+      .from('applications')
       .select(`
         *,
         documents (*)
       `)
+      .eq('id', applicationId)
       .single();
 
-    if (error) {
-      throw new Error(error.message);
+    if (fetchError || !data) {
+      throw new Error(fetchError?.message || 'Failed to fetch updated application');
     }
 
     // Get user details for personalized notification
@@ -770,7 +817,7 @@ export const adminService = {
       }
 
       // Use fetch directly to have better control over error handling
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
       const functionUrl = `${supabaseUrl}/functions/v1/create-proxy-user`;
 
       let functionData: any = null;
@@ -781,7 +828,7 @@ export const adminService = {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+            'apikey': (import.meta as any).env.VITE_SUPABASE_ANON_KEY || '',
           },
           body: JSON.stringify({
             email: applicantData.email,
@@ -945,14 +992,14 @@ export const adminService = {
           user_id: userId,
           application_id: appData.id,
           email: userEmail,
-          password: password, // Store password (consider encryption in production)
+          password: applicantData.password, // Use the input password directly to ensure it's captured
           created_by_admin_id: adminId,
         });
 
       if (credError) {
         console.error('Failed to store credentials:', credError);
-        // Don't fail the whole operation if credential storage fails
-        // The credentials are already returned, so admin can note them down
+        // Throw error so the user and UI are aware that credentials weren't saved
+        throw new Error(`Application created but failed to save credentials: ${credError.message}`);
       }
 
       // Step 5: Create audit log entry
@@ -994,28 +1041,46 @@ export const adminService = {
       throw new Error('Application not found');
     }
 
-    // Direct deletion from Supabase (bypassing Edge Function as requested)
-    // First remove proxy credentials if they exist
-    const { error: credError } = await supabase
-      .from('proxy_user_credentials')
-      .delete()
-      .eq('application_id', applicationId);
+    // Call the delete-application Edge Function
+    // This ensures that the user is also deleted from auth.users (hard delete)
+    // We use supabase.functions.invoke to handle auth headers and token refresh automatically
+    const { data: functionData, error: functionError } = await supabase.functions.invoke('delete-application', {
+      body: {
+        applicationId,
+        adminId: actorId,
+      }
+    });
 
-    if (credError) {
-      console.warn('Error deleting proxy credentials:', credError);
-      // We continue even if this fails, as the main goal is to delete the application
+    if (functionError) {
+      console.error('Error calling delete-application edge function:', functionError);
+
+      // Try to extract a meaningful message
+      let errorMessage = functionError.message || 'Failed to delete application';
+
+      // Sometimes the error context is in the response body which invoke() might parse into context
+      if (functionError.context && typeof functionError.context === 'object') {
+        const context = functionError.context as any;
+        // Check standard HTTP error response format
+        if (context.error) errorMessage = context.error;
+        // Check Supabase Edge Function error structure
+        if (context.message) errorMessage = context.message;
+      }
+
+      // Manual check for 401 to give better feedback
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        errorMessage = 'Unauthorized: Please verify you are logged in as an admin.';
+      }
+
+      throw new Error(errorMessage);
     }
 
-    // Then delete the application
-    const { error: deleteError } = await supabase
-      .from('applications')
-      .delete()
-      .eq('id', applicationId);
-
-    if (deleteError) {
-      console.error("Direct delete failed:", deleteError);
-      throw new Error(deleteError.message || 'Failed to delete application');
+    // Check for success in the response data
+    if (!functionData || !functionData.success) {
+      const msg = functionData?.error || 'Failed to delete application (unknown error)';
+      throw new Error(msg);
     }
+
+    // Application deleted successfully via Edge Function
 
     // Only audit log if delete was successful
     await auditService.createLog({
@@ -1028,7 +1093,7 @@ export const adminService = {
       details: {
         previousStatus: appData.status,
         userId: appData.user_id,
-        note: 'Deleted via direct client action'
+        note: 'Deleted via admin action (hard delete)'
       }
     });
   },

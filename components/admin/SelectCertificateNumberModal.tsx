@@ -354,7 +354,6 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
                 onChange={(e) => {
                   setManualEntry(e.target.value);
                 }}
-                placeholder="WB-MSD-BRW-I-1-C-16-21"
                 className="text-sm font-mono"
               />
               <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
@@ -402,7 +401,6 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
                     <Input
                       {...register('volumeNumber')}
                       error={errors.volumeNumber?.message}
-                      placeholder="1"
                       disabled={isSubmitting}
                       className="text-center"
                     />
@@ -411,7 +409,6 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
                   <div>
                     <input
                       {...register('volumeLetter')}
-                      placeholder="C"
                       disabled={isSubmitting}
                       className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center uppercase"
                     />
@@ -423,7 +420,6 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
                   <div>
                     <input
                       {...register('volumeYear')}
-                      placeholder="Optional"
                       disabled={isSubmitting}
                       className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
                     />
@@ -445,7 +441,6 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
                     <Input
                       {...register('serialNumber')}
                       error={errors.serialNumber?.message}
-                      placeholder="16"
                       disabled={isSubmitting}
                       className="text-center"
                     />
@@ -454,7 +449,6 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
                   <div>
                     <input
                       {...register('serialYear')}
-                      placeholder="Optional"
                       disabled={isSubmitting}
                       className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
                     />
@@ -472,7 +466,6 @@ const SelectCertificateNumberModal: React.FC<SelectCertificateNumberModalProps> 
                   label="Page Number"
                   {...register('pageNumber')}
                   error={errors.pageNumber?.message}
-                  placeholder="21"
                   disabled={isSubmitting}
                   className="text-center"
                 />

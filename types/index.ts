@@ -94,6 +94,18 @@ export interface Application {
     contactPerson?: string;
   };
   proxyUserEmail?: string;
+  certificateDetails?: CertificateDetails;
+  adminComment?: string;
+}
+
+export interface CertificateDetails {
+  bookNumber: string;
+  volumeNumber: string;
+  volumeLetter: string;
+  volumeYear: string;
+  serialNumber: string;
+  serialYear: string;
+  pageNumber: string;
 }
 
 export interface Document {
