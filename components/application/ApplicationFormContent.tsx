@@ -384,7 +384,7 @@ const ApplicationFormContent: React.FC = () => {
           const partnerSecondDoc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
           const jointPhotograph = documents.find(d => d.belongsTo === 'joint' && d.type === 'photo');
 
-          if ((!userAadhaar || !userSecondDoc || !partnerAadhaar || !partnerSecondDoc || !jointPhotograph) && !isAdminContext) {
+          if (!userAadhaar || !userSecondDoc || !partnerAadhaar || !partnerSecondDoc || !jointPhotograph) {
             calculatedStep = 2;
           } else {
             // Check if declarations are filled
@@ -532,7 +532,6 @@ const ApplicationFormContent: React.FC = () => {
         values.currentCountry?.trim()
       );
     } else if (currentStep === 2) {
-      if (isAdminContext) return true;
       // Check if all documents are uploaded (either in current session or previously saved)
       // Check current session documents
       const userAadhaar = documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
@@ -594,7 +593,7 @@ const ApplicationFormContent: React.FC = () => {
         } else {
           showToast('Please complete all required fields before proceeding', 'error');
         }
-      } else if (currentStep === 2 && !isAdminContext) {
+      } else if (currentStep === 2) {
         // Check both current session and saved documents
         const userAadhaar = documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar') || applicationDocuments.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
         const userSecondDoc = documents.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) || applicationDocuments.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
@@ -760,7 +759,7 @@ const ApplicationFormContent: React.FC = () => {
 
       const hasAllDocuments = userAadhaar && userSecondDoc && partnerAadhaar && partnerSecondDoc && jointPhotograph;
 
-      if (!hasAllDocuments && !isAdminContext) {
+      if (!hasAllDocuments) {
         showToast('Please upload all required documents including joint photograph', 'error');
         return;
       }
