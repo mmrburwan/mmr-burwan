@@ -593,12 +593,15 @@ const ApplicationFormContent: React.FC = () => {
         const errors = groomForm.formState.errors;
 
         // Specifically check for age error
-        if (!isAdminContext && errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
-          showToast('Applicant has not attained the minimum legal age (18 years) on the date of marriage', 'error');
-          return;
+        if (errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
+          if (!isAdminContext) {
+            showToast('Applicant has not attained the minimum legal age (18 years) on the date of marriage', 'error');
+            return;
+          }
         }
 
-        const errorFields = Object.keys(errors).filter(key => errors[key as keyof typeof errors]);
+        const errorFields = Object.keys(errors).filter(key => errors[key as keyof typeof errors] && (!isAdminContext || key !== 'dateOfBirth'));
+
         if (errorFields.length > 0) {
           const fieldNames = errorFields.map(field => {
             // Convert field names to readable format
@@ -606,28 +609,37 @@ const ApplicationFormContent: React.FC = () => {
             return readable;
           });
           showToast(`Please fill all required fields. Missing: ${fieldNames.join(', ')}`, 'error');
-        } else {
-          showToast('Please complete all required fields before proceeding', 'error');
+        } else if (!isAdminContext || Object.keys(errors).length === 0 || (Object.keys(errors).length === 1 && errors.dateOfBirth)) {
+          // If admin context and only date of birth error exists, we allow proceeding
+          if (!isAdminContext) {
+            showToast('Please complete all required fields before proceeding', 'error');
+          }
         }
       } else if (currentStep === 1) {
         await brideForm.trigger();
         const errors = brideForm.formState.errors;
 
         // Specifically check for age error
-        if (!isAdminContext && errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
-          showToast('Applicant has not attained the minimum legal age (18 years) on the date of marriage', 'error');
-          return;
+        if (errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage' || errors.dateOfBirth?.message === 'Bride must be at least 18 years old') {
+          if (!isAdminContext) {
+            showToast('Applicant (Bride) has not attained the minimum legal age (18 years) on the date of marriage', 'error');
+            return;
+          }
         }
 
-        const errorFields = Object.keys(errors).filter(key => errors[key as keyof typeof errors]);
+        const errorFields = Object.keys(errors).filter(key => errors[key as keyof typeof errors] && (!isAdminContext || key !== 'dateOfBirth'));
+
         if (errorFields.length > 0) {
           const fieldNames = errorFields.map(field => {
             const readable = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
             return readable;
           });
           showToast(`Please fill all required fields. Missing: ${fieldNames.join(', ')}`, 'error');
-        } else {
-          showToast('Please complete all required fields before proceeding', 'error');
+        } else if (!isAdminContext || Object.keys(errors).length === 0 || (Object.keys(errors).length === 1 && errors.dateOfBirth)) {
+          // If admin context and only date of birth error exists, we allow proceeding
+          if (!isAdminContext) {
+            showToast('Please complete all required fields before proceeding', 'error');
+          }
         }
       } else if (currentStep === 2) {
         // Check both current session and saved documents
@@ -660,6 +672,31 @@ const ApplicationFormContent: React.FC = () => {
         }
       }
       return;
+    }
+
+    // Add age warnings for admins
+    if (isAdminContext && !isSubmitted) {
+      if (currentStep === 0) {
+        const groomDob = groomFormValues.dateOfBirth;
+        const marriageDate = groomFormValues.marriageDate || (application?.declarations as any)?.marriageDate || (application?.declarations as any)?.marriageRegistrationDate;
+        if (groomDob) {
+          const age = calculateAge(groomDob, marriageDate ? new Date(marriageDate) : new Date());
+          if (age < 21) {
+            const proceed = window.confirm(`Groom's age is ${age} (below 21). Do you want to proceed anyway?`);
+            if (!proceed) return;
+          }
+        }
+      } else if (currentStep === 1) {
+        const brideDob = brideFormValues.dateOfBirth;
+        const marriageDate = groomForm.getValues('marriageDate') || (application?.declarations as any)?.marriageDate || (application?.declarations as any)?.marriageRegistrationDate;
+        if (brideDob) {
+          const age = calculateAge(brideDob, marriageDate ? new Date(marriageDate) : new Date());
+          if (age < 18) {
+            const proceed = window.confirm(`Bride's age is ${age} (below 18). Do you want to proceed anyway?`);
+            if (!proceed) return;
+          }
+        }
+      }
     }
 
     // If valid, proceed with normal handleNext

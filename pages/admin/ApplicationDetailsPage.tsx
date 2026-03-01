@@ -219,17 +219,19 @@ const ApplicationDetailsPage: React.FC = () => {
 
       // Groom check
       if (editForm.userDetails?.dateOfBirth) {
-        if (calculateAge(editForm.userDetails.dateOfBirth, marriageDateObj) < 18) {
-          showToast('Applicant (Groom) has not attained the minimum legal age (18 years) on the date of marriage', 'error');
-          return;
+        const groomAge = calculateAge(editForm.userDetails.dateOfBirth, marriageDateObj);
+        if (groomAge < 21) {
+          const proceed = window.confirm(`Groom's age is ${groomAge} (below 21). Do you want to proceed anyway?`);
+          if (!proceed) return;
         }
       }
 
       // Bride check
       if (editForm.partnerForm?.dateOfBirth) {
-        if (calculateAge(editForm.partnerForm.dateOfBirth, marriageDateObj) < 18) {
-          showToast('Applicant (Bride) has not attained the minimum legal age (18 years) on the date of marriage', 'error');
-          return;
+        const brideAge = calculateAge(editForm.partnerForm.dateOfBirth, marriageDateObj);
+        if (brideAge < 18) {
+          const proceed = window.confirm(`Bride's age is ${brideAge} (below 18). Do you want to proceed anyway?`);
+          if (!proceed) return;
         }
       }
     }
