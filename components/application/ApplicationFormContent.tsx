@@ -61,11 +61,11 @@ const createGroomSchema = (isAdminContext: boolean = false) => z.object({
   if (isAdminContext) return true;
 
   if (data.dateOfBirth && data.marriageDate) {
-    return calculateAge(data.dateOfBirth, new Date(data.marriageDate)) >= 18;
+    return calculateAge(data.dateOfBirth, new Date(data.marriageDate)) >= 21;
   }
   return true;
 }, {
-  message: 'Applicant has not attained the minimum legal age (18 years) on the date of marriage',
+  message: 'Groom has not attained the minimum legal age (21 years) on the date of marriage',
   path: ['dateOfBirth'],
 });
 
@@ -525,7 +525,7 @@ const ApplicationFormContent: React.FC = () => {
         values.currentZipCode?.trim() &&
         values.currentCountry?.trim() &&
         values.marriageDate &&
-        (isAdminContext || calculateAge(values.dateOfBirth, new Date(values.marriageDate)) >= 18)
+        (isAdminContext || calculateAge(values.dateOfBirth, new Date(values.marriageDate)) >= 21)
       );
     } else if (currentStep === 1) {
       // Check if all required bride form fields are filled (lastName is optional)
@@ -593,9 +593,9 @@ const ApplicationFormContent: React.FC = () => {
         const errors = groomForm.formState.errors;
 
         // Specifically check for age error
-        if (errors.dateOfBirth?.message === 'Applicant has not attained the minimum legal age (18 years) on the date of marriage') {
+        if (errors.dateOfBirth?.message === 'Groom has not attained the minimum legal age (21 years) on the date of marriage') {
           if (!isAdminContext) {
-            showToast('Applicant has not attained the minimum legal age (18 years) on the date of marriage', 'error');
+            showToast('Groom has not attained the minimum legal age (21 years) on the date of marriage', 'error');
             return;
           }
         }
