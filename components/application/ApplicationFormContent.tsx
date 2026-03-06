@@ -556,18 +556,25 @@ const ApplicationFormContent: React.FC = () => {
     } else if (currentStep === 2) {
       // Check if all documents are uploaded (either in current session or previously saved)
       // Check current session documents
+      const jointPhotograph = documents.find(d => d.belongsTo === 'joint' && d.type === 'photo');
+      const savedJointPhotograph = applicationDocuments.find(d => d.belongsTo === 'joint' && d.type === 'photo');
+
+      // In admin context, only joint photograph is mandatory
+      if (isAdminContext) {
+        return !!(jointPhotograph || savedJointPhotograph);
+      }
+
+      // For client portal: all documents are required
       const userAadhaar = documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
       const userSecondDoc = documents.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
       const partnerAadhaar = documents.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar');
       const partnerSecondDoc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
-      const jointPhotograph = documents.find(d => d.belongsTo === 'joint' && d.type === 'photo');
 
       // Check previously saved documents
       const savedUserAadhaar = applicationDocuments.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
       const savedUserSecondDoc = applicationDocuments.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
       const savedPartnerAadhaar = applicationDocuments.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar');
       const savedPartnerSecondDoc = applicationDocuments.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
-      const savedJointPhotograph = applicationDocuments.find(d => d.belongsTo === 'joint' && d.type === 'photo');
 
       // Document is valid if it exists in either current session or saved documents
       return !!(
@@ -643,20 +650,29 @@ const ApplicationFormContent: React.FC = () => {
         }
       } else if (currentStep === 2) {
         // Check both current session and saved documents
-        const userAadhaar = documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar') || applicationDocuments.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
-        const userSecondDoc = documents.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) || applicationDocuments.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
-        const partnerAadhaar = documents.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar') || applicationDocuments.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar');
-        const partnerSecondDoc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) || applicationDocuments.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
         const jointPhotograph = documents.find(d => d.belongsTo === 'joint' && d.type === 'photo') || applicationDocuments.find(d => d.belongsTo === 'joint' && d.type === 'photo');
 
-        const missingDocs = [];
-        if (!userAadhaar) missingDocs.push("Groom's Aadhaar Card");
-        if (!userSecondDoc) missingDocs.push("Groom's Madhyamik Admit Card or Voter ID");
-        if (!partnerAadhaar) missingDocs.push("Bride's Aadhaar Card");
-        if (!partnerSecondDoc) missingDocs.push("Bride's Madhyamik Admit Card or Voter ID");
-        if (!jointPhotograph) missingDocs.push("Joint Photograph");
+        if (isAdminContext) {
+          // In admin context, only joint photograph is required
+          if (!jointPhotograph) {
+            showToast('Please upload the Joint Photograph', 'error');
+          }
+        } else {
+          // For client portal: all documents are required
+          const userAadhaar = documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar') || applicationDocuments.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
+          const userSecondDoc = documents.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) || applicationDocuments.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
+          const partnerAadhaar = documents.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar') || applicationDocuments.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar');
+          const partnerSecondDoc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) || applicationDocuments.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
 
-        showToast(`Please upload all required documents: ${missingDocs.join(', ')}`, 'error');
+          const missingDocs = [];
+          if (!userAadhaar) missingDocs.push("Groom's Aadhaar Card");
+          if (!userSecondDoc) missingDocs.push("Groom's Madhyamik Admit Card or Voter ID");
+          if (!partnerAadhaar) missingDocs.push("Bride's Aadhaar Card");
+          if (!partnerSecondDoc) missingDocs.push("Bride's Madhyamik Admit Card or Voter ID");
+          if (!jointPhotograph) missingDocs.push("Joint Photograph");
+
+          showToast(`Please upload all required documents: ${missingDocs.join(', ')}`, 'error');
+        }
       } else if (currentStep === 3) {
         await declarationsForm.trigger();
         const errors = declarationsForm.formState.errors;
@@ -824,17 +840,27 @@ const ApplicationFormContent: React.FC = () => {
       }
     } else if (currentStep === 2) {
       // Validate documents (check both current session and saved documents)
-      const userAadhaar = documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar') || applicationDocuments.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
-      const userSecondDoc = documents.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) || applicationDocuments.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
-      const partnerAadhaar = documents.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar') || applicationDocuments.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar');
-      const partnerSecondDoc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) || applicationDocuments.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
       const jointPhotograph = documents.find(d => d.belongsTo === 'joint' && d.type === 'photo') || applicationDocuments.find(d => d.belongsTo === 'joint' && d.type === 'photo');
 
-      const hasAllDocuments = userAadhaar && userSecondDoc && partnerAadhaar && partnerSecondDoc && jointPhotograph;
+      if (isAdminContext) {
+        // In admin context, only joint photograph is mandatory
+        if (!jointPhotograph) {
+          showToast('Please upload the Joint Photograph', 'error');
+          return;
+        }
+      } else {
+        // For client portal: all documents are required
+        const userAadhaar = documents.find(d => d.belongsTo === 'user' && d.type === 'aadhaar') || applicationDocuments.find(d => d.belongsTo === 'user' && d.type === 'aadhaar');
+        const userSecondDoc = documents.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) || applicationDocuments.find(d => d.belongsTo === 'user' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
+        const partnerAadhaar = documents.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar') || applicationDocuments.find(d => d.belongsTo === 'partner' && d.type === 'aadhaar');
+        const partnerSecondDoc = documents.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id')) || applicationDocuments.find(d => d.belongsTo === 'partner' && (d.type === 'tenth_certificate' || d.type === 'voter_id'));
 
-      if (!hasAllDocuments) {
-        showToast('Please upload all required documents including joint photograph', 'error');
-        return;
+        const hasAllDocuments = userAadhaar && userSecondDoc && partnerAadhaar && partnerSecondDoc && jointPhotograph;
+
+        if (!hasAllDocuments) {
+          showToast('Please upload all required documents including joint photograph', 'error');
+          return;
+        }
       }
 
       // Upload documents
