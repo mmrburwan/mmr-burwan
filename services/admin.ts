@@ -83,7 +83,7 @@ export const adminService = {
           query = query.eq('verified', true);
           break;
         case 'unverified':
-          query = query.in('status', ['submitted', 'under_review']).or('verified.is.false,verified.is.null');
+          query = query.eq('status', 'submitted').or('verified.is.false,verified.is.null');
           break;
         case 'submitted':
           query = query.eq('status', 'submitted').or('verified.is.false,verified.is.null');
@@ -151,11 +151,11 @@ export const adminService = {
       .from('applications')
       .select('id', { count: 'exact', head: true });
 
-    // 2. Pending Review (submitted or under_review)
+    // 2. Pending Review (submitted)
     const pendingPromise = supabase
       .from('applications')
       .select('id', { count: 'exact', head: true })
-      .in('status', ['submitted', 'under_review']);
+      .eq('status', 'submitted');
 
     // 3. Verified
     const verifiedPromise = supabase
@@ -163,11 +163,11 @@ export const adminService = {
       .select('id', { count: 'exact', head: true })
       .eq('verified', true);
 
-    // 4. Unverified (submitted/under_review AND verified is false/null)
+    // 4. Unverified (submitted AND verified is false/null)
     const unverifiedPromise = supabase
       .from('applications')
       .select('id', { count: 'exact', head: true })
-      .in('status', ['submitted', 'under_review'])
+      .eq('status', 'submitted')
       .or('verified.is.false,verified.is.null');
 
     // 5. Draft

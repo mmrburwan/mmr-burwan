@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { storage } from '../lib/storage';
 import { Certificate } from '../types';
 
 export const certificateService = {
@@ -246,17 +247,35 @@ export const certificateService = {
       throw new Error('Certificate not found');
     }
 
-    // Extract file path from URL
-    const url = new URL(certificate.pdf_url);
-    const filePath = url.pathname.split('/certificates/')[1];
+    // Extract file path from URL — handles both old Supabase and new R2 URL formats:
+    //   Supabase: https://<project>.supabase.co/storage/v1/object/public/certificates/<path>
+    //   R2:       https://pub-<id>.r2.dev/certificates/<path>
+    let filePath: string | undefined;
+    try {
+      const url = new URL(certificate.pdf_url);
+      const pathname = url.pathname;
+
+      if (pathname.includes('/storage/v1/object/public/certificates/')) {
+        // Old Supabase storage URL
+        filePath = pathname.split('/storage/v1/object/public/certificates/')[1];
+      } else if (pathname.includes('/certificates/')) {
+        // R2 public URL or any URL with /certificates/ in path
+        filePath = pathname.split('/certificates/')[1];
+      }
+    } catch {
+      // URL parsing failed — try string-based extraction
+      const pdfUrl = certificate.pdf_url;
+      if (pdfUrl.includes('/certificates/')) {
+        filePath = pdfUrl.split('/certificates/').pop()?.split('?')[0];
+      }
+    }
 
     if (!filePath) {
       return certificate.pdf_url;
     }
 
     // Get signed URL (valid for 1 hour)
-    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-      .from('certificates')
+    const { data: signedUrlData, error: signedUrlError } = await storage.from('certificates')
       .createSignedUrl(filePath, 3600);
 
     if (signedUrlError) {
@@ -325,19 +344,24 @@ export const certificateService = {
 
   async deleteCertificateFile(pdfUrl: string): Promise<void> {
     try {
-      // Extract file path from URL
-      // URL format: .../storage/v1/object/public/certificates/path/to/file.pdf
+      // Extract file path from URL — handles both old Supabase and new R2 URL formats:
+      //   Supabase: .../storage/v1/object/public/certificates/path/to/file.pdf
+      //   R2:       https://pub-<id>.r2.dev/certificates/path/to/file.pdf
       const url = new URL(pdfUrl);
-      const parts = url.pathname.split('/certificates/');
+      let filePath: string | undefined;
 
-      if (parts.length < 2) return; // Invalid URL format
-
-      const filePath = parts[1]; // Get everything after /certificates/
+      if (url.pathname.includes('/storage/v1/object/public/certificates/')) {
+        // Old Supabase storage URL
+        filePath = url.pathname.split('/storage/v1/object/public/certificates/')[1];
+      } else if (url.pathname.includes('/certificates/')) {
+        // R2 public URL or any URL with /certificates/ in path
+        const parts = url.pathname.split('/certificates/');
+        filePath = parts.length >= 2 ? parts[1] : undefined;
+      }
 
       if (!filePath) return;
 
-      const { error } = await supabase.storage
-        .from('certificates')
+      const { error } = await storage.from('certificates')
         .remove([filePath]);
 
       if (error) {

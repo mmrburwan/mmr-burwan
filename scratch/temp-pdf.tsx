@@ -64,131 +64,54 @@ Font.register({
 // Prevent words from splitting/hyphenating across lines in the certificate
 Font.registerHyphenationCallback((word) => [word]);
 
-export interface FormattedAddressLines {
-  line1: string;
-  line2: string;
-  line3: string;
-}
+// Calculate address font size to gracefully prevent word splitting or overflow
+const getAddressFontSize = (address: string): number => {
+  if (!address || address === 'N/A') return 12;
+  const words = address.split(/\s+/);
+  const maxWordLength = Math.max(...words.map((w) => w.length), 0);
 
-// Format address into 3 distinct lines:
-// Line 1: VILL & P.O
-// Line 2: P.S & DIST
-// Line 3: State name and PIN number
-const formatAddressLines = (address: any): FormattedAddressLines => {
-  if (!address) {
-    return { line1: 'N/A', line2: '', line3: '' };
-  }
-
-  // If address is already a string, parse its components
-  if (typeof address === 'string') {
-    const raw = address.trim();
-    if (!raw || raw === 'N/A') {
-      return { line1: 'N/A', line2: '', line3: '' };
-    }
-
-    const villMatch = raw.match(/VILL-?\s*([^,]+)/i);
-    const poMatch = raw.match(/P\.?O\.?-?\s*([^,]+)/i);
-    const psMatch = raw.match(/P\.?S\.?-?\s*([^,]+)/i);
-    const distMatch = raw.match(/DIST-?\s*([^,]+)/i);
-    const pinMatch = raw.match(/PIN-?\s*(\d+)/i);
-
-    let state = '';
-    const stateMatch = raw.match(/(?:DIST-?[^,]+,\s*)([A-Za-z\s]+?)(?:,\s*PIN|$)/i);
-    if (stateMatch) {
-      state = stateMatch[1].trim().toUpperCase();
-    } else if (/WEST BENGAL/i.test(raw)) {
-      state = 'WEST BENGAL';
-    }
-
-    if (villMatch || poMatch || psMatch || distMatch || pinMatch) {
-      const line1Parts: string[] = [];
-      if (villMatch) line1Parts.push(`VILL- ${villMatch[1].trim().toUpperCase()}`);
-      if (poMatch) line1Parts.push(`P.O- ${poMatch[1].trim().toUpperCase()}`);
-
-      const line2Parts: string[] = [];
-      if (psMatch) line2Parts.push(`P.S- ${psMatch[1].trim().toUpperCase()}`);
-      if (distMatch) line2Parts.push(`DIST- ${distMatch[1].trim().toUpperCase()}`);
-
-      const line3Parts: string[] = [];
-      if (state) line3Parts.push(state);
-      if (pinMatch) line3Parts.push(`PIN- ${pinMatch[1].trim()}`);
-
-      return {
-        line1: line1Parts.length > 0 ? line1Parts.join(', ') + (line2Parts.length > 0 || line3Parts.length > 0 ? ',' : '') : '',
-        line2: line2Parts.length > 0 ? line2Parts.join(', ') + (line3Parts.length > 0 ? ',' : '') : '',
-        line3: line3Parts.join(', '),
-      };
-    }
-
-    return { line1: raw, line2: '', line3: '' };
-  }
-
-  const village = address.villageStreet || address.street || '';
-  const postOffice = address.postOffice || address.city || '';
-  const policeStation = address.policeStation || '';
-  const district = address.district || address.city || '';
-  const state = address.state || '';
-  const zipCode = address.zipCode || '';
-
-  const line1Parts: string[] = [];
-  if (village) {
-    const cleanVillage = village.toUpperCase().replace(/^VILL-?\s*/i, '').trim();
-    line1Parts.push(`VILL- ${cleanVillage}`);
-  }
-  if (postOffice) {
-    const cleanPostOffice = postOffice.toUpperCase().replace(/^P\.?O\.?-?\s*/i, '').trim();
-    line1Parts.push(`P.O- ${cleanPostOffice}`);
-  }
-
-  const line2Parts: string[] = [];
-  if (policeStation) {
-    const cleanPoliceStation = policeStation.toUpperCase().replace(/^P\.?S\.?-?\s*/i, '').trim();
-    line2Parts.push(`P.S- ${cleanPoliceStation}`);
-  }
-  if (district) {
-    const cleanDistrict = district.toUpperCase().replace(/^DIST-?\s*/i, '').trim();
-    line2Parts.push(`DIST- ${cleanDistrict}`);
-  }
-
-  const line3Parts: string[] = [];
-  if (state) {
-    line3Parts.push(state.toUpperCase().trim());
-  }
-  if (zipCode) {
-    const cleanZip = String(zipCode).toUpperCase().replace(/^PIN-?\s*/i, '').trim();
-    line3Parts.push(`PIN- ${cleanZip}`);
-  }
-
-  if (line1Parts.length === 0 && line2Parts.length === 0 && line3Parts.length === 0) {
-    return { line1: 'N/A', line2: '', line3: '' };
-  }
-
-  return {
-    line1: line1Parts.length > 0 ? line1Parts.join(', ') + (line2Parts.length > 0 || line3Parts.length > 0 ? ',' : '') : '',
-    line2: line2Parts.length > 0 ? line2Parts.join(', ') + (line3Parts.length > 0 ? ',' : '') : '',
-    line3: line3Parts.join(', '),
-  };
+  // If a single word is unusually long or total length is high, scale down gracefully
+  if (maxWordLength > 28 || address.length > 130) return 8.5;
+  if (maxWordLength > 22 || address.length > 105) return 9.5;
+  if (maxWordLength > 16 || address.length > 80) return 10.5;
+  return 12;
 };
-
-// Calculate address font size so each line fits without overflowing
-const getAddressFontSize = (addr: FormattedAddressLines): number => {
-  const maxLen = Math.max(
-    addr.line1 ? addr.line1.length : 0,
-    addr.line2 ? addr.line2.length : 0,
-    addr.line3 ? addr.line3.length : 0
-  );
-  if (maxLen > 48) return 8;
-  if (maxLen > 42) return 8.5;
-  if (maxLen > 36) return 9.5;
-  if (maxLen > 30) return 10.5;
-  return 11;
-};
-
-// Format address matching original format (backwards compatibility)
+// Format address matching original format
+// Uses the exact address fields from the application form
 const formatAddress = (address: any): string => {
-  const lines = formatAddressLines(address);
-  if (lines.line1 === 'N/A') return 'N/A';
-  return [lines.line1, lines.line2, lines.line3].filter(Boolean).join(' ');
+  if (!address) return 'N/A';
+
+  const parts = [];
+
+  // Village/Street - use villageStreet field first, fallback to street
+  const village = address.villageStreet || address.street || '';
+  if (village) {
+    // Remove any existing VILL- prefix and add it properly
+    const cleanVillage = village.toUpperCase().replace(/^VILL-?\s*/i, '').trim();
+    parts.push(`VILL- ${cleanVillage}`);
+  }
+
+  // Post Office - use postOffice field first, fallback to city
+  const postOffice = address.postOffice || address.city || '';
+  if (postOffice) parts.push(`P.O- ${postOffice.toUpperCase()}`);
+
+  // Police Station - use policeStation field
+  const policeStation = address.policeStation || '';
+  if (policeStation) parts.push(`P.S- ${policeStation.toUpperCase()}`);
+
+  // District - use district field first, fallback to city
+  const district = address.district || address.city || '';
+  if (district) parts.push(`DIST- ${district.toUpperCase()}`);
+
+  // State - use actual state from address
+  const state = address.state || '';
+  if (state) parts.push(state.toUpperCase());
+
+  // PIN code
+  if (address.zipCode) parts.push(`PIN- ${address.zipCode}`);
+
+  // Only show if we have at least village/street info
+  return parts.length > 0 ? parts.join(', ') : 'N/A';
 };
 
 interface CertificatePDFProps {
@@ -546,7 +469,7 @@ const styles = StyleSheet.create({
 
   // ===== SIGNATURE =====
   signatureSection: {
-    marginTop: 55,
+    marginTop: 35,
     alignItems: 'center',
   },
   signatureLine: {
@@ -581,10 +504,10 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({
   const hasUserCurrentAddress = userCurrentAddress.villageStreet || userCurrentAddress.street;
   const hasPartnerCurrentAddress = partnerCurrentAddress.villageStreet || partnerCurrentAddress.street;
 
-  const userPresentAddr = formatAddressLines(hasUserCurrentAddress ? userCurrentAddress : userAddress);
-  const userPermanentAddr = formatAddressLines(userAddress);
-  const partnerPresentAddr = formatAddressLines(hasPartnerCurrentAddress ? partnerCurrentAddress : partnerAddress);
-  const partnerPermanentAddr = formatAddressLines(partnerAddress);
+  const userPresentAddr = formatAddress(hasUserCurrentAddress ? userCurrentAddress : userAddress);
+  const userPermanentAddr = formatAddress(userAddress);
+  const partnerPresentAddr = formatAddress(hasPartnerCurrentAddress ? partnerCurrentAddress : partnerAddress);
+  const partnerPermanentAddr = formatAddress(partnerAddress);
 
   return (
     <Document>
@@ -667,75 +590,27 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({
 
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Present Address:</Text>
-                  {userPresentAddr.line1 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(userPresentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {userPresentAddr.line1}
-                    </Text>
-                  ) : null}
-                  {userPresentAddr.line2 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(userPresentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {userPresentAddr.line2}
-                    </Text>
-                  ) : null}
-                  {userPresentAddr.line3 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(userPresentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {userPresentAddr.line3}
-                    </Text>
-                  ) : null}
+                  <Text
+                    style={{
+                      ...styles.addressValue,
+                      fontSize: getAddressFontSize(userPresentAddr),
+                    }}
+                    hyphenationCallback={(word) => [word]}
+                  >
+                    {userPresentAddr}
+                  </Text>
                 </View>
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Permanent Address:</Text>
-                  {userPermanentAddr.line1 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(userPermanentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {userPermanentAddr.line1}
-                    </Text>
-                  ) : null}
-                  {userPermanentAddr.line2 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(userPermanentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {userPermanentAddr.line2}
-                    </Text>
-                  ) : null}
-                  {userPermanentAddr.line3 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(userPermanentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {userPermanentAddr.line3}
-                    </Text>
-                  ) : null}
+                  <Text
+                    style={{
+                      ...styles.addressValue,
+                      fontSize: getAddressFontSize(userPermanentAddr),
+                    }}
+                    hyphenationCallback={(word) => [word]}
+                  >
+                    {userPermanentAddr}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -765,75 +640,27 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({
 
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Present Address:</Text>
-                  {partnerPresentAddr.line1 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(partnerPresentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {partnerPresentAddr.line1}
-                    </Text>
-                  ) : null}
-                  {partnerPresentAddr.line2 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(partnerPresentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {partnerPresentAddr.line2}
-                    </Text>
-                  ) : null}
-                  {partnerPresentAddr.line3 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(partnerPresentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {partnerPresentAddr.line3}
-                    </Text>
-                  ) : null}
+                  <Text
+                    style={{
+                      ...styles.addressValue,
+                      fontSize: getAddressFontSize(partnerPresentAddr),
+                    }}
+                    hyphenationCallback={(word) => [word]}
+                  >
+                    {partnerPresentAddr}
+                  </Text>
                 </View>
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Permanent Address:</Text>
-                  {partnerPermanentAddr.line1 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(partnerPermanentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {partnerPermanentAddr.line1}
-                    </Text>
-                  ) : null}
-                  {partnerPermanentAddr.line2 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(partnerPermanentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {partnerPermanentAddr.line2}
-                    </Text>
-                  ) : null}
-                  {partnerPermanentAddr.line3 ? (
-                    <Text
-                      style={{
-                        ...styles.addressValue,
-                        fontSize: getAddressFontSize(partnerPermanentAddr),
-                      }}
-                      hyphenationCallback={(word) => [word]}
-                    >
-                      {partnerPermanentAddr.line3}
-                    </Text>
-                  ) : null}
+                  <Text
+                    style={{
+                      ...styles.addressValue,
+                      fontSize: getAddressFontSize(partnerPermanentAddr),
+                    }}
+                    hyphenationCallback={(word) => [word]}
+                  >
+                    {partnerPermanentAddr}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -923,16 +750,6 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({
             </View>
             <View style={styles.contactRow}>
               <Text style={styles.registrarLabel}>Contact: </Text>
-              {certificateData.registrarPhone ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
-                  <Image
-                    src={getImageUrl("/icons/phone.png")}
-                    style={styles.icon}
-                    cache={false}
-                  />
-                  <Text style={styles.registrarValue}> {certificateData.registrarPhone}</Text>
-                </View>
-              ) : null}
               <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
                 <Image
                   src={getImageUrl("/icons/mail.png")}

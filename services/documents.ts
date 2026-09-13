@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { storage } from '../lib/storage';
 import { Document, Application } from '../types';
 
 export const documentService = {
@@ -27,7 +28,7 @@ export const documentService = {
       // Delete old file from storage
       if (existingDoc.file_path) {
         try {
-          await supabase.storage.from('documents').remove([existingDoc.file_path]);
+          await storage.from('documents').remove([existingDoc.file_path]);
         } catch (storageError) {
           console.error('Failed to delete old file from storage:', storageError);
         }
@@ -38,8 +39,7 @@ export const documentService = {
       const fileName = `${applicationId}/${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('documents')
+      const { error: uploadError } = await storage.from('documents')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false,
@@ -47,12 +47,11 @@ export const documentService = {
 
       if (uploadError) {
         console.error('Storage upload error:', uploadError);
-        throw new Error(`Storage upload failed: ${uploadError.message}`);
+        throw new Error(`Storage upload failed: ${(uploadError as Error).message}`);
       }
 
       // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('documents')
+      const { data: urlData } = storage.from('documents')
         .getPublicUrl(filePath);
 
       const documentUrl = urlData.publicUrl;
@@ -96,13 +95,12 @@ export const documentService = {
     }
 
     // No existing document, create new one
-    // Upload file to Supabase Storage
+    // Upload file to R2 Storage
     const fileExt = file.name.split('.').pop();
     const fileName = `${applicationId}/${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('documents')
+    const { error: uploadError } = await storage.from('documents')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false,
@@ -110,12 +108,11 @@ export const documentService = {
 
     if (uploadError) {
       console.error('Storage upload error:', uploadError);
-      throw new Error(`Storage upload failed: ${uploadError.message}`);
+      throw new Error(`Storage upload failed: ${(uploadError as Error).message}`);
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('documents')
+    const { data: urlData } = storage.from('documents')
       .getPublicUrl(filePath);
 
     const documentUrl = urlData.publicUrl;
@@ -141,7 +138,7 @@ export const documentService = {
       console.error('Database insert error:', error);
       // If document insert fails, try to delete uploaded file
       try {
-        await supabase.storage.from('documents').remove([filePath]);
+        await storage.from('documents').remove([filePath]);
       } catch (cleanupError) {
         console.error('Failed to cleanup uploaded file:', cleanupError);
       }
@@ -193,7 +190,7 @@ export const documentService = {
     // Get document to find file path
     const { data: document, error: fetchError } = await supabase
       .from('documents')
-      .select('url')
+      .select('url, file_path')
       .eq('id', documentId)
       .single();
 
@@ -201,14 +198,32 @@ export const documentService = {
       throw new Error(fetchError.message);
     }
 
-    // Extract file path from URL
-    const url = new URL(document.url);
-    const filePath = url.pathname.split('/documents/')[1];
+    // Prefer stored file_path if available, otherwise extract from URL
+    let filePath: string | undefined = (document as any).file_path;
+
+    if (!filePath) {
+      try {
+        const url = new URL(document.url);
+        const pathname = url.pathname;
+
+        if (pathname.includes('/storage/v1/object/public/documents/')) {
+          // Old Supabase storage URL
+          filePath = pathname.split('/storage/v1/object/public/documents/')[1];
+        } else if (pathname.includes('/documents/')) {
+          // R2 public URL or any URL with /documents/ in path
+          filePath = pathname.split('/documents/')[1];
+        }
+      } catch {
+        // URL parsing failed — try string-based extraction
+        if (document.url.includes('/documents/')) {
+          filePath = document.url.split('/documents/').pop()?.split('?')[0];
+        }
+      }
+    }
 
     // Delete from storage
     if (filePath) {
-      const { error: storageError } = await supabase.storage
-        .from('documents')
+      const { error: storageError } = await storage.from('documents')
         .remove([filePath]);
 
       if (storageError) {
@@ -304,20 +319,19 @@ export const documentService = {
     // Delete old file from storage if file_path exists
     if (existingDoc.file_path) {
       try {
-        await supabase.storage.from('documents').remove([existingDoc.file_path]);
+        await storage.from('documents').remove([existingDoc.file_path]);
       } catch (storageError) {
         console.error('Failed to delete old file from storage:', storageError);
         // Continue even if old file deletion fails
       }
     }
 
-    // Upload new file to Supabase Storage
+    // Upload new file to R2 Storage
     const fileExt = file.name.split('.').pop();
     const fileName = `${existingDoc.application_id}/${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('documents')
+    const { error: uploadError } = await storage.from('documents')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false,
@@ -325,12 +339,11 @@ export const documentService = {
 
     if (uploadError) {
       console.error('Storage upload error:', uploadError);
-      throw new Error(`Storage upload failed: ${uploadError.message}`);
+      throw new Error(`Storage upload failed: ${(uploadError as Error).message}`);
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('documents')
+    const { data: urlData } = storage.from('documents')
       .getPublicUrl(filePath);
 
     const documentUrl = urlData.publicUrl;
@@ -355,7 +368,7 @@ export const documentService = {
       console.error('Database update error:', updateError);
       // If update fails, try to delete uploaded file
       try {
-        await supabase.storage.from('documents').remove([filePath]);
+        await storage.from('documents').remove([filePath]);
       } catch (cleanupError) {
         console.error('Failed to cleanup uploaded file:', cleanupError);
       }
@@ -403,8 +416,7 @@ export const documentService = {
     // First try to use stored file_path if available
     if ((document as any).file_path) {
       try {
-        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-          .from('documents')
+        const { data: signedUrlData, error: signedUrlError } = await storage.from('documents')
           .createSignedUrl((document as any).file_path, 3600);
 
         if (!signedUrlError && signedUrlData) {
@@ -418,7 +430,7 @@ export const documentService = {
     // Fallback: Try to extract file path from URL
     try {
       const url = new URL(document.url);
-      // Extract path after /storage/v1/object/public/documents/ or /documents/
+      // Extract path after /documents/ (works for both old Supabase URLs and new R2 URLs)
       let filePath = url.pathname;
       
       // Handle different URL formats
@@ -435,8 +447,7 @@ export const documentService = {
 
       if (filePath) {
         // Get signed URL (valid for 1 hour)
-        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-          .from('documents')
+        const { data: signedUrlData, error: signedUrlError } = await storage.from('documents')
           .createSignedUrl(filePath, 3600);
 
         if (!signedUrlError && signedUrlData) {
@@ -458,8 +469,7 @@ export const documentService = {
 
       if (filePath && filePath !== urlString) {
         try {
-          const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-            .from('documents')
+          const { data: signedUrlData, error: signedUrlError } = await storage.from('documents')
             .createSignedUrl(filePath, 3600);
 
           if (!signedUrlError && signedUrlData) {

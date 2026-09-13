@@ -1,4 +1,9 @@
--- Storage RLS Policies for 'documents' bucket
+-- ⚠️ LEGACY: These Supabase storage policies are no longer required for new deployments.
+-- File storage has been migrated to Cloudflare R2 (see lib/storage.ts).
+-- Supabase is still used for Auth, Database, and Realtime — but NOT for file storage.
+-- These policies are kept for reference only.
+
+-- Storage RLS Policies for 'documents' bucket (LEGACY - Supabase Storage)
 -- Run this in your Supabase SQL Editor
 
 -- Note: First ensure RLS is enabled on the 'documents' bucket in Storage settings

@@ -3,6 +3,7 @@ import { pdf } from '@react-pdf/renderer';
 import React from 'react';
 import { CertificatePDF } from '../components/certificate/CertificatePDF';
 import { documentService } from '../services/documents';
+import { storage } from '../lib/storage';
 import QRCodeLib from 'qrcode';
 
 // Generate random names for testing
@@ -348,7 +349,6 @@ const generateCertificatePDFBlob = async (application: Application): Promise<{ b
 
   let borderImageDataUrl: string | null = null;
   let emblemImageDataUrl: string | null = null;
-  let westBengalLogoDataUrl: string | null = null;
 
   try {
     // Convert border image
@@ -364,12 +364,7 @@ const generateCertificatePDFBlob = async (application: Application): Promise<{ b
     console.error('Failed to load emblem image:', error);
   }
 
-  try {
-    // Convert West Bengal logo
-    westBengalLogoDataUrl = await imageUrlToDataUrl(`${baseUrl}/assets/certificate/west-bengal-logo.png`);
-  } catch (error) {
-    console.error('Failed to load West Bengal logo:', error);
-  }
+
 
   // Find joint photograph and convert to data URL if it exists
   const jointPhotograph = application.documents?.find(
@@ -379,10 +374,14 @@ const generateCertificatePDFBlob = async (application: Application): Promise<{ b
   let jointPhotoDataUrl: string | null = null;
   if (jointPhotograph) {
     try {
-      // Get signed URL for the document to ensure it's accessible
+      // 1. Try signed URL first
       const signedUrl = await documentService.getSignedUrl(jointPhotograph.id);
-      // Convert to data URL for PDF rendering
       jointPhotoDataUrl = await imageUrlToDataUrl(signedUrl);
+
+      // 2. If signedUrl failed (e.g. CORS), fallback to document public URL
+      if (!jointPhotoDataUrl && jointPhotograph.url) {
+        jointPhotoDataUrl = await imageUrlToDataUrl(jointPhotograph.url);
+      }
     } catch (error) {
       console.error('Failed to load joint photograph:', error);
       // Continue without photo if it fails
@@ -416,7 +415,7 @@ const generateCertificatePDFBlob = async (application: Application): Promise<{ b
     qrCodeImage,
     borderImageDataUrl,
     emblemImageDataUrl,
-    westBengalLogoDataUrl,
+    westBengalLogoDataUrl: null,
   });
   const blob = await pdf(doc).toBlob();
 
@@ -461,10 +460,10 @@ export const downloadStoredCertificate = async (pdfUrl: string, filename: string
   }
 };
 
-// Generate and upload certificate PDF to storage (for server-side use)
+// Generate and upload certificate PDF to storage (uses Cloudflare R2)
 export const generateAndUploadCertificate = async (
   application: Application,
-  supabaseClient: any
+  _supabaseClient?: any // Kept for backward compatibility, no longer used
 ): Promise<{ pdfUrl: string; certificateData: any }> => {
   const { blob, certificateData } = await generateCertificatePDFBlob(application);
 
@@ -472,27 +471,24 @@ export const generateAndUploadCertificate = async (
   const fileName = `Marriage-Certificate-${certificateData.verificationId}.pdf`;
   const file = new File([blob], fileName, { type: 'application/pdf' });
 
-  // Upload to Supabase storage
+  // Upload to Cloudflare R2 storage
   const filePath = `${application.id || 'certificates'}/${Date.now()}-${fileName}`;
 
-  const { error: uploadError } = await supabaseClient.storage
-    .from('certificates')
+  const { data: uploadData, error: uploadError } = await storage.from('certificates')
     .upload(filePath, file, {
       cacheControl: '3600',
       upsert: false,
     });
 
   if (uploadError) {
-    throw new Error(`Failed to upload certificate PDF: ${uploadError.message}`);
+    throw new Error(`Failed to upload certificate PDF: ${(uploadError as Error).message}`);
   }
 
-  // Get public URL
-  const { data: urlData } = supabaseClient.storage
-    .from('certificates')
-    .getPublicUrl(filePath);
+  // Use the publicUrl returned from upload (supports both R2 and Supabase fallback)
+  const pdfUrl = (uploadData as any)?.publicUrl || storage.from('certificates').getPublicUrl(filePath).data.publicUrl;
 
   return {
-    pdfUrl: urlData.publicUrl,
+    pdfUrl,
     certificateData,
   };
 };

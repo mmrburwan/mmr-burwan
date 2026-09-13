@@ -122,14 +122,21 @@ grep -r "mmrburwan.com" .
 
 **Database Setup:**
 - [ ] All tables created and migrated
-- [ ] Storage policies configured (`supabase/storage-policies.sql`)
+- [x] ~~Storage policies configured (`supabase/storage-policies.sql`)~~ — LEGACY, no longer needed (storage is on R2)
 - [ ] Admin user created (run `scripts/set-admin-role.sql` or use dashboard)
 - [ ] Row Level Security (RLS) policies enabled and tested
 
-**Storage Buckets:**
-- [ ] Create required storage buckets (e.g., `documents`, `certificates`)
-- [ ] Configure bucket policies for public/private access as needed
+**Storage (Cloudflare R2 — Primary File Storage):**
+- [x] R2 bucket created (`mmr-burwan-storage`)
+- [x] Bucket CORS configured for web uploads
+- [x] Public R2.dev access enabled (`https://pub-02676075cda841f8aa773beeab8aa4a8.r2.dev`)
+- [x] Application code migrated to use R2 via `lib/storage.ts` (AWS S3-compatible SDK)
+- [ ] R2 API token created (Object Read & Write) and added to `.env.local` & production environment variables
+- [ ] Run file migration: `node scripts/migrate-storage.mjs` (copies files from Supabase → R2)
+- [ ] Run URL migration: `node scripts/update-storage-urls.mjs --dry-run` (preview DB URL changes)
+- [ ] Run URL migration: `node scripts/update-storage-urls.mjs` (rewrite old Supabase URLs → R2 in DB)
 - [ ] Test file upload/download functionality
+- [ ] Supabase storage policies (`supabase/storage-policies.sql`) are LEGACY — no longer needed for new deployments
 
 ---
 
