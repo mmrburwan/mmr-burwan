@@ -169,7 +169,7 @@ export interface Certificate {
   verificationId: string;
   name: string;
   issuedOn: string;
-  pdfUrl: string;
+  pdfUrl?: string; // Optional: on-demand generation does not require stored URLs
   verified: boolean;
   expiresAt?: string;
   certificateNumber?: string;

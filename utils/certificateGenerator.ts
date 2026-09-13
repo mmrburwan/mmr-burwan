@@ -429,7 +429,8 @@ export const downloadCertificate = async (application: Application) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `Marriage-Certificate-${certificateData.verificationId}.pdf`;
+  const fileIdentifier = certificateData.consecutiveNumber || certificateData.verificationId;
+  link.download = `Marriage-Certificate-${fileIdentifier}.pdf`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -437,6 +438,12 @@ export const downloadCertificate = async (application: Application) => {
   URL.revokeObjectURL(url);
 
   return certificateData;
+};
+
+export const viewCertificate = async (application: Application): Promise<void> => {
+  const { blob } = await generateCertificatePDFBlob(application);
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
 };
 
 export const downloadStoredCertificate = async (pdfUrl: string, filename: string) => {

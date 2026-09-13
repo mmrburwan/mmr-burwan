@@ -28,7 +28,7 @@ export const certificateService = {
       verificationId: data.verification_id,
       name: data.name,
       issuedOn: data.issued_on,
-      pdfUrl: data.pdf_url,
+      pdfUrl: data.pdf_url || undefined,
       verified: data.verified || true,
       expiresAt: data.expires_at,
       certificateNumber: data.certificate_number,
@@ -62,7 +62,7 @@ export const certificateService = {
       verificationId: data.verification_id,
       name: data.name,
       issuedOn: data.issued_on,
-      pdfUrl: data.pdf_url,
+      pdfUrl: data.pdf_url || undefined,
       verified: data.verified || true,
       expiresAt: data.expires_at,
       certificateNumber: data.certificate_number,
@@ -112,12 +112,12 @@ export const certificateService = {
   async issueCertificate(
     userId: string,
     applicationId: string | undefined,
-    pdfUrl: string,
     certificateNumber?: string,
     registrationDate?: string,
     groomName?: string,
     brideName?: string,
-    canDownload: boolean = false
+    canDownload: boolean = false,
+    pdfUrl?: string
   ): Promise<Certificate> {
     const verificationId = `MMR-BW-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
@@ -128,7 +128,7 @@ export const certificateService = {
         application_id: applicationId || null,
         verification_id: verificationId,
         name: 'Marriage Registration Certificate',
-        pdf_url: pdfUrl,
+        pdf_url: pdfUrl || null,
         issued_on: new Date().toISOString(),
         verified: true,
         certificate_number: certificateNumber || null,
@@ -151,7 +151,7 @@ export const certificateService = {
       verificationId: data.verification_id,
       name: data.name,
       issuedOn: data.issued_on,
-      pdfUrl: data.pdf_url,
+      pdfUrl: data.pdf_url || undefined,
       verified: data.verified || true,
       expiresAt: data.expires_at,
       certificateNumber: data.certificate_number,
@@ -180,7 +180,7 @@ export const certificateService = {
       verificationId: cert.verification_id,
       name: cert.name,
       issuedOn: cert.issued_on,
-      pdfUrl: cert.pdf_url,
+      pdfUrl: cert.pdf_url || undefined,
       verified: cert.verified || true,
       expiresAt: cert.expires_at,
       certificateNumber: cert.certificate_number,
@@ -214,7 +214,7 @@ export const certificateService = {
       verificationId: data.verification_id,
       name: data.name,
       issuedOn: data.issued_on,
-      pdfUrl: data.pdf_url,
+      pdfUrl: data.pdf_url || undefined,
       verified: data.verified || true,
       expiresAt: data.expires_at,
       certificateNumber: data.certificate_number,
@@ -243,8 +243,8 @@ export const certificateService = {
       .eq('id', certificateId)
       .single();
 
-    if (error) {
-      throw new Error('Certificate not found');
+    if (error || !certificate?.pdf_url) {
+      return '';
     }
 
     // Extract file path from URL — handles both old Supabase and new R2 URL formats:
@@ -331,7 +331,7 @@ export const certificateService = {
       verificationId: data.verification_id,
       name: data.name,
       issuedOn: data.issued_on,
-      pdfUrl: data.pdf_url,
+      pdfUrl: data.pdf_url || undefined,
       verified: data.verified || true,
       expiresAt: data.expires_at,
       certificateNumber: data.certificate_number,
@@ -342,7 +342,8 @@ export const certificateService = {
     };
   },
 
-  async deleteCertificateFile(pdfUrl: string): Promise<void> {
+  async deleteCertificateFile(pdfUrl?: string): Promise<void> {
+    if (!pdfUrl) return;
     try {
       // Extract file path from URL — handles both old Supabase and new R2 URL formats:
       //   Supabase: .../storage/v1/object/public/certificates/path/to/file.pdf

@@ -6,7 +6,6 @@ import { emailService } from './email';
 import { certificateService } from './certificates';
 import { supabase } from '../lib/supabase';
 import { Application, CertificateDetails } from '../types';
-import { generateAndUploadCertificate } from '../utils/certificateGenerator';
 
 export const adminService = {
   async checkCertificateNumber(certificateNumber: string, currentApplicationId?: string): Promise<boolean> {
@@ -515,37 +514,20 @@ export const adminService = {
         : partnerDetails?.firstName || 'N/A';
 
       if (existingCert) {
-        // Certificate exists - REGENERATE and UPDATE
-
-        // 1. Generate new PDF
-        const { pdfUrl } = await generateAndUploadCertificate(mappedApplication, supabase);
-
-        // 2. Update certificate record
+        // Certificate exists - update details
         await certificateService.updateCertificate(existingCert.id, {
-          pdfUrl,
           certificateNumber,
           registrationDate,
           groomName,
           brideName,
         });
 
-        // 3. Delete old file if URL has changed
-        if (existingCert.pdfUrl && existingCert.pdfUrl !== pdfUrl) {
-          await certificateService.deleteCertificateFile(existingCert.pdfUrl);
-        }
-
         console.log(`Certificate updated for application ${applicationId}`);
       } else {
-        // Certificate doesn't exist - CREATE new
-
-        // Generate and upload certificate PDF
-        const { pdfUrl } = await generateAndUploadCertificate(mappedApplication, supabase);
-
-        // Create certificate record in database (canDownload defaults to false)
+        // Certificate doesn't exist - CREATE new record (canDownload defaults to false)
         await certificateService.issueCertificate(
           data.user_id,
           applicationId,
-          pdfUrl,
           certificateNumber,
           registrationDate,
           groomName,
@@ -554,9 +536,7 @@ export const adminService = {
         );
       }
     } catch (certError: any) {
-      // Re-throw the error so the UI handles it and the user knows something went wrong.
-      // This is crucial for data consistency - we don't want "verified" application without correct certificate.
-      console.error('Failed to auto-generate certificate during verification:', certError);
+      console.error('Failed to issue certificate record during verification:', certError);
 
       // Rollback application update to prevent inconsistent state
       try {
@@ -576,7 +556,7 @@ export const adminService = {
         console.error('Failed to rollback application verification:', rollbackError);
       }
 
-      throw new Error(`Certificate generation failed: ${certError.message || 'Unknown error'}. verification has been cancelled. Please try again.`);
+      throw new Error(`Certificate record creation failed: ${certError.message || 'Unknown error'}. Verification has been cancelled. Please try again.`);
     }
 
     return applicationService.mapApplication(data);
@@ -624,10 +604,6 @@ export const adminService = {
       throw new Error('Certificate already exists for this application.');
     }
 
-    // Generate and upload certificate PDF
-    const mappedApplication = applicationService.mapApplication(appData);
-    const { pdfUrl, certificateData } = await generateAndUploadCertificate(mappedApplication, supabase);
-
     // Extract user names from application data
     const userDetails = appData.user_details as any;
     const partnerDetails = (appData.partner_form || appData.partner_details) as any;
@@ -644,7 +620,6 @@ export const adminService = {
     await certificateService.issueCertificate(
       appData.user_id,
       applicationId,
-      pdfUrl,
       appData.certificate_number,
       appData.registration_date,
       groomName,
@@ -684,6 +659,23 @@ export const adminService = {
   },
 
   async unverifyApplication(applicationId: string, actorId: string, actorName: string): Promise<Application> {
+    // --- Delete certificate record from database before unverifying ---
+    try {
+      const existingCert = await certificateService.getCertificateByApplicationId(applicationId);
+      if (existingCert) {
+        const { error: deleteError } = await supabase
+          .from('certificates')
+          .delete()
+          .eq('id', existingCert.id);
+
+        if (deleteError) {
+          console.error('Failed to delete certificate record:', deleteError);
+        }
+      }
+    } catch (certDeleteError) {
+      console.error('Error cleaning up certificate during unverify:', certDeleteError);
+    }
+
     const { data, error } = await supabase
       .from('applications')
       .update({

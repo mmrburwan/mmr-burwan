@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { certificateService } from '../../services/certificates';
+import { applicationService } from '../../services/application';
 import { notificationService } from '../../services/notifications';
 import { adminService } from '../../services/admin';
 import { profileService } from '../../services/profile';
 import { useNotification } from '../../contexts/NotificationContext';
 import { Certificate } from '../../types';
+import { downloadCertificate, viewCertificate } from '../../utils/certificateGenerator';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
@@ -153,25 +155,38 @@ const CertificatesPage: React.FC = () => {
 
   const handleDownload = async (cert: Certificate) => {
     try {
-      const url = await certificateService.getSignedUrl(cert.id);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Marriage-Certificate-${cert.certificateNumber || cert.verificationId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (!cert.applicationId) {
+        showToast('Application record not linked to this certificate', 'error');
+        return;
+      }
+      const application = await applicationService.getApplicationById(cert.applicationId);
+      if (!application) {
+        showToast('Application data not found', 'error');
+        return;
+      }
+      await downloadCertificate(application);
       showToast('Certificate downloaded successfully', 'success');
     } catch (error) {
-      showToast('Failed to generate download link', 'error');
+      console.error('Download certificate error:', error);
+      showToast('Failed to generate certificate download', 'error');
     }
   };
 
   const handleView = async (cert: Certificate) => {
     try {
-      const url = await certificateService.getSignedUrl(cert.id);
-      window.open(url, '_blank');
+      if (!cert.applicationId) {
+        showToast('Application record not linked to this certificate', 'error');
+        return;
+      }
+      const application = await applicationService.getApplicationById(cert.applicationId);
+      if (!application) {
+        showToast('Application data not found', 'error');
+        return;
+      }
+      await viewCertificate(application);
     } catch (error) {
-      showToast('Failed to open certificate', 'error');
+      console.error('View certificate error:', error);
+      showToast('Failed to open certificate preview', 'error');
     }
   };
 
