@@ -225,6 +225,46 @@ export const certificateService = {
     };
   },
 
+  async getCertificatesByApplicationIds(applicationIds: string[]): Promise<Record<string, Certificate>> {
+    if (!applicationIds || applicationIds.length === 0) {
+      return {};
+    }
+
+    const { data, error } = await supabase
+      .from('certificates')
+      .select('*')
+      .in('application_id', applicationIds);
+
+    if (error) {
+      console.error('Failed to batch fetch certificates:', error);
+      return {};
+    }
+
+    const certificateMap: Record<string, Certificate> = {};
+    (data || []).forEach((item: any) => {
+      if (item.application_id) {
+        certificateMap[item.application_id] = {
+          id: item.id,
+          userId: item.user_id,
+          applicationId: item.application_id,
+          verificationId: item.verification_id,
+          name: item.name,
+          issuedOn: item.issued_on,
+          pdfUrl: item.pdf_url || undefined,
+          verified: item.verified || true,
+          expiresAt: item.expires_at,
+          certificateNumber: item.certificate_number,
+          registrationDate: item.registration_date,
+          groomName: item.groom_name,
+          brideName: item.bride_name,
+          canDownload: item.can_download || false,
+        };
+      }
+    });
+
+    return certificateMap;
+  },
+
   async updateDownloadPermission(certificateId: string, canDownload: boolean): Promise<void> {
     const { error } = await supabase
       .from('certificates')

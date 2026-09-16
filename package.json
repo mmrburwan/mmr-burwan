@@ -8,8 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "test:ui": "vitest --ui",
-    "generate-favicons": "node scripts/generate-favicons.js"
+    "test:ui": "vitest --ui"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1131.0",

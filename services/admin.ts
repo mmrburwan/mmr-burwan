@@ -54,43 +54,78 @@ export const adminService = {
 
   async getApplications(
     page: number = 1,
-    limit: number = 20,
+    limit: number = 10,
     filters?: { search?: string; verified?: string }
   ): Promise<{ data: Application[]; count: number }> {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
+    const isRejectedFilter = filters?.verified === 'rejected';
+
     let query = supabase
       .from('applications')
-      .select(`
-        *,
-        documents (*)
-      `, { count: 'exact' });
+      .select(
+        isRejectedFilter
+          ? `*, documents!inner (*)`
+          : `*, documents (*)`,
+        { count: 'exact' }
+      );
 
-    // Apply Filters
-    if (filters?.search) {
-      // Search by ID or user name (need to join probably? or just search ID for now as per UI)
-      // UI says "Application ID". 
-      // If we want to search by name (in user_details json), standard Supabase text search on JSON is tricky.
-      // Let's implement ID search first as in the current UI logic.
-      query = query.ilike('id', `%${filters.search}%`);
-    }
-
-    if (filters?.verified) {
+    // Apply Verification & Status Filters
+    if (filters?.verified && filters.verified !== 'all') {
       switch (filters.verified) {
         case 'verified':
           query = query.eq('verified', true);
           break;
         case 'unverified':
-          query = query.eq('status', 'submitted').or('verified.is.false,verified.is.null');
+          query = query
+            .in('status', ['submitted', 'under_review'])
+            .or('verified.is.false,verified.is.null');
           break;
         case 'submitted':
-          query = query.eq('status', 'submitted').or('verified.is.false,verified.is.null');
+          query = query
+            .in('status', ['submitted', 'under_review'])
+            .or('verified.is.false,verified.is.null');
           break;
         case 'draft':
           query = query.eq('status', 'draft');
           break;
+        case 'rejected':
+          query = query.eq('documents.status', 'rejected');
+          break;
       }
+    }
+
+    // Apply Search Filter across groom, bride, phone, certificate number, proxy email
+    if (filters?.search && filters.search.trim()) {
+      const term = filters.search.trim();
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term);
+
+      const searchClauses: string[] = [
+        `certificate_number.ilike.%${term}%`,
+        `user_details->>firstName.ilike.%${term}%`,
+        `user_details->>lastName.ilike.%${term}%`,
+        `partner_form->>firstName.ilike.%${term}%`,
+        `partner_form->>lastName.ilike.%${term}%`,
+        `user_details->>mobileNumber.ilike.%${term}%`,
+        `partner_form->>mobileNumber.ilike.%${term}%`,
+        `proxy_user_email.ilike.%${term}%`,
+      ];
+
+      // If user typed multi-word name (e.g. "Rahul Sharma"), allow matching across first & last name
+      const words = term.split(/\s+/).filter(Boolean);
+      if (words.length >= 2) {
+        const firstWord = words[0];
+        const lastWord = words.slice(1).join(' ');
+        searchClauses.push(`and(user_details->>firstName.ilike.%${firstWord}%,user_details->>lastName.ilike.%${lastWord}%)`);
+        searchClauses.push(`and(partner_form->>firstName.ilike.%${firstWord}%,partner_form->>lastName.ilike.%${lastWord}%)`);
+      }
+
+      if (isUUID) {
+        searchClauses.push(`id.eq.${term}`);
+      }
+
+      query = query.or(searchClauses.join(','));
     }
 
     const { data, error, count } = await query
@@ -98,12 +133,13 @@ export const adminService = {
       .range(from, to);
 
     if (error) {
+      console.error('Error fetching applications:', error);
       throw new Error(error.message);
     }
 
     return {
       data: (data || []).map((app) => applicationService.mapApplication(app)),
-      count: count || 0
+      count: count || 0,
     };
   },
 

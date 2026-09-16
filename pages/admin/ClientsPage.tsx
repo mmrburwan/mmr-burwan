@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -11,7 +11,7 @@ import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
 import VerifyApplicationModal from '../../components/admin/VerifyApplicationModal';
 import DeleteApplicationModal from '../../components/admin/DeleteApplicationModal';
-import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText, Trash2, StickyNote } from 'lucide-react';
+import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText, Trash2, StickyNote, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
 import { downloadCertificate, viewCertificate } from '../../utils/certificateGenerator';
@@ -74,11 +74,14 @@ const ClientsPage: React.FC = () => {
   const { showToast } = useNotification();
   const navigate = useNavigate();
   const [clients, setClients] = useState<ClientWithApplication[]>([]);
-  const [filteredClients, setFilteredClients] = useState<ClientWithApplication[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
-  const [verifiedFilter, setVerifiedFilter] = useState<string>('all'); // 'all', 'verified', 'unverified', 'draft'
+  const debouncedSearchTerm = useDebounce(searchTerm, 400);
+  const [verifiedFilter, setVerifiedFilter] = useState<string>('all'); // 'all', 'verified', 'unverified', 'rejected', 'draft'
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [certificatesMap, setCertificatesMap] = useState<Record<string, Certificate | null>>({});
   const [generatingCert, setGeneratingCert] = useState<string | null>(null);
   const [verifyModalState, setVerifyModalState] = useState<{
@@ -113,6 +116,61 @@ const ClientsPage: React.FC = () => {
     comment: '',
   });
 
+  const loadClients = useCallback(async (targetPage: number = page, targetLimit: number = limit) => {
+    setIsFetching(true);
+    try {
+      const { data: applications, count } = await adminService.getApplications(targetPage, targetLimit, {
+        search: debouncedSearchTerm,
+        verified: verifiedFilter,
+      });
+
+      setTotalCount(count);
+
+      // Get unique user IDs from currently loaded applications
+      const userIds = [...new Set(applications.map(app => app.userId))];
+
+      // Fetch user emails in batch
+      const emailMap = userIds.length > 0 ? await adminService.getUserEmails(userIds) : {};
+
+      // Create client entries for EACH application
+      const clientsData: ClientWithApplication[] = applications.map((application) => ({
+        userId: application.userId,
+        email: emailMap[application.userId] || application.proxyUserEmail || 'N/A',
+        application,
+      }));
+
+      setClients(clientsData);
+
+      // Fetch certificates for verified applications in 1 single batch query
+      const verifiedAppIds = clientsData
+        .filter(client => client.application?.verified && client.application?.id)
+        .map(client => client.application!.id);
+
+      if (verifiedAppIds.length > 0) {
+        const certMap = await certificateService.getCertificatesByApplicationIds(verifiedAppIds);
+        setCertificatesMap(certMap);
+      } else {
+        setCertificatesMap({});
+      }
+    } catch (error) {
+      console.error('Failed to load clients:', error);
+      showToast('Failed to load clients', 'error');
+    } finally {
+      setIsLoading(false);
+      setIsFetching(false);
+    }
+  }, [page, limit, debouncedSearchTerm, verifiedFilter, showToast]);
+
+  // Reset page to 1 whenever search or filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearchTerm, verifiedFilter]);
+
+  // Load clients when page, limit, debouncedSearchTerm, or verifiedFilter changes
+  useEffect(() => {
+    loadClients(page, limit);
+  }, [page, limit, debouncedSearchTerm, verifiedFilter, loadClients]);
+
   const handleUpdateComment = async () => {
     if (!user) return;
     try {
@@ -124,30 +182,15 @@ const ClientsPage: React.FC = () => {
       );
       showToast('Comment updated successfully', 'success');
 
-      // Update local state
-      const updatedClients = clients.map(c => {
+      // Update local state without full reload
+      setClients(prev => prev.map(c => {
         if (c.application?.id === commentModalState.applicationId) {
           return {
             ...c,
             application: {
               ...c.application,
-              adminComment: commentModalState.comment
-            }
-          };
-        }
-        return c;
-      });
-      setClients(updatedClients);
-      // Re-apply filters if needed, but for simplicity we rely on next render or complex state mgmt
-      // For now just updating filteredClients as well if it contains the target
-      setFilteredClients(prev => prev.map(c => {
-        if (c.application?.id === commentModalState.applicationId) {
-          return {
-            ...c,
-            application: {
-              ...c.application,
-              adminComment: commentModalState.comment
-            }
+              adminComment: commentModalState.comment,
+            },
           };
         }
         return c;
@@ -158,51 +201,6 @@ const ClientsPage: React.FC = () => {
       showToast(error.message || 'Failed to update comment', 'error');
     }
   };
-
-  useEffect(() => {
-    const loadClients = async () => {
-      try {
-        // Get ALL applications (same as dashboard)
-        const applications = await adminService.getAllApplications();
-
-        // Get unique user IDs from all applications
-        const userIds = [...new Set(applications.map(app => app.userId))];
-
-        // Fetch user emails in batch
-        const emailMap = await adminService.getUserEmails(userIds);
-
-        // Create client entries for EACH application (not grouped by user)
-        const clientsData: ClientWithApplication[] = applications.map((application) => ({
-          userId: application.userId,
-          email: emailMap[application.userId] || 'N/A',
-          application,
-        }));
-
-        setClients(clientsData);
-        setFilteredClients(clientsData);
-
-        // Check which applications have certificates
-        const certMap: Record<string, Certificate | null> = {};
-        await Promise.all(
-          clientsData
-            .filter(client => client.application?.verified && client.application?.id)
-            .map(async (client) => {
-              if (client.application?.id) {
-                const cert = await certificateService.getCertificateByApplicationId(client.application.id);
-                certMap[client.application.id] = cert || null;
-              }
-            })
-        );
-        setCertificatesMap(certMap);
-      } catch (error) {
-        console.error('Failed to load clients:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadClients();
-  }, []);
 
   const handleVerify = async (certificateNumber: string, registrationDate: string, registrarName: string, certificateDetails: CertificateDetails) => {
     if (!user) return;
@@ -218,37 +216,49 @@ const ClientsPage: React.FC = () => {
         certificateDetails
       );
       showToast('Application verified successfully', 'success');
-
-      // Reload clients - show ALL applications
-      const applications = await adminService.getAllApplications();
-      const userIds = [...new Set(applications.map(app => app.userId))];
-      const emailMap = await adminService.getUserEmails(userIds);
-      const clientsData: ClientWithApplication[] = applications.map((application) => ({
-        userId: application.userId,
-        email: emailMap[application.userId] || 'N/A',
-        application,
-      }));
-      setClients(clientsData);
-      setFilteredClients(clientsData);
-
-      // Reload certificate map
-      const certMap: Record<string, Certificate | null> = {};
-      await Promise.all(
-        clientsData
-          .filter(client => client.application?.verified && client.application?.id)
-          .map(async (client) => {
-            if (client.application?.id) {
-              const cert = await certificateService.getCertificateByApplicationId(client.application.id);
-              certMap[client.application.id] = cert || null;
-            }
-          })
-      );
-      setCertificatesMap(certMap);
-
       setVerifyModalState({ isOpen: false, applicationId: '' });
+      await loadClients(page, limit);
     } catch (error: any) {
       showToast(error.message || 'Failed to verify application', 'error');
       throw error;
+    }
+  };
+
+  const handleUnverify = async (applicationId: string) => {
+    if (!user) return;
+    try {
+      await adminService.unverifyApplication(
+        applicationId,
+        user.id,
+        user.name || user.email || 'Admin User'
+      );
+      showToast('Application unverified', 'success');
+      await loadClients(page, limit);
+    } catch (error) {
+      showToast('Failed to unverify application', 'error');
+      console.error('Failed to unverify:', error);
+    }
+  };
+
+  const handleGenerateCertificate = async (applicationId: string) => {
+    if (!user) return;
+    setGeneratingCert(applicationId);
+    try {
+      await adminService.generateCertificate(
+        applicationId,
+        user.id,
+        user.name || user.email
+      );
+      showToast('Certificate generated successfully', 'success');
+      const cert = await certificateService.getCertificateByApplicationId(applicationId);
+      setCertificatesMap(prev => ({
+        ...prev,
+        [applicationId]: cert || null,
+      }));
+    } catch (error: any) {
+      showToast(error.message || 'Failed to generate certificate', 'error');
+    } finally {
+      setGeneratingCert(null);
     }
   };
 
@@ -277,96 +287,31 @@ const ClientsPage: React.FC = () => {
     try {
       await adminService.deleteApplication(applicationId, user.id, user.name || user.email);
       showToast('Application deleted successfully', 'success');
-
-      // Refresh the list
-      const applications = await adminService.getAllApplications();
-      const userIds = [...new Set(applications.map(app => app.userId))];
-      const emailMap = await adminService.getUserEmails(userIds);
-      const clientsData: ClientWithApplication[] = applications.map((application) => ({
-        userId: application.userId,
-        email: emailMap[application.userId] || 'N/A',
-        application,
-      }));
-      setClients(clientsData);
-      setFilteredClients(clientsData);
+      setDeleteModalState(prev => ({ ...prev, isOpen: false }));
+      await loadClients(page, limit);
     } catch (error: any) {
       showToast(error.message || 'Failed to delete application', 'error');
       throw error;
     }
   };
 
-  useEffect(() => {
-    let filtered = clients;
+  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
 
-    if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
-      const searchLower = debouncedSearchTerm.trim().toLowerCase();
-      filtered = filtered.filter((client) => {
-        // Groom name from userDetails
-        const groomFirstName = client.application?.userDetails?.firstName?.trim() || '';
-        const groomLastName = client.application?.userDetails?.lastName?.trim() || '';
-        const groomName = groomFirstName || groomLastName
-          ? `${groomFirstName} ${groomLastName}`.trim().toLowerCase()
-          : '';
-
-        // Bride name from partnerForm
-        const brideFirstName = client.application?.partnerForm?.firstName?.trim() || '';
-        const brideLastName = client.application?.partnerForm?.lastName?.trim() || '';
-        const brideName = brideFirstName || brideLastName
-          ? `${brideFirstName} ${brideLastName}`.trim().toLowerCase()
-          : '';
-
-        // Groom email (user's email)
-        const groomEmail = (client.email || '').trim().toLowerCase();
-
-        // Bride email (check if it exists in partnerForm - for future use)
-        const brideEmail = ((client.application?.partnerForm as any)?.email || '').trim().toLowerCase();
-
-        // Groom phone
-        const groomPhone = client.application?.userDetails?.mobileNumber?.trim() || '';
-
-        // Bride phone
-        const bridePhone = client.application?.partnerForm?.mobileNumber?.trim() || '';
-
-        // Only check fields that have actual values
-        return (
-          (groomName && groomName.includes(searchLower)) ||
-          (brideName && brideName.includes(searchLower)) ||
-          (groomEmail && groomEmail.includes(searchLower)) ||
-          (brideEmail && brideEmail.includes(searchLower)) ||
-          (groomPhone && groomPhone.includes(searchLower)) ||
-          (bridePhone && bridePhone.includes(searchLower))
-        );
-      });
-    }
-
-    // Apply verified filter
-    if (verifiedFilter !== 'all') {
-      if (verifiedFilter === 'verified') {
-        filtered = filtered.filter((client) => client.application?.verified === true);
-      } else if (verifiedFilter === 'unverified') {
-        // Show only submitted applications that are not verified (exclude draft)
-        filtered = filtered.filter((client) =>
-          client.application &&
-          (client.application.status === 'submitted' || client.application.status === 'under_review') &&
-          (client.application.verified === false || client.application.verified === undefined)
-        );
-      } else if (verifiedFilter === 'rejected') {
-        // Show applications with rejected documents that haven't been re-uploaded
-        // Note: When a document is re-uploaded, its status changes to 'pending'.
-        // So checking for status === 'rejected' is sufficient.
-        filtered = filtered.filter((client) => {
-          if (!client.application || !client.application.documents) return false;
-          return client.application.documents.some(
-            (doc) => doc.status === 'rejected'
-          );
-        });
-      } else if (verifiedFilter === 'draft') {
-        filtered = filtered.filter((client) => client.application?.status === 'draft');
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (page <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (page >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', page - 1, page, page + 1, '...', totalPages);
       }
     }
-
-    setFilteredClients(filtered);
-  }, [debouncedSearchTerm, verifiedFilter, clients]);
+    return pages;
+  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
@@ -430,9 +375,15 @@ const ClientsPage: React.FC = () => {
       </Card>
 
       <Card className="p-3 sm:p-4 lg:p-6">
+        {isFetching && (
+          <div className="flex items-center justify-center py-2 mb-3 text-xs text-gold-700 bg-gold-50/80 rounded-lg animate-pulse">
+            <Loader2 size={14} className="animate-spin mr-1.5" />
+            Loading applications...
+          </div>
+        )}
         {/* Mobile Card View */}
-        <div className="block sm:hidden space-y-3">
-          {filteredClients.map((client) => {
+        <div className={`block sm:hidden space-y-3 transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
+          {clients.map((client) => {
             const groomName = client.application?.userDetails
               ? `${client.application.userDetails.firstName}${client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''}`
               : '-';
@@ -597,29 +548,7 @@ const ClientsPage: React.FC = () => {
                               variant="ghost"
                               size="sm"
                               className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex-1"
-                              onClick={async () => {
-                                try {
-                                  await adminService.unverifyApplication(
-                                    client.application!.id,
-                                    user?.id || 'admin-1',
-                                    user?.name || 'Admin User'
-                                  );
-                                  showToast('Application unverified', 'success');
-                                  const applications = await adminService.getAllApplications();
-                                  const userIds = [...new Set(applications.map(app => app.userId))];
-                                  const emailMap = await adminService.getUserEmails(userIds);
-                                  const clientsData: ClientWithApplication[] = applications.map((application) => ({
-                                    userId: application.userId,
-                                    email: emailMap[application.userId] || 'N/A',
-                                    application,
-                                  }));
-                                  setClients(clientsData);
-                                  setFilteredClients(clientsData);
-                                } catch (error) {
-                                  showToast('Failed to unverify application', 'error');
-                                  console.error('Failed to unverify:', error);
-                                }
-                              }}
+                              onClick={() => handleUnverify(client.application!.id)}
                             >
                               <XCircle size={14} className="mr-1" />
                               Unverify
@@ -630,28 +559,7 @@ const ClientsPage: React.FC = () => {
                                 size="sm"
                                 className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-green-50 hover:bg-green-100 text-green-700 flex-1"
                                 disabled={generatingCert === client.application.id}
-                                onClick={async () => {
-                                  if (!user) return;
-                                  setGeneratingCert(client.application!.id);
-                                  try {
-                                    await adminService.generateCertificate(
-                                      client.application!.id,
-                                      user.id,
-                                      user.name || user.email
-                                    );
-                                    showToast('Certificate generated successfully', 'success');
-                                    // Refresh logic to get the new certificate
-                                    const cert = await certificateService.getCertificateByApplicationId(client.application!.id);
-                                    setCertificatesMap(prev => ({
-                                      ...prev,
-                                      [client.application!.id]: cert || null,
-                                    }));
-                                  } catch (error: any) {
-                                    showToast(error.message || 'Failed to generate certificate', 'error');
-                                  } finally {
-                                    setGeneratingCert(null);
-                                  }
-                                }}
+                                onClick={() => handleGenerateCertificate(client.application!.id)}
                               >
                                 <FileText size={14} className="mr-1" />
                                 {generatingCert === client.application.id ? 'Generating...' : 'Generate'}
@@ -733,7 +641,7 @@ const ClientsPage: React.FC = () => {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden sm:block overflow-x-auto">
+        <div className={`hidden sm:block overflow-x-auto transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
@@ -745,7 +653,7 @@ const ClientsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredClients.map((client) => {
+              {clients.map((client) => {
                 const groomName = client.application?.userDetails
                   ? `${client.application.userDetails.firstName}${client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''}`
                   : '-';
@@ -859,29 +767,7 @@ const ClientsPage: React.FC = () => {
                                   variant="ghost"
                                   size="sm"
                                   className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
-                                  onClick={async () => {
-                                    try {
-                                      await adminService.unverifyApplication(
-                                        client.application!.id,
-                                        user?.id || 'admin-1',
-                                        user?.name || 'Admin User'
-                                      );
-                                      showToast('Application unverified', 'success');
-                                      const applications = await adminService.getAllApplications();
-                                      const userIds = [...new Set(applications.map(app => app.userId))];
-                                      const emailMap = await adminService.getUserEmails(userIds);
-                                      const clientsData: ClientWithApplication[] = applications.map((application) => ({
-                                        userId: application.userId,
-                                        email: emailMap[application.userId] || 'N/A',
-                                        application,
-                                      }));
-                                      setClients(clientsData);
-                                      setFilteredClients(clientsData);
-                                    } catch (error) {
-                                      showToast('Failed to unverify application', 'error');
-                                      console.error('Failed to unverify:', error);
-                                    }
-                                  }}
+                                  onClick={() => handleUnverify(client.application!.id)}
                                 >
                                   <XCircle size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
                                   <span className="hidden sm:inline">Unverify</span>
@@ -892,28 +778,7 @@ const ClientsPage: React.FC = () => {
                                     size="sm"
                                     className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
                                     disabled={generatingCert === client.application.id}
-                                    onClick={async () => {
-                                      if (!user) return;
-                                      setGeneratingCert(client.application!.id);
-                                      try {
-                                        await adminService.generateCertificate(
-                                          client.application!.id,
-                                          user.id,
-                                          user.name || user.email
-                                        );
-                                        showToast('Certificate generated successfully', 'success');
-                                        // Refresh certificate map
-                                        const cert = await certificateService.getCertificateByApplicationId(client.application!.id);
-                                        setCertificatesMap(prev => ({
-                                          ...prev,
-                                          [client.application!.id]: cert || null,
-                                        }));
-                                      } catch (error: any) {
-                                        showToast(error.message || 'Failed to generate certificate', 'error');
-                                      } finally {
-                                        setGeneratingCert(null);
-                                      }
-                                    }}
+                                    onClick={() => handleGenerateCertificate(client.application!.id)}
                                   >
                                     <FileText size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
                                     <span className="hidden sm:inline">
@@ -1007,10 +872,83 @@ const ClientsPage: React.FC = () => {
           </table>
         </div>
 
-        {filteredClients.length === 0 && (
+        {clients.length === 0 && (
           <div className="text-center py-6 sm:py-8 lg:py-12">
             <Users size={32} className="sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3 lg:mb-4" />
             <p className="text-xs sm:text-sm text-gray-500">No clients found</p>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalCount > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-gray-600">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-center sm:justify-start">
+              <span>
+                Showing <strong className="text-gray-900">{Math.min((page - 1) * limit + 1, totalCount)}</strong> to{' '}
+                <strong className="text-gray-900">{Math.min(page * limit, totalCount)}</strong> of{' '}
+                <strong className="text-gray-900">{totalCount}</strong> applications
+              </span>
+              <div className="flex items-center gap-1.5 ml-1 sm:ml-2">
+                <span className="text-gray-500 text-xs hidden sm:inline">Per page:</span>
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="px-2 py-1 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-gold-500 focus:outline-none bg-white"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 flex-wrap justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1 || isFetching}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                className="!px-2 sm:!px-2.5 !py-1 text-xs"
+              >
+                <ChevronLeft size={14} className="mr-0.5 sm:mr-1" />
+                Prev
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((p, idx) => (
+                  typeof p === 'number' ? (
+                    <button
+                      key={idx}
+                      onClick={() => setPage(p)}
+                      disabled={isFetching}
+                      className={`min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 rounded-lg text-xs font-medium transition-colors ${
+                        page === p
+                          ? 'bg-gold-500 text-white shadow-sm font-semibold'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ) : (
+                    <span key={idx} className="px-1 text-gray-400 select-none">...</span>
+                  )
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages || isFetching}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                className="!px-2 sm:!px-2.5 !py-1 text-xs"
+              >
+                Next
+                <ChevronRight size={14} className="ml-0.5 sm:ml-1" />
+              </Button>
+            </div>
           </div>
         )}
       </Card>
