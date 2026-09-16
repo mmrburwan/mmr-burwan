@@ -472,8 +472,9 @@ const CertificateTemplate: React.FC<CertificateTemplateProps> = ({
             <p><strong>Name:</strong> {registrarName}</p>
             <p><strong>Licence No:</strong> {registrarLicense}</p>
             <p><strong>Office Address:</strong> {registrarOffice}</p>
-            <p style={{ marginTop: '8px' }}>
-              <strong>Contact:</strong> {registrarPhone ? `📞 ${registrarPhone} | ` : ''}✉️ {registrarEmail} | 🌐 mmrburwan.com
+            <p style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <span><strong>Contact:</strong> ✉️ {registrarEmail}</span>
+              <span>🌐 mmrburwan.com</span>
             </p>
           </div>
         </div>

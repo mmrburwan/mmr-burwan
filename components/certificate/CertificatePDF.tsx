@@ -500,7 +500,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 0.5,
-    gap: 20,
   },
   contactItem: {
     flexDirection: 'row',
@@ -546,8 +545,12 @@ const styles = StyleSheet.create({
 
   // ===== SIGNATURE =====
   signatureSection: {
-    marginTop: 55,
+    position: 'absolute',
+    bottom: 50,
+    left: 0,
+    right: 0,
     alignItems: 'center',
+    zIndex: 2,
   },
   signatureLine: {
     width: 200,
@@ -922,32 +925,22 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({
               <Text style={styles.registrarValue}>{certificateData.registrarOffice}</Text>
             </View>
             <View style={styles.contactRow}>
-              <Text style={styles.registrarLabel}>Contact: </Text>
-              {certificateData.registrarPhone ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
-                  <Image
-                    src={getImageUrl("/icons/phone.png")}
-                    style={styles.icon}
-                    cache={false}
-                  />
-                  <Text style={styles.registrarValue}> {certificateData.registrarPhone}</Text>
-                </View>
-              ) : null}
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
+              <Text style={[styles.registrarLabel, { marginRight: 6 }]}>Contact: </Text>
+              <View style={[styles.contactItem, { marginRight: 20 }]}>
                 <Image
                   src={getImageUrl("/icons/mail.png")}
                   style={styles.icon}
                   cache={false}
                 />
-                <Text style={styles.registrarValue}> {certificateData.registrarEmail}</Text>
+                <Text style={styles.registrarValue}>{certificateData.registrarEmail}</Text>
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={styles.contactItem}>
                 <Image
                   src={getImageUrl("/icons/world.png")}
                   style={styles.icon}
                   cache={false}
                 />
-                <Text style={styles.registrarValue}> mmrburwan.com</Text>
+                <Text style={styles.registrarValue}>mmrburwan.com</Text>
               </View>
             </View>
           </View>
@@ -975,12 +968,12 @@ export const CertificatePDF: React.FC<CertificatePDFProps> = ({
               )}
             </View>
           </View>
+        </View>
 
-          {/* Signature */}
-          <View style={styles.signatureSection}>
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureText}>Signature of Registrar with Seal</Text>
-          </View>
+        {/* Signature - Fixed in place on the page for every application */}
+        <View style={styles.signatureSection}>
+          <View style={styles.signatureLine} />
+          <Text style={styles.signatureText}>Signature of Registrar with Seal</Text>
         </View>
       </Page>
     </Document>
