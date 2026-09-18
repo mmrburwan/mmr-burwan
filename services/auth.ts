@@ -19,7 +19,7 @@ export interface AuthResponse {
 }
 
 // Helper function to convert Supabase user to our User type
-const mapSupabaseUser = (supabaseUser: any, role: 'client' | 'admin' = 'client'): User => {
+const mapSupabaseUser = (supabaseUser: any, role: 'client' | 'admin' | 'agent' = 'client'): User => {
   return {
     id: supabaseUser.id,
     email: supabaseUser.email,

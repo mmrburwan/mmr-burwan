@@ -62,6 +62,8 @@ const LoginPage: React.FC = () => {
       // Redirect based on user role
       if (loggedInUser?.role === 'admin') {
         navigate('/admin', { replace: true });
+      } else if (loggedInUser?.role === 'agent') {
+        navigate('/agent/dashboard', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }

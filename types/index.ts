@@ -2,7 +2,7 @@
  * TypeScript type definitions for MMR Burwan
  */
 
-export type UserRole = 'client' | 'admin';
+export type UserRole = 'client' | 'admin' | 'agent';
 
 export interface User {
   id: string;
@@ -87,6 +87,8 @@ export interface Application {
   // Proxy application fields
   createdByAdminId?: string;
   isProxyApplication?: boolean;
+  agentId?: string;
+  isAgentApplication?: boolean;
   offlineApplicantContact?: {
     phone?: string;
     address?: string;

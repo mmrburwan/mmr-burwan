@@ -214,6 +214,23 @@ export const applicationService = {
     return data.map((app) => this.mapApplication(app));
   },
 
+  async getApplicationsByAgent(agentId: string): Promise<Application[]> {
+    const { data, error } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        documents (*)
+      `)
+      .eq('agent_id', agentId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data.map((app) => this.mapApplication(app));
+  },
+
   // Helper function to calculate actual progress based on filled data
   calculateActualProgress(application: Application): number {
     let progress = 0;
@@ -294,6 +311,8 @@ export const applicationService = {
       // Proxy application fields
       createdByAdminId: data.created_by_admin_id,
       isProxyApplication: data.is_proxy_application || false,
+      agentId: data.agent_id,
+      isAgentApplication: data.is_agent_application || false,
       offlineApplicantContact: data.offline_applicant_contact,
       proxyUserEmail: data.proxy_user_email,
       certificateDetails: data.certificate_details,

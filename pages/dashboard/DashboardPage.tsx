@@ -49,6 +49,16 @@ const DashboardPage: React.FC = () => {
       return;
     }
 
+    if (user.role === 'admin') {
+      navigate('/admin', { replace: true });
+      return;
+    }
+
+    if (user.role === 'agent') {
+      navigate('/agent/dashboard', { replace: true });
+      return;
+    }
+
     try {
       const [profileData, appData, aptData, certData, conversations] = await Promise.all([
         profileService.getProfile(user.id),

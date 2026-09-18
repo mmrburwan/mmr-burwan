@@ -76,6 +76,8 @@ const MagicLinkPage: React.FC = () => {
       const currentUser = await authService.getCurrentUser();
       if (currentUser?.role === 'admin') {
         navigate('/admin');
+      } else if (currentUser?.role === 'agent') {
+        navigate('/agent/dashboard');
       } else {
         navigate('/dashboard');
       }
@@ -107,6 +109,8 @@ const MagicLinkPage: React.FC = () => {
         // Redirect based on user role
         if (currentUser.role === 'admin') {
           navigate('/admin', { replace: true });
+        } else if (currentUser.role === 'agent') {
+          navigate('/agent/dashboard', { replace: true });
         } else {
           navigate('/dashboard', { replace: true });
         }

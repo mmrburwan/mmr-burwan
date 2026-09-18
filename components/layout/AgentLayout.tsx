@@ -3,25 +3,18 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard,
-  Users,
-  Calendar,
-  FileText,
-  MessageSquare,
-  QrCode,
-  ShieldCheck,
-  Settings,
   LogOut,
   Menu,
   X,
   UserPlus,
 } from 'lucide-react';
 
-const AdminLayout: React.FC = () => {
+const AgentLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
-      return localStorage.getItem('admin_sidebar_collapsed') === 'true';
+      return localStorage.getItem('agent_sidebar_collapsed') === 'true';
     } catch {
       return false;
     }
@@ -33,23 +26,15 @@ const AdminLayout: React.FC = () => {
     setIsCollapsed(prev => {
       const next = !prev;
       try {
-        localStorage.setItem('admin_sidebar_collapsed', String(next));
+        localStorage.setItem('agent_sidebar_collapsed', String(next));
       } catch {}
       return next;
     });
   };
 
   const menuItems = [
-    { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/admin/create-application', icon: UserPlus, label: 'Create Application' },
-    { path: '/admin/clients', icon: Users, label: 'Clients' },
-    { path: '/admin/agents', icon: Users, label: 'Agents' },
-    { path: '/admin/appointments', icon: Calendar, label: 'Appointments' },
-    { path: '/admin/certificates', icon: FileText, label: 'Certificates' },
-    { path: '/admin/chat', icon: MessageSquare, label: 'Messages' },
-    { path: '/admin/scanner', icon: QrCode, label: 'QR Scanner' },
-    { path: '/admin/audit', icon: ShieldCheck, label: 'Audit Logs' },
-    { path: '/admin/settings', icon: Settings, label: 'Settings' },
+    { path: '/agent/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/agent/create-application', icon: UserPlus, label: 'Create Application' },
   ];
 
   const handleLogout = async () => {
@@ -79,13 +64,13 @@ const AdminLayout: React.FC = () => {
           {/* Logo Header */}
           <div className="flex items-center justify-between px-3 sm:px-4 lg:px-5 py-3 sm:py-4 lg:py-5 border-b border-gray-200 flex-shrink-0 min-h-[64px] sm:min-h-[73px]">
             <Link
-              to="/admin"
+              to="/agent/dashboard"
               className={`flex items-center gap-2 sm:gap-3 min-w-0 hover:opacity-90 transition-opacity ${
                 isCollapsed ? 'justify-center w-full' : ''
               }`}
-              title="MMR Burwan Admin Portal"
+              title="MMR Burwan Agent Portal"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-md text-white font-serif font-bold text-base sm:text-lg lg:text-xl flex-shrink-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-md text-white font-serif font-bold text-base sm:text-lg lg:text-xl flex-shrink-0">
                 M
               </div>
               {!isCollapsed && (
@@ -93,8 +78,8 @@ const AdminLayout: React.FC = () => {
                   <span className="font-serif font-bold text-gray-900 leading-none text-sm sm:text-base lg:text-lg tracking-tight truncate">
                     MMR Burwan
                   </span>
-                  <span className="text-[9px] sm:text-[10px] uppercase tracking-widest text-gold-600 font-medium mt-0.5">
-                    Admin Portal
+                  <span className="text-[9px] sm:text-[10px] uppercase tracking-widest text-blue-600 font-medium mt-0.5">
+                    Agent Portal
                   </span>
                 </div>
               )}
@@ -116,7 +101,7 @@ const AdminLayout: React.FC = () => {
               const Icon = item.icon;
               const isActive =
                 location.pathname === item.path ||
-                (item.path !== '/admin' && location.pathname.startsWith(item.path));
+                (item.path !== '/agent/dashboard' && location.pathname.startsWith(item.path));
 
               return (
                 <Link
@@ -129,7 +114,7 @@ const AdminLayout: React.FC = () => {
                     ${isCollapsed ? 'justify-center p-2.5 sm:p-3' : 'gap-2 sm:gap-3 px-2.5 sm:px-4 py-2 sm:py-2.5 lg:py-3'}
                     ${
                       isActive
-                        ? 'bg-gold-50 text-gold-700 font-medium shadow-sm'
+                        ? 'bg-blue-50 text-blue-700 font-medium shadow-sm'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }
                   `}
@@ -195,7 +180,7 @@ const AdminLayout: React.FC = () => {
           <div className="flex items-center gap-2 sm:gap-4 ml-auto">
             <div className="text-xs sm:text-sm text-gray-600">
               <span className="font-medium text-gray-900 truncate max-w-[120px] sm:max-w-none">
-                {user?.name || 'Admin User'}
+                {user?.name || 'Agent'}
               </span>
             </div>
           </div>
@@ -210,5 +195,4 @@ const AdminLayout: React.FC = () => {
   );
 };
 
-export default AdminLayout;
-
+export default AgentLayout;

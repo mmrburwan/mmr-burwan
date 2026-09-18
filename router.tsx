@@ -3,7 +3,9 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
 import AuthLayout from './components/layout/AuthLayout';
 import AdminLayout from './components/layout/AdminLayout';
+import AgentLayout from './components/layout/AgentLayout';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
+import ProtectedAgentRoute from './components/ProtectedAgentRoute';
 import LandingPage from './pages/LandingPage';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
@@ -27,12 +29,16 @@ const BookAppointmentPage = lazy(() => import('./pages/appointments/BookAppointm
 const PassPage = lazy(() => import('./pages/pass/PassPage'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
 const ClientsPage = lazy(() => import('./pages/admin/ClientsPage'));
+const AgentsPage = lazy(() => import('./pages/admin/AgentsPage'));
+const AgentDashboardViewPage = lazy(() => import('./pages/admin/AgentDashboardViewPage'));
 const ApplicationDetailsPage = lazy(() => import('./pages/admin/ApplicationDetailsPage'));
 const CreateApplicationPage = lazy(() => import('./pages/admin/CreateApplicationPage'));
 const AppointmentsAdminPage = lazy(() => import('./pages/admin/AppointmentsAdminPage'));
 const ScannerPage = lazy(() => import('./pages/admin/ScannerPage'));
 const AuditPage = lazy(() => import('./pages/admin/AuditPage'));
 const CertificatesPage = lazy(() => import('./pages/admin/CertificatesPage'));
+const AgentDashboardPage = lazy(() => import('./pages/agent/AgentDashboardPage'));
+const AgentCreateApplicationPage = lazy(() => import('./pages/agent/AgentCreateApplicationPage'));
 const VerifyPage = lazy(() => import('./pages/verify/VerifyPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const HelpPage = lazy(() => import('./pages/help/HelpPage'));
@@ -251,6 +257,32 @@ const router = createBrowserRouter(
       ),
     },
     {
+      path: '/agent',
+      element: (
+        <ProtectedAgentRoute>
+          <AgentLayout />
+        </ProtectedAgentRoute>
+      ),
+      children: [
+        {
+          path: 'dashboard',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <AgentDashboardPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'create-application',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <AgentCreateApplicationPage />
+            </Suspense>
+          ),
+        },
+      ],
+    },
+    {
       path: '/admin',
       element: (
         <ProtectedAdminRoute>
@@ -279,6 +311,22 @@ const router = createBrowserRouter(
           element: (
             <Suspense fallback={<LoadingSpinner />}>
               <ClientsPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'agents',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <AgentsPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'agents/:id',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <AgentDashboardViewPage />
             </Suspense>
           ),
         },

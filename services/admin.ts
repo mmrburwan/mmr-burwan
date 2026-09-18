@@ -1125,4 +1125,50 @@ export const adminService = {
       }
     });
   },
+
+  async getAgents(): Promise<{ id: string; email: string; name: string; createdAt: string }[]> {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      throw new Error('Authentication required.');
+    }
+
+    const { data: agents, error } = await supabase.rpc('list_agents');
+
+    if (error) {
+      throw new Error(error.message || 'Failed to fetch agents');
+    }
+
+    return agents || [];
+  },
+
+  async promoteToAgent(email: string, actorId: string, actorName: string): Promise<{ id: string; email: string; name: string }> {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      throw new Error('Authentication required.');
+    }
+
+    const { data: user, error } = await supabase.rpc('promote_to_agent', { target_email: email });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to promote user to agent');
+    }
+
+    if (!user) {
+      throw new Error('Failed to promote user to agent');
+    }
+
+    await auditService.createLog({
+      actorId,
+      actorName,
+      actorRole: 'admin',
+      action: 'promoted_to_agent',
+      resourceType: 'user',
+      resourceId: user.id,
+      details: { email }
+    });
+
+    return user;
+  }
 };
