@@ -21,6 +21,8 @@ const basicInfoSchema = z.object({
   method: z.enum(['email', 'aadhaar']),
   email: z.string().optional(),
   aadhaar: z.string().optional(),
+  groomName: z.string().min(2, 'Groom name is required'),
+  brideName: z.string().min(2, 'Bride name is required'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 }).superRefine((data, ctx) => {
   if (data.method === 'email') {
@@ -76,6 +78,8 @@ const BasicInfoForm: React.FC<{
       method: 'email',
       email: '',
       aadhaar: '',
+      groomName: '',
+      brideName: '',
       password: '',
     },
   });
@@ -146,6 +150,35 @@ const BasicInfoForm: React.FC<{
           </p>
         </div>
       )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Groom's Full Name <span className="text-rose-500">*</span>
+          </label>
+          <Input
+            type="text"
+            placeholder="Groom's name"
+            error={errors.groomName?.message}
+            className="text-sm"
+            {...register('groomName')}
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Bride's Full Name <span className="text-rose-500">*</span>
+          </label>
+          <Input
+            type="text"
+            placeholder="Bride's name"
+            error={errors.brideName?.message}
+            className="text-sm"
+            {...register('brideName')}
+            required
+          />
+        </div>
+      </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -281,11 +314,25 @@ const AgentCreateApplicationPage: React.FC = () => {
         ? `aadhaar_${data.aadhaar}@mmrburwan.com` 
         : data.email!;
 
+      // Safely split names into first and last name (if provided)
+      const groomNames = data.groomName.trim().split(' ');
+      const groomFirstName = groomNames[0];
+      const groomLastName = groomNames.slice(1).join(' ');
+
+      const brideNames = data.brideName.trim().split(' ');
+      const brideFirstName = brideNames[0];
+      const brideLastName = brideNames.slice(1).join(' ');
+
       const minimalApplicationData = {
         userDetails: {
+          firstName: groomFirstName,
+          lastName: groomLastName,
           ...(data.method === 'aadhaar' ? { aadhaarNumber: data.aadhaar } : {})
         },
-        partnerForm: {},
+        partnerForm: {
+          firstName: brideFirstName,
+          lastName: brideLastName,
+        },
         userAddress: {},
         userCurrentAddress: {},
         partnerAddress: {},

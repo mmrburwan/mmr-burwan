@@ -88,6 +88,7 @@ export interface Application {
   createdByAdminId?: string;
   isProxyApplication?: boolean;
   agentId?: string;
+  agentName?: string;
   isAgentApplication?: boolean;
   offlineApplicantContact?: {
     phone?: string;

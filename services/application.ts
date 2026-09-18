@@ -312,6 +312,7 @@ export const applicationService = {
       createdByAdminId: data.created_by_admin_id,
       isProxyApplication: data.is_proxy_application || false,
       agentId: data.agent_id,
+      agentName: data.agent_name,
       isAgentApplication: data.is_agent_application || false,
       offlineApplicantContact: data.offline_applicant_contact,
       proxyUserEmail: data.proxy_user_email,

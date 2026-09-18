@@ -97,6 +97,7 @@ export const agentService = {
           status: 'draft',
           progress: 0,
           agent_id: agentId,
+          agent_name: agentName,
           is_agent_application: true,
           offline_applicant_contact: {},
           proxy_user_email: userEmail,

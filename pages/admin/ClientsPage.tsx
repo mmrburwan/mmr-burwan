@@ -412,10 +412,17 @@ const ClientsPage: React.FC = () => {
                         <p className="text-[10px] font-medium text-gold-600 uppercase tracking-wide">Couple</p>
                       </div>
                     </div>
-                    {client.application
-                      ? getStatusBadge(client.application.status)
-                      : <Badge variant="default" className="!text-[10px]">No App</Badge>
-                    }
+                    <div className="flex flex-col items-end gap-1">
+                      {client.application
+                        ? getStatusBadge(client.application.status)
+                        : <Badge variant="default" className="!text-[10px]">No App</Badge>
+                      }
+                      {client.application?.isAgentApplication && (
+                        <Badge variant="info" className="!text-[9px] bg-purple-50 text-purple-700 border-purple-200">
+                          Agent: {client.application.agentName || 'Unknown'}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   {/* Groom & Bride Names */}
@@ -687,7 +694,13 @@ const ClientsPage: React.FC = () => {
                           )}
                           <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">🤵 {groomName}</span>
                           <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">👰 {brideName}</span>
-
+                          {client.application?.isAgentApplication && (
+                            <div className="mt-1">
+                              <Badge variant="info" className="!text-[9px] bg-purple-50 text-purple-700 border-purple-200">
+                                Agent: {client.application.agentName || 'Unknown'}
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
