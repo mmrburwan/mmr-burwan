@@ -79,12 +79,12 @@ export const adminService = {
           break;
         case 'unverified':
           query = query
-            .in('status', ['submitted', 'under_review'])
+            .eq('status', 'submitted')
             .or('verified.is.false,verified.is.null');
           break;
         case 'submitted':
           query = query
-            .in('status', ['submitted', 'under_review'])
+            .eq('status', 'submitted')
             .or('verified.is.false,verified.is.null');
           break;
         case 'draft':
