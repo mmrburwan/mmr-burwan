@@ -5,7 +5,7 @@ import { applicationService } from '../../services/application';
 import { Application } from '../../types';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { FileText, Clock, CheckCircle, Plus, ChevronRight } from 'lucide-react';
+import { FileText, Clock, CheckCircle, Plus, ChevronRight, Eye } from 'lucide-react';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { safeFormatDate } from '../../utils/dateUtils';
 import Button from '../../components/ui/Button';
@@ -137,7 +137,8 @@ const AgentDashboardPage: React.FC = () => {
             {applications.map((app) => (
               <div
                 key={app.id}
-                className="p-5 hover:bg-gray-50 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+                className="p-5 hover:bg-gray-50 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer"
+                onClick={() => navigate(`/agent/applications/${app.id}`)}
               >
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -161,20 +162,40 @@ const AgentDashboardPage: React.FC = () => {
                   </div>
                 </div>
                 
-                {app.status === 'draft' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full sm:w-auto text-xs"
-                    onClick={() => {
-                      // Navigate to the create page with this app id to resume
-                      navigate(`/agent/create-application?resume=${app.id}`);
-                    }}
-                  >
-                    Resume Application
-                    <ChevronRight size={14} className="ml-1" />
-                  </Button>
-                )}
+                <div className="flex items-center gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
+                  {app.status === 'draft' ? (
+                    <>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="flex-1 sm:flex-initial text-xs"
+                        onClick={() => navigate(`/agent/create-application?resume=${app.id}`)}
+                      >
+                        Resume
+                        <ChevronRight size={14} className="ml-1" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 sm:flex-initial text-xs"
+                        onClick={() => navigate(`/agent/applications/${app.id}`)}
+                      >
+                        <Eye size={14} className="mr-1.5" />
+                        View
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full sm:w-auto text-xs"
+                      onClick={() => navigate(`/agent/applications/${app.id}`)}
+                    >
+                      <Eye size={14} className="mr-1.5" />
+                      View Application
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

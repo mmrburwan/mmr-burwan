@@ -100,7 +100,7 @@ export async function uploadFile(
     });
 
   if (supabaseError) {
-    throw new Error(`Storage upload failed: ${supabaseError.message}`);
+    throw new Error(supabaseError.message);
   }
 
   const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(path);
@@ -211,17 +211,34 @@ export const storage = {
         return { data: { publicUrl: getPublicUrl(bucket, path) } };
       },
       async createSignedUrl(path: string, expiresIn: number = 3600) {
+        const cleanPath = path.replace(/^\/+/, '');
+
+        // 1. Check if the file is in Supabase Storage first.
+        // Supabase validates against storage.objects in the DB and returns a signed URL
+        // only if the file exists and the user has permission.
         try {
-          const signedUrl = await createSignedUrl(bucket, path, expiresIn);
-          return { data: { signedUrl }, error: null };
+          const { data: sbData, error: sbError } = await supabase.storage.from(bucket).createSignedUrl(cleanPath, expiresIn);
+          if (!sbError && sbData?.signedUrl) {
+            const url = sbData.signedUrl.startsWith('http')
+              ? sbData.signedUrl
+              : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1${sbData.signedUrl.startsWith('/') ? '' : '/'}${sbData.signedUrl}`;
+            return { data: { signedUrl: url }, error: null };
+          }
+        } catch (sbErr) {
+          // If Supabase check fails, fall through to R2
+        }
+
+        // 2. If not found in Supabase Storage, fall back to Cloudflare R2 presigned URL
+        try {
+          if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY) {
+            const signedUrl = await createSignedUrl(bucket, cleanPath, expiresIn);
+            return { data: { signedUrl }, error: null };
+          }
         } catch (error) {
-          // Fallback to Supabase signed URL
-          try {
-            const { data, error: sbError } = await supabase.storage.from(bucket).createSignedUrl(path, expiresIn);
-            if (!sbError && data) return { data, error: null };
-          } catch {}
           return { data: null, error };
         }
+
+        return { data: null, error: new Error('Failed to create signed URL') };
       },
     };
   },

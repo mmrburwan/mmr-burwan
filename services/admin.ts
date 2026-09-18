@@ -55,7 +55,7 @@ export const adminService = {
   async getApplications(
     page: number = 1,
     limit: number = 10,
-    filters?: { search?: string; verified?: string }
+    filters?: { search?: string; verified?: string; creatorType?: 'all' | 'admin' | 'agent' | 'user' }
   ): Promise<{ data: Application[]; count: number }> {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -93,6 +93,21 @@ export const adminService = {
         case 'rejected':
           query = query.eq('documents.status', 'rejected');
           break;
+      }
+    }
+
+    // Apply Creator Type Filter
+    if (filters?.creatorType && filters.creatorType !== 'all') {
+      if (filters.creatorType === 'admin') {
+        query = query.or('is_proxy_application.eq.true,created_by_admin_id.not.is.null').is('agent_id', null);
+      } else if (filters.creatorType === 'agent') {
+        query = query.or('is_agent_application.eq.true,agent_id.not.is.null');
+      } else if (filters.creatorType === 'user') {
+        query = query
+          .is('created_by_admin_id', null)
+          .is('agent_id', null)
+          .or('is_proxy_application.is.false,is_proxy_application.is.null')
+          .or('is_agent_application.is.false,is_agent_application.is.null');
       }
     }
 
@@ -225,6 +240,50 @@ export const adminService = {
       verified: verifiedRes.count || 0,
       unverified: unverifiedRes.count || 0,
       draft: draftRes.count || 0,
+    };
+  },
+
+  async getApplicationCreatorCounts(): Promise<{
+    all: number;
+    admin: number;
+    agent: number;
+    user: number;
+  }> {
+    const allPromise = supabase
+      .from('applications')
+      .select('id', { count: 'exact', head: true });
+
+    const adminPromise = supabase
+      .from('applications')
+      .select('id', { count: 'exact', head: true })
+      .or('is_proxy_application.eq.true,created_by_admin_id.not.is.null')
+      .is('agent_id', null);
+
+    const agentPromise = supabase
+      .from('applications')
+      .select('id', { count: 'exact', head: true })
+      .or('is_agent_application.eq.true,agent_id.not.is.null');
+
+    const userPromise = supabase
+      .from('applications')
+      .select('id', { count: 'exact', head: true })
+      .is('created_by_admin_id', null)
+      .is('agent_id', null)
+      .or('is_proxy_application.is.false,is_proxy_application.is.null')
+      .or('is_agent_application.is.false,is_agent_application.is.null');
+
+    const [allRes, adminRes, agentRes, userRes] = await Promise.all([
+      allPromise,
+      adminPromise,
+      agentPromise,
+      userPromise,
+    ]);
+
+    return {
+      all: allRes.count || 0,
+      admin: adminRes.count || 0,
+      agent: agentRes.count || 0,
+      user: userRes.count || 0,
     };
   },
 

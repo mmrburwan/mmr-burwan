@@ -3111,9 +3111,9 @@ const ApplicationFormContent: React.FC = () => {
                 isLoading={isSaving}
                 disabled={
                   (currentStep === applicationSteps.length - 1 && (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review')) ||
-                  (!isCurrentStepValid && !isSubmitted)
+                  isSaving
                 }
-                className={`!text-xs sm:!text-sm flex-1 sm:flex-initial ${!isCurrentStepValid && !isSubmitted ? 'opacity-40 cursor-not-allowed bg-gray-400 hover:bg-gray-400' : ''}`}
+                className={`!text-xs sm:!text-sm flex-1 sm:flex-initial ${!isCurrentStepValid && !isSubmitted ? 'opacity-50 hover:opacity-80' : ''}`}
               >
                 {currentStep === applicationSteps.length - 1
                   ? (application?.status === 'submitted' || application?.status === 'approved' || application?.status === 'under_review')

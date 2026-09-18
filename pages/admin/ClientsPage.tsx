@@ -11,7 +11,7 @@ import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
 import VerifyApplicationModal from '../../components/admin/VerifyApplicationModal';
 import DeleteApplicationModal from '../../components/admin/DeleteApplicationModal';
-import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText, Trash2, StickyNote, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText, Trash2, StickyNote, ChevronLeft, ChevronRight, Loader2, ShieldCheck, Briefcase, UserCheck, Layers } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
 import { downloadCertificate, viewCertificate } from '../../utils/certificateGenerator';
@@ -73,6 +73,14 @@ const ClientsPage: React.FC = () => {
   const { user } = useAuth();
   const { showToast } = useNotification();
   const navigate = useNavigate();
+  type CreatorTabType = 'admin' | 'agent' | 'user' | 'all';
+  const [creatorFilter, setCreatorFilter] = useState<CreatorTabType>('admin');
+  const [creatorCounts, setCreatorCounts] = useState<{
+    all: number;
+    admin: number;
+    agent: number;
+    user: number;
+  }>({ all: 0, admin: 0, agent: 0, user: 0 });
   const [clients, setClients] = useState<ClientWithApplication[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
@@ -116,12 +124,17 @@ const ClientsPage: React.FC = () => {
     comment: '',
   });
 
-  const loadClients = useCallback(async (targetPage: number = page, targetLimit: number = limit) => {
+  const loadClients = useCallback(async (
+    targetPage: number = page,
+    targetLimit: number = limit,
+    targetCreator: CreatorTabType = creatorFilter
+  ) => {
     setIsFetching(true);
     try {
       const { data: applications, count } = await adminService.getApplications(targetPage, targetLimit, {
         search: debouncedSearchTerm,
         verified: verifiedFilter,
+        creatorType: targetCreator,
       });
 
       setTotalCount(count);
@@ -159,17 +172,31 @@ const ClientsPage: React.FC = () => {
       setIsLoading(false);
       setIsFetching(false);
     }
-  }, [page, limit, debouncedSearchTerm, verifiedFilter, showToast]);
+  }, [page, limit, debouncedSearchTerm, verifiedFilter, creatorFilter, showToast]);
 
-  // Reset page to 1 whenever search or filter changes
+  const loadCreatorCounts = useCallback(async () => {
+    try {
+      const counts = await adminService.getApplicationCreatorCounts();
+      setCreatorCounts(counts);
+    } catch (error) {
+      console.error('Failed to load creator counts:', error);
+    }
+  }, []);
+
+  // Reset page to 1 whenever search, verifiedFilter, or creatorFilter changes
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearchTerm, verifiedFilter]);
+  }, [debouncedSearchTerm, verifiedFilter, creatorFilter]);
 
-  // Load clients when page, limit, debouncedSearchTerm, or verifiedFilter changes
+  // Load clients when page, limit, debouncedSearchTerm, verifiedFilter, or creatorFilter changes
   useEffect(() => {
-    loadClients(page, limit);
-  }, [page, limit, debouncedSearchTerm, verifiedFilter, loadClients]);
+    loadClients(page, limit, creatorFilter);
+  }, [page, limit, debouncedSearchTerm, verifiedFilter, creatorFilter, loadClients]);
+
+  // Load creator counts initially
+  useEffect(() => {
+    loadCreatorCounts();
+  }, [loadCreatorCounts]);
 
   const handleUpdateComment = async () => {
     if (!user) return;
@@ -217,7 +244,8 @@ const ClientsPage: React.FC = () => {
       );
       showToast('Application verified successfully', 'success');
       setVerifyModalState({ isOpen: false, applicationId: '' });
-      await loadClients(page, limit);
+      await loadClients(page, limit, creatorFilter);
+      await loadCreatorCounts();
     } catch (error: any) {
       showToast(error.message || 'Failed to verify application', 'error');
       throw error;
@@ -233,7 +261,8 @@ const ClientsPage: React.FC = () => {
         user.name || user.email || 'Admin User'
       );
       showToast('Application unverified', 'success');
-      await loadClients(page, limit);
+      await loadClients(page, limit, creatorFilter);
+      await loadCreatorCounts();
     } catch (error) {
       showToast('Failed to unverify application', 'error');
       console.error('Failed to unverify:', error);
@@ -288,7 +317,8 @@ const ClientsPage: React.FC = () => {
       await adminService.deleteApplication(applicationId, user.id, user.name || user.email);
       showToast('Application deleted successfully', 'success');
       setDeleteModalState(prev => ({ ...prev, isOpen: false }));
-      await loadClients(page, limit);
+      await loadClients(page, limit, creatorFilter);
+      await loadCreatorCounts();
     } catch (error: any) {
       showToast(error.message || 'Failed to delete application', 'error');
       throw error;
@@ -324,6 +354,83 @@ const ClientsPage: React.FC = () => {
     return <Badge variant={variants[status] || 'info'}>{status}</Badge>;
   };
 
+  const getCreatorBadge = (application: Application | null) => {
+    if (!application) {
+      return <Badge variant="default" className="!text-[10px]">Unknown</Badge>;
+    }
+    if (application.isAgentApplication || application.agentId) {
+      return (
+        <div className="flex flex-col items-start gap-0.5">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+            <Briefcase size={11} className="flex-shrink-0" />
+            Agent
+          </span>
+          {application.agentName && (
+            <span className="text-[10px] text-purple-600 font-medium truncate max-w-[120px]" title={application.agentName}>
+              {application.agentName}
+            </span>
+          )}
+        </div>
+      );
+    }
+    if (application.isProxyApplication || application.createdByAdminId) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+          <ShieldCheck size={11} className="flex-shrink-0" />
+          Admin
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <UserCheck size={11} className="flex-shrink-0" />
+        Direct Citizen
+      </span>
+    );
+  };
+
+  const tabs: Array<{
+    id: CreatorTabType;
+    label: string;
+    icon: React.ReactNode;
+    count: number;
+    badgeColor: string;
+    description: string;
+  }> = [
+    {
+      id: 'admin',
+      label: 'Admin Created',
+      icon: <ShieldCheck size={16} className={creatorFilter === 'admin' ? 'text-blue-600' : 'text-gray-400'} />,
+      count: creatorCounts.admin,
+      badgeColor: creatorFilter === 'admin' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-gray-200/70 text-gray-700',
+      description: 'Applications created directly by Administrator on behalf of clients (Proxy)',
+    },
+    {
+      id: 'agent',
+      label: 'Agent Created',
+      icon: <Briefcase size={16} className={creatorFilter === 'agent' ? 'text-purple-600' : 'text-gray-400'} />,
+      count: creatorCounts.agent,
+      badgeColor: creatorFilter === 'agent' ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-gray-200/70 text-gray-700',
+      description: 'Applications submitted and managed by registered field agents',
+    },
+    {
+      id: 'user',
+      label: 'Direct Users',
+      icon: <UserCheck size={16} className={creatorFilter === 'user' ? 'text-emerald-600' : 'text-gray-400'} />,
+      count: creatorCounts.user,
+      badgeColor: creatorFilter === 'user' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-gray-200/70 text-gray-700',
+      description: 'Applications registered and submitted directly by citizens online',
+    },
+    {
+      id: 'all',
+      label: 'All Applications',
+      icon: <Layers size={16} className={creatorFilter === 'all' ? 'text-gold-600' : 'text-gray-400'} />,
+      count: creatorCounts.all,
+      badgeColor: creatorFilter === 'all' ? 'bg-gold-100 text-gold-800 border border-gold-200' : 'bg-gray-200/70 text-gray-700',
+      description: 'Consolidated overview of all applications across all sources',
+    },
+  ];
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -350,29 +457,77 @@ const ClientsPage: React.FC = () => {
         <p className="text-xs sm:text-sm text-gray-600">Manage and view all registered clients</p>
       </div>
 
-      <Card className="p-3 sm:p-4 lg:p-6 mb-3 sm:mb-4 lg:mb-6">
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4">
-          <div className="flex-1 min-w-0">
-            <Input
-              placeholder="Search by groom/bride name, email or phone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              leftIcon={<Search size={16} className="sm:w-5 sm:h-5" />}
-            />
+      {/* Browser Tab Filter System */}
+      <div className="mb-4 sm:mb-6">
+        {/* Browser Tabs Header Bar */}
+        <div className="bg-slate-100/90 border border-slate-200/90 rounded-t-2xl px-2 sm:px-3 pt-2 pb-0 flex items-end justify-between overflow-x-auto no-scrollbar shadow-xs">
+          <div className="flex items-end gap-1 sm:gap-2 min-w-max">
+            {tabs.map((tab) => {
+              const isActive = creatorFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setCreatorFilter(tab.id)}
+                  className={`group relative flex items-center gap-2 sm:gap-2.5 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-t-xl transition-all duration-150 select-none text-xs sm:text-sm font-medium ${
+                    isActive
+                      ? 'bg-white text-gray-900 border-t-2 border-t-gold-500 border-x border-slate-200/90 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] font-semibold z-10 -mb-[1px]'
+                      : 'bg-slate-200/50 hover:bg-slate-200/90 text-gray-600 hover:text-gray-900 border border-transparent'
+                  }`}
+                >
+                  <span className="flex-shrink-0">{tab.icon}</span>
+                  <span className="truncate">{tab.label}</span>
+                  <span
+                    className={`ml-0.5 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full transition-colors ${tab.badgeColor}`}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <select
-            value={verifiedFilter}
-            onChange={(e) => setVerifiedFilter(e.target.value)}
-            className="px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl border border-gray-200 focus:border-gold-500 focus:ring-2 focus:ring-gold-500 focus:outline-none text-xs sm:text-sm w-full sm:w-auto"
-          >
-            <option value="all">All Verification</option>
-            <option value="verified">Verified</option>
-            <option value="unverified">Unverified</option>
-            <option value="rejected">Rejected Documents</option>
-            <option value="draft">Draft</option>
-          </select>
         </div>
-      </Card>
+
+        {/* Browser Toolbar / Filter Controls */}
+        <div className="bg-white border border-slate-200/90 border-t-0 rounded-b-2xl p-3 sm:p-4 lg:p-5 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-gold-500 animate-pulse"></span>
+              <p className="text-xs text-gray-600 font-medium">
+                {tabs.find(t => t.id === creatorFilter)?.description}
+              </p>
+            </div>
+            <div className="text-[11px] sm:text-xs text-gray-500">
+              Filtered View:{' '}
+              <span className="font-semibold text-gray-800">
+                {tabs.find(t => t.id === creatorFilter)?.label} ({totalCount})
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4 mt-3">
+            <div className="flex-1 min-w-0">
+              <Input
+                placeholder="Search by groom/bride name, email or phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                leftIcon={<Search size={16} className="sm:w-5 sm:h-5" />}
+              />
+            </div>
+            <select
+              value={verifiedFilter}
+              onChange={(e) => setVerifiedFilter(e.target.value)}
+              className="px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl border border-gray-200 focus:border-gold-500 focus:ring-2 focus:ring-gold-500 focus:outline-none text-xs sm:text-sm w-full sm:w-auto bg-white"
+            >
+              <option value="all">All Verification</option>
+              <option value="verified">Verified</option>
+              <option value="unverified">Unverified</option>
+              <option value="rejected">Rejected Documents</option>
+              <option value="draft">Draft</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
       <Card className="p-3 sm:p-4 lg:p-6">
         {isFetching && (
@@ -417,11 +572,7 @@ const ClientsPage: React.FC = () => {
                         ? getStatusBadge(client.application.status)
                         : <Badge variant="default" className="!text-[10px]">No App</Badge>
                       }
-                      {client.application?.isAgentApplication && (
-                        <Badge variant="info" className="!text-[9px] bg-purple-50 text-purple-700 border-purple-200">
-                          Agent: {client.application.agentName || 'Unknown'}
-                        </Badge>
-                      )}
+                      {getCreatorBadge(client.application)}
                     </div>
                   </div>
 
@@ -654,6 +805,7 @@ const ClientsPage: React.FC = () => {
               <tr className="border-b border-gray-200">
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Groom & Bride</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Phone & Email</th>
+                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Source</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Status</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Actions</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Last Updated</th>
@@ -694,13 +846,6 @@ const ClientsPage: React.FC = () => {
                           )}
                           <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">🤵 {groomName}</span>
                           <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">👰 {brideName}</span>
-                          {client.application?.isAgentApplication && (
-                            <div className="mt-1">
-                              <Badge variant="info" className="!text-[9px] bg-purple-50 text-purple-700 border-purple-200">
-                                Agent: {client.application.agentName || 'Unknown'}
-                              </Badge>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </td>
@@ -716,6 +861,9 @@ const ClientsPage: React.FC = () => {
                           <span className="truncate text-[9px] sm:text-[10px] lg:text-xs text-gray-500">📧 {userEmail}</span>
                         </div>
                       </div>
+                    </td>
+                    <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
+                      {getCreatorBadge(client.application)}
                     </td>
                     <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
                       <div className="flex flex-col gap-1.5">

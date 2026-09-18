@@ -39,7 +39,7 @@ export const documentService = {
       const fileName = `${applicationId}/${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      const { error: uploadError } = await storage.from('documents')
+      const { data: uploadData, error: uploadError } = await storage.from('documents')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false,
@@ -47,14 +47,12 @@ export const documentService = {
 
       if (uploadError) {
         console.error('Storage upload error:', uploadError);
-        throw new Error(`Storage upload failed: ${(uploadError as Error).message}`);
+        const msg = (uploadError as Error).message;
+        throw new Error(msg.startsWith('Storage upload failed') ? msg : `Storage upload failed: ${msg}`);
       }
 
-      // Get public URL
-      const { data: urlData } = storage.from('documents')
-        .getPublicUrl(filePath);
-
-      const documentUrl = urlData.publicUrl;
+      // Get public URL from actual storage provider
+      const documentUrl = uploadData?.publicUrl || storage.from('documents').getPublicUrl(filePath).data.publicUrl;
 
       // Update existing document record
       // Reset status to 'pending' and mark as re-uploaded when updating
@@ -100,7 +98,7 @@ export const documentService = {
     const fileName = `${applicationId}/${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    const { error: uploadError } = await storage.from('documents')
+    const { data: uploadData, error: uploadError } = await storage.from('documents')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false,
@@ -108,14 +106,12 @@ export const documentService = {
 
     if (uploadError) {
       console.error('Storage upload error:', uploadError);
-      throw new Error(`Storage upload failed: ${(uploadError as Error).message}`);
+      const msg = (uploadError as Error).message;
+      throw new Error(msg.startsWith('Storage upload failed') ? msg : `Storage upload failed: ${msg}`);
     }
 
-    // Get public URL
-    const { data: urlData } = storage.from('documents')
-      .getPublicUrl(filePath);
-
-    const documentUrl = urlData.publicUrl;
+    // Get public URL from actual storage provider
+    const documentUrl = uploadData?.publicUrl || storage.from('documents').getPublicUrl(filePath).data.publicUrl;
 
     // Insert document record
     const { data, error } = await supabase
@@ -331,7 +327,7 @@ export const documentService = {
     const fileName = `${existingDoc.application_id}/${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    const { error: uploadError } = await storage.from('documents')
+    const { data: uploadData, error: uploadError } = await storage.from('documents')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false,
@@ -339,14 +335,12 @@ export const documentService = {
 
     if (uploadError) {
       console.error('Storage upload error:', uploadError);
-      throw new Error(`Storage upload failed: ${(uploadError as Error).message}`);
+      const msg = (uploadError as Error).message;
+      throw new Error(msg.startsWith('Storage upload failed') ? msg : `Storage upload failed: ${msg}`);
     }
 
-    // Get public URL
-    const { data: urlData } = storage.from('documents')
-      .getPublicUrl(filePath);
-
-    const documentUrl = urlData.publicUrl;
+    // Get public URL from actual storage provider
+    const documentUrl = uploadData?.publicUrl || storage.from('documents').getPublicUrl(filePath).data.publicUrl;
 
     // Update the existing document record with new file info and reset status to pending
     // Mark as re-uploaded since this is a replacement for a rejected document

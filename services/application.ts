@@ -310,10 +310,10 @@ export const applicationService = {
       lastUpdated: data.last_updated || data.updated_at,
       // Proxy application fields
       createdByAdminId: data.created_by_admin_id,
-      isProxyApplication: data.is_proxy_application || false,
+      isProxyApplication: Boolean(data.is_proxy_application || data.created_by_admin_id),
       agentId: data.agent_id,
       agentName: data.agent_name,
-      isAgentApplication: data.is_agent_application || false,
+      isAgentApplication: Boolean(data.is_agent_application || data.agent_id),
       offlineApplicantContact: data.offline_applicant_contact,
       proxyUserEmail: data.proxy_user_email,
       certificateDetails: data.certificate_details,
