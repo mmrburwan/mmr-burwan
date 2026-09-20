@@ -7,6 +7,7 @@ import {
   Menu,
   X,
   UserPlus,
+  Users,
 } from 'lucide-react';
 
 const AgentLayout: React.FC = () => {
@@ -34,6 +35,7 @@ const AgentLayout: React.FC = () => {
 
   const menuItems = [
     { path: '/agent/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/agent/clients', icon: Users, label: 'Clients' },
     { path: '/agent/create-application', icon: UserPlus, label: 'Create Application' },
   ];
 

@@ -14,7 +14,7 @@ import Input from '../../components/ui/Input';
 import VerifyApplicationModal from '../../components/admin/VerifyApplicationModal';
 import RejectDocumentModal from '../../components/admin/RejectDocumentModal';
 import { ArrowLeft, FileText, CheckCircle, X, Eye, Edit2, Save, XCircle, Download, Copy, Check, Upload } from 'lucide-react';
-import { safeFormatDate, calculateAge } from '../../utils/dateUtils';
+import { safeFormatDate, calculateAge, calculateDetailedAge } from '../../utils/dateUtils';
 import { formatAadhaar, handleAadhaarInput } from '../../utils/formatUtils';
 import ImageCropModal from '../../components/ui/ImageCropModal';
 
@@ -344,6 +344,10 @@ const ApplicationDetailsPage: React.FC = () => {
   const partnerCurrentAddress = isEditing ? editForm.partnerCurrentAddress : (application.partnerCurrentAddress || {});
   const declarations = isEditing ? editForm.declarations : (application.declarations || {});
 
+  const marriageDate = (declarations as any)?.marriageDate || (declarations as any)?.marriageRegistrationDate;
+  const groomAge = userDetails.dateOfBirth ? calculateDetailedAge(userDetails.dateOfBirth, marriageDate || new Date()) : null;
+  const brideAge = (partnerForm as any)?.dateOfBirth ? calculateDetailedAge((partnerForm as any).dateOfBirth, marriageDate || new Date()) : null;
+
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
       <div className="mb-4 sm:mb-6 lg:mb-8">
@@ -565,6 +569,30 @@ const ApplicationDetailsPage: React.FC = () => {
               {isEditing ? (
                 <Input
                   type="date"
+                  labelRight={
+                    groomAge || brideAge ? (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {groomAge && (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            groomAge.years >= 21
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
+                            Groom Age: {groomAge.text}
+                          </span>
+                        )}
+                        {brideAge && (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            brideAge.years >= 18
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
+                            Bride Age: {brideAge.text}
+                          </span>
+                        )}
+                      </div>
+                    ) : undefined
+                  }
                   value={(() => {
                     const dateValue = (declarations as any)?.marriageDate || (declarations as any)?.marriageRegistrationDate || '';
                     if (!dateValue) return '';
@@ -580,15 +608,35 @@ const ApplicationDetailsPage: React.FC = () => {
                   })}
                 />
               ) : (
-                <p className="font-medium text-gray-900">
-                  {((declarations as any)?.marriageDate || (declarations as any)?.marriageRegistrationDate)
-                    ? safeFormatDate(
-                      (declarations as any).marriageDate || (declarations as any).marriageRegistrationDate,
-                      'dd-MM-yyyy',
-                      'Invalid date'
-                    )
-                    : 'Not provided'}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-gray-900">
+                    {((declarations as any)?.marriageDate || (declarations as any)?.marriageRegistrationDate)
+                      ? safeFormatDate(
+                        (declarations as any).marriageDate || (declarations as any).marriageRegistrationDate,
+                        'dd-MM-yyyy',
+                        'Invalid date'
+                      )
+                      : 'Not provided'}
+                  </p>
+                  {groomAge && (
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      groomAge.years >= 21
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
+                      Groom Age: {groomAge.text}
+                    </span>
+                  )}
+                  {brideAge && (
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      brideAge.years >= 18
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
+                      Bride Age: {brideAge.text}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -647,6 +695,17 @@ const ApplicationDetailsPage: React.FC = () => {
               {isEditing ? (
                 <Input
                   type="date"
+                  labelRight={
+                    groomAge ? (
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        groomAge.years >= 21
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        Age: {groomAge.text}
+                      </span>
+                    ) : undefined
+                  }
                   value={userDetails.dateOfBirth ? userDetails.dateOfBirth.split('T')[0] : ''}
                   onChange={(e) => setEditForm({
                     ...editForm,
@@ -654,9 +713,20 @@ const ApplicationDetailsPage: React.FC = () => {
                   })}
                 />
               ) : (
-                <p className="font-medium text-gray-900">
-                  {userDetails.dateOfBirth ? safeFormatDate(userDetails.dateOfBirth, 'dd-MM-yyyy') : '-'}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-gray-900">
+                    {userDetails.dateOfBirth ? safeFormatDate(userDetails.dateOfBirth, 'dd-MM-yyyy') : '-'}
+                  </p>
+                  {groomAge && (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      groomAge.years >= 21
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
+                      Age: {groomAge.text}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
             <div>
@@ -969,6 +1039,17 @@ const ApplicationDetailsPage: React.FC = () => {
               {isEditing ? (
                 <Input
                   type="date"
+                  labelRight={
+                    brideAge ? (
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        brideAge.years >= 18
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        Age: {brideAge.text}
+                      </span>
+                    ) : undefined
+                  }
                   value={partnerForm.dateOfBirth ? partnerForm.dateOfBirth.split('T')[0] : ''}
                   onChange={(e) => setEditForm({
                     ...editForm,
@@ -976,9 +1057,20 @@ const ApplicationDetailsPage: React.FC = () => {
                   })}
                 />
               ) : (
-                <p className="font-medium text-gray-900">
-                  {partnerForm.dateOfBirth ? safeFormatDate(partnerForm.dateOfBirth, 'dd-MM-yyyy') : '-'}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-gray-900">
+                    {partnerForm.dateOfBirth ? safeFormatDate(partnerForm.dateOfBirth, 'dd-MM-yyyy') : '-'}
+                  </p>
+                  {brideAge && (
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      brideAge.years >= 18
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
+                      Age: {brideAge.text}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
             <div>
@@ -1825,6 +1917,8 @@ const ApplicationDetailsPage: React.FC = () => {
         documents={documents}
         initialCertificateDetails={application?.certificateDetails}
         marriageDate={(application?.declarations as any)?.marriageDate || (application?.declarations as any)?.marriageRegistrationDate}
+        groomDob={(application?.userDetails as any)?.dateOfBirth}
+        brideDob={(application?.partnerForm as any)?.dateOfBirth}
       />
 
       {/* Reject Document Modal */}

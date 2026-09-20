@@ -2,7 +2,8 @@ import React, { forwardRef, useState } from 'react';
 import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
+  label?: React.ReactNode;
+  labelRight?: React.ReactNode;
   error?: string;
   helperText?: string;
   leftIcon?: React.ReactNode;
@@ -11,18 +12,25 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helperText, leftIcon, rightIcon, showPasswordToggle, type, className = '', ...props }, ref) => {
+  ({ label, labelRight, error, helperText, leftIcon, rightIcon, showPasswordToggle, type, className = '', ...props }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === 'password';
     const inputType = isPassword && showPassword ? 'text' : type;
 
     return (
       <div className="w-full">
-        {label && (
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-            {label}
-            {props.required && <span className="text-rose-600 ml-1">*</span>}
-          </label>
+        {(label || labelRight) && (
+          <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2">
+            {label && (
+              <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                {label}
+                {props.required && <span className="text-rose-600 ml-1">*</span>}
+              </label>
+            )}
+            {labelRight && (
+              <div className="text-xs">{labelRight}</div>
+            )}
+          </div>
         )}
         <div className="relative">
           {leftIcon && (

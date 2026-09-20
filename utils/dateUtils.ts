@@ -104,3 +104,85 @@ export const calculateAge = (dateString: string, referenceDate: Date = new Date(
   }
 };
 
+export interface DetailedAgeResult {
+  years: number;
+  months: number;
+  days: number;
+  text: string;
+}
+
+/**
+ * Calculates detailed age (years and months) from a date of birth relative to a reference date (e.g. marriage date or today)
+ */
+export const calculateDetailedAge = (
+  dobString: string | null | undefined,
+  referenceDate: Date | string = new Date()
+): DetailedAgeResult | null => {
+  if (!dobString) return null;
+  try {
+    const parseDateParts = (input: Date | string): { y: number; m: number; d: number } | null => {
+      if (input instanceof Date) {
+        if (isNaN(input.getTime())) return null;
+        return { y: input.getFullYear(), m: input.getMonth() + 1, d: input.getDate() };
+      }
+      if (typeof input === 'string') {
+        const trimmed = input.trim();
+        if (!trimmed) return null;
+        const match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (match) {
+          return {
+            y: parseInt(match[1], 10),
+            m: parseInt(match[2], 10),
+            d: parseInt(match[3], 10),
+          };
+        }
+        const d = new Date(trimmed);
+        if (isNaN(d.getTime())) return null;
+        return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
+      }
+      return null;
+    };
+
+    const dobParts = parseDateParts(dobString);
+    const refParts = parseDateParts(referenceDate || new Date());
+
+    if (!dobParts || !refParts) return null;
+
+    let years = refParts.y - dobParts.y;
+    let months = refParts.m - dobParts.m;
+    let days = refParts.d - dobParts.d;
+
+    if (days < 0) {
+      months -= 1;
+      const prevMonthDays = new Date(refParts.y, refParts.m - 1, 0).getDate();
+      days += prevMonthDays;
+    }
+
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+
+    if (years < 0) return null;
+
+    const parts: string[] = [];
+    if (years > 0 || (months === 0 && days === 0)) {
+      parts.push(`${years} ${years === 1 ? 'Year' : 'Years'}`);
+    }
+    if (months > 0 || years > 0) {
+      parts.push(`${months} ${months === 1 ? 'Month' : 'Months'}`);
+    }
+    parts.push(`${days} ${days === 1 ? 'Day' : 'Days'}`);
+
+    return {
+      years,
+      months,
+      days,
+      text: parts.join(', '),
+    };
+  } catch (error) {
+    return null;
+  }
+};
+
+

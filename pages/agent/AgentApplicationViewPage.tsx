@@ -23,7 +23,7 @@ import {
   AlertCircle,
   Download
 } from 'lucide-react';
-import { safeFormatDate } from '../../utils/dateUtils';
+import { safeFormatDate, calculateDetailedAge } from '../../utils/dateUtils';
 import { formatAadhaar } from '../../utils/formatUtils';
 
 const AgentApplicationViewPage: React.FC = () => {
@@ -164,6 +164,10 @@ const AgentApplicationViewPage: React.FC = () => {
   const partnerCurrentAddress = (application.partnerCurrentAddress as any) || {};
   const declarations = (application.declarations as any) || {};
 
+  const marriageDate = declarations?.marriageDate || declarations?.marriageRegistrationDate;
+  const groomAge = userDetails.dateOfBirth ? calculateDetailedAge(userDetails.dateOfBirth, marriageDate || new Date()) : null;
+  const brideAge = partnerForm.dateOfBirth ? calculateDetailedAge(partnerForm.dateOfBirth, marriageDate || new Date()) : null;
+
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
       {/* Top Navigation & Header */}
@@ -233,11 +237,31 @@ const AgentApplicationViewPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
             <div>
               <p className="text-gray-500 text-xs mb-0.5">Date of Marriage</p>
-              <p className="font-medium text-gray-900">
-                {declarations?.marriageDate || declarations?.marriageRegistrationDate
-                  ? safeFormatDate(declarations.marriageDate || declarations.marriageRegistrationDate, 'dd-MM-yyyy')
-                  : 'Not provided'}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-medium text-gray-900">
+                  {marriageDate
+                    ? safeFormatDate(marriageDate, 'dd-MM-yyyy')
+                    : 'Not provided'}
+                </p>
+                {groomAge && (
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    groomAge.years >= 21
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    Groom Age: {groomAge.text}
+                  </span>
+                )}
+                {brideAge && (
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    brideAge.years >= 18
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    Bride Age: {brideAge.text}
+                  </span>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-gray-500 text-xs mb-0.5">Application Submitted Date</p>
@@ -272,9 +296,20 @@ const AgentApplicationViewPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <p className="text-gray-500 text-xs">Date of Birth</p>
-                  <p className="font-medium text-gray-900">
-                    {userDetails.dateOfBirth ? safeFormatDate(userDetails.dateOfBirth, 'dd-MM-yyyy') : '-'}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-gray-900">
+                      {userDetails.dateOfBirth ? safeFormatDate(userDetails.dateOfBirth, 'dd-MM-yyyy') : '-'}
+                    </p>
+                    {groomAge && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        groomAge.years >= 21
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        Age: {groomAge.text}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <p className="text-gray-500 text-xs">Aadhaar Number</p>
@@ -324,9 +359,20 @@ const AgentApplicationViewPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <p className="text-gray-500 text-xs">Date of Birth</p>
-                  <p className="font-medium text-gray-900">
-                    {partnerForm.dateOfBirth ? safeFormatDate(partnerForm.dateOfBirth, 'dd-MM-yyyy') : '-'}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-gray-900">
+                      {partnerForm.dateOfBirth ? safeFormatDate(partnerForm.dateOfBirth, 'dd-MM-yyyy') : '-'}
+                    </p>
+                    {brideAge && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        brideAge.years >= 18
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        Age: {brideAge.text}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <p className="text-gray-500 text-xs">Aadhaar Number</p>

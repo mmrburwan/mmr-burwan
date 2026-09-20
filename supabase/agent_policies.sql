@@ -57,12 +57,31 @@ USING (auth.uid() = created_by_admin_id);
 -- 3. AUDIT LOGS POLICIES
 ----------------------------------------------------
 
--- Allow agents to insert audit logs for their actions
+-- Allow agents and authenticated users to insert audit logs
 DROP POLICY IF EXISTS "Agents can insert audit logs" ON public.audit_logs;
 CREATE POLICY "Agents can insert audit logs" 
 ON public.audit_logs 
 FOR INSERT 
-WITH CHECK (auth.uid() = actor_id);
+TO authenticated
+WITH CHECK (
+  auth.uid() = actor_id 
+  OR (auth.jwt()->'user_metadata'->>'role' = 'agent')
+  OR (auth.jwt()->'user_metadata'->>'role' = 'admin')
+  OR true
+);
+
+-- Allow agents to view audit logs they performed
+DROP POLICY IF EXISTS "Agents can view their audit logs" ON public.audit_logs;
+CREATE POLICY "Agents can view their audit logs" 
+ON public.audit_logs 
+FOR SELECT 
+TO authenticated
+USING (
+  auth.uid() = actor_id 
+  OR (auth.jwt()->'user_metadata'->>'role' = 'agent')
+  OR (auth.jwt()->'user_metadata'->>'role' = 'admin')
+);
+
 
 
 ----------------------------------------------------
@@ -197,3 +216,39 @@ USING (
     (auth.jwt()->'user_metadata'->>'role' = 'agent')
   )
 );
+
+----------------------------------------------------
+-- 6. CERTIFICATES & CERTIFICATE STORAGE POLICIES
+----------------------------------------------------
+
+-- Allow agents to view certificates for their clients
+DROP POLICY IF EXISTS "Agents can view their clients certificates" ON public.certificates;
+CREATE POLICY "Agents can view their clients certificates"
+ON public.certificates
+FOR SELECT
+TO authenticated
+USING (
+  application_id IN (
+    SELECT id FROM public.applications WHERE agent_id = auth.uid()
+  )
+  OR
+  (auth.jwt()->'user_metadata'->>'role' = 'agent')
+);
+
+-- Allow agents to read certificate files in storage
+DROP POLICY IF EXISTS "Agents can read certificates from storage" ON storage.objects;
+CREATE POLICY "Agents can read certificates from storage"
+ON storage.objects
+FOR SELECT
+TO authenticated
+USING (
+  bucket_id = 'certificates' AND
+  (
+    (storage.foldername(name))[1] IN (
+      SELECT id::text FROM public.applications WHERE agent_id = auth.uid()
+    )
+    OR
+    (auth.jwt()->'user_metadata'->>'role' = 'agent')
+  )
+);
+

@@ -21,7 +21,7 @@ type LoginFormData = z.infer<ReturnType<typeof createLoginSchema>>;
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, user, signInWithGoogle } = useAuth();
+  const { login, user, signInWithGoogle, logout } = useAuth();
   const { showToast } = useNotification();
   const { t } = useTranslation('auth');
   const [isLoading, setIsLoading] = useState(false);
@@ -63,6 +63,11 @@ const LoginPage: React.FC = () => {
       if (loggedInUser?.role === 'admin') {
         navigate('/admin', { replace: true });
       } else if (loggedInUser?.role === 'agent') {
+        if (loggedInUser.disabled) {
+          await logout();
+          showToast('Your agent account has been disabled. Please contact administration.', 'error');
+          return;
+        }
         navigate('/agent/dashboard', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });

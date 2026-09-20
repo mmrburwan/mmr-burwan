@@ -153,18 +153,22 @@ export const agentService = {
         throw new Error(`Application created but failed to save credentials: ${credError.message}`);
       }
 
-      await auditService.createLog({
-        actorId: agentId,
-        actorName: agentName,
-        actorRole: 'agent',
-        action: 'agent_application_created',
-        resourceType: 'application',
-        resourceId: appData.id,
-        details: {
-          proxyUserEmail: userEmail,
-          isAgentApplication: true,
-        },
-      });
+      try {
+        await auditService.createLog({
+          actorId: agentId,
+          actorName: agentName,
+          actorRole: 'agent',
+          action: 'agent_application_created',
+          resourceType: 'application',
+          resourceId: appData.id,
+          details: {
+            proxyUserEmail: userEmail,
+            isAgentApplication: true,
+          },
+        });
+      } catch (auditErr) {
+        console.warn('Audit logging failed for agent application creation (non-critical):', auditErr);
+      }
 
       return {
         application: applicationService.mapApplication(updatedAppData),
@@ -209,18 +213,169 @@ export const agentService = {
       throw new Error(functionData?.error || 'Failed to delete application (unknown error)');
     }
 
-    await auditService.createLog({
-      actorId,
-      actorName,
-      actorRole: 'agent',
-      action: 'agent_application_deleted',
-      resourceType: 'application',
-      resourceId: applicationId,
-      details: {
-        previousStatus: appData.status,
-        userId: appData.user_id,
-        note: 'Deleted via agent action (hard delete)'
+    try {
+      await auditService.createLog({
+        actorId,
+        actorName,
+        actorRole: 'agent',
+        action: 'agent_application_deleted',
+        resourceType: 'application',
+        resourceId: applicationId,
+        details: {
+          previousStatus: appData.status,
+          userId: appData.user_id,
+          note: 'Deleted via agent action (hard delete)'
+        }
+      });
+    } catch (auditErr) {
+      console.warn('Audit logging failed for agent application deletion (non-critical):', auditErr);
+    }
+  },
+
+  async updateApplicationComment(applicationId: string, comment: string, actorId: string, actorName: string): Promise<Application> {
+    const { data, error } = await supabase
+      .from('applications')
+      .update({ admin_comment: comment, last_updated: new Date().toISOString() })
+      .eq('id', applicationId)
+      .eq('agent_id', actorId)
+      .select(`
+        *,
+        documents (*)
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    try {
+      await auditService.createLog({
+        actorId,
+        actorName,
+        actorRole: 'agent',
+        action: 'agent_application_comment_updated',
+        resourceType: 'application',
+        resourceId: applicationId,
+        details: { comment },
+      });
+    } catch (auditErr) {
+      console.warn('Failed to create audit log for comment update:', auditErr);
+    }
+
+    return applicationService.mapApplication(data);
+  },
+
+  async getApplications(
+    agentId: string,
+    page: number = 1,
+    limit: number = 10,
+    filters?: { search?: string; verified?: string }
+  ): Promise<{ data: Application[]; count: number }> {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const isRejectedFilter = filters?.verified === 'rejected';
+
+    let query = supabase
+      .from('applications')
+      .select(
+        isRejectedFilter
+          ? `*, documents!inner (*)`
+          : `*, documents (*)`,
+        { count: 'exact' }
+      )
+      .eq('agent_id', agentId);
+
+    // Apply Verification & Status Filters
+    if (filters?.verified && filters.verified !== 'all') {
+      switch (filters.verified) {
+        case 'verified':
+          query = query.eq('verified', true);
+          break;
+        case 'unverified':
+          query = query
+            .eq('status', 'submitted')
+            .or('verified.is.false,verified.is.null');
+          break;
+        case 'submitted':
+          query = query
+            .eq('status', 'submitted')
+            .or('verified.is.false,verified.is.null');
+          break;
+        case 'draft':
+          query = query.eq('status', 'draft');
+          break;
+        case 'rejected':
+          query = query.eq('documents.status', 'rejected');
+          break;
       }
-    });
+    }
+
+    // Apply Search Filter
+    if (filters?.search && filters.search.trim()) {
+      const term = filters.search.trim();
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term);
+
+      const searchClauses: string[] = [
+        `certificate_number.ilike.%${term}%`,
+        `user_details->>firstName.ilike.%${term}%`,
+        `user_details->>lastName.ilike.%${term}%`,
+        `partner_form->>firstName.ilike.%${term}%`,
+        `partner_form->>lastName.ilike.%${term}%`,
+        `user_details->>mobileNumber.ilike.%${term}%`,
+        `partner_form->>mobileNumber.ilike.%${term}%`,
+        `proxy_user_email.ilike.%${term}%`,
+      ];
+
+      const words = term.split(/\s+/).filter(Boolean);
+      if (words.length >= 2) {
+        const firstWord = words[0];
+        const lastWord = words.slice(1).join(' ');
+        searchClauses.push(`and(user_details->>firstName.ilike.%${firstWord}%,user_details->>lastName.ilike.%${lastWord}%)`);
+        searchClauses.push(`and(partner_form->>firstName.ilike.%${firstWord}%,partner_form->>lastName.ilike.%${lastWord}%)`);
+      }
+
+      if (isUUID) {
+        searchClauses.push(`id.eq.${term}`);
+      }
+
+      query = query.or(searchClauses.join(','));
+    }
+
+    const { data, error, count } = await query
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return {
+      data: (data || []).map((app) => applicationService.mapApplication(app)),
+      count: count || 0,
+    };
+  },
+
+  async getApplicationStats(agentId: string): Promise<{
+    total: number;
+    approved: number;
+    pending: number;
+    draft: number;
+  }> {
+    const { data, error } = await supabase
+      .from('applications')
+      .select('status, verified')
+      .eq('agent_id', agentId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const total = (data || []).length;
+    const approved = (data || []).filter((a) => a.verified === true || a.status === 'approved').length;
+    const pending = (data || []).filter((a) => (a.status === 'submitted' || a.status === 'under_review') && !a.verified).length;
+    const draft = (data || []).filter((a) => a.status === 'draft').length;
+
+    return { total, approved, pending, draft };
   }
 };

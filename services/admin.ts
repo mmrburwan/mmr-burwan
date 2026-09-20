@@ -1185,7 +1185,7 @@ export const adminService = {
     });
   },
 
-  async getAgents(): Promise<{ id: string; email: string; name: string; createdAt: string }[]> {
+  async getAgents(): Promise<{ id: string; email: string; name: string; createdAt: string; disabled?: boolean }[]> {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError || !session) {
@@ -1229,5 +1229,41 @@ export const adminService = {
     });
 
     return user;
+  },
+
+  async toggleAgentStatus(agentId: string, disabled: boolean, actorId: string, actorName: string): Promise<any> {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      throw new Error('Authentication required.');
+    }
+
+    const { data, error } = await supabase.rpc('toggle_agent_status', { 
+      target_user_id: agentId, 
+      is_disabled: disabled 
+    });
+
+    if (error) {
+      if (error.code === 'PGRST202' || error.message?.includes('toggle_agent_status')) {
+        throw new Error('Database function toggle_agent_status is not installed. Please run the SQL in supabase/agent-rpcs.sql in your Supabase SQL Editor.');
+      }
+      throw new Error(error.message || `Failed to ${disabled ? 'disable' : 'enable'} agent`);
+    }
+
+    try {
+      await auditService.createLog({
+        actorId,
+        actorName,
+        actorRole: 'admin',
+        action: disabled ? 'agent_disabled' : 'agent_enabled',
+        resourceType: 'user',
+        resourceId: agentId,
+        details: { disabled }
+      });
+    } catch (auditErr) {
+      console.warn('Audit logging failed for toggleAgentStatus:', auditErr);
+    }
+
+    return data;
   }
 };

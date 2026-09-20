@@ -213,9 +213,17 @@ export const storage = {
       async createSignedUrl(path: string, expiresIn: number = 3600) {
         const cleanPath = path.replace(/^\/+/, '');
 
-        // 1. Check if the file is in Supabase Storage first.
-        // Supabase validates against storage.objects in the DB and returns a signed URL
-        // only if the file exists and the user has permission.
+        // 1. Prioritize Cloudflare R2 presigned URL
+        try {
+          if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY) {
+            const signedUrl = await createSignedUrl(bucket, cleanPath, expiresIn);
+            return { data: { signedUrl }, error: null };
+          }
+        } catch (r2Error) {
+          console.warn(`[Storage] Failed to generate R2 signed URL for ${bucket}/${cleanPath}:`, r2Error);
+        }
+
+        // 2. Fallback to Supabase Storage signed URL
         try {
           const { data: sbData, error: sbError } = await supabase.storage.from(bucket).createSignedUrl(cleanPath, expiresIn);
           if (!sbError && sbData?.signedUrl) {
@@ -225,17 +233,7 @@ export const storage = {
             return { data: { signedUrl: url }, error: null };
           }
         } catch (sbErr) {
-          // If Supabase check fails, fall through to R2
-        }
-
-        // 2. If not found in Supabase Storage, fall back to Cloudflare R2 presigned URL
-        try {
-          if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY) {
-            const signedUrl = await createSignedUrl(bucket, cleanPath, expiresIn);
-            return { data: { signedUrl }, error: null };
-          }
-        } catch (error) {
-          return { data: null, error };
+          // Both failed
         }
 
         return { data: null, error: new Error('Failed to create signed URL') };

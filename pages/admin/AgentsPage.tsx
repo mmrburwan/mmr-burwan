@@ -7,7 +7,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { Users, Search, UserPlus, ChevronRight, RefreshCw, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Users, Search, UserPlus, ChevronRight, RefreshCw, ShieldAlert, AlertTriangle, UserX, UserCheck, CheckCircle2 } from 'lucide-react';
 import { safeFormatDate } from '../../utils/dateUtils';
 
 interface Agent {
@@ -15,6 +15,7 @@ interface Agent {
   email: string;
   name: string;
   createdAt: string;
+  disabled?: boolean;
 }
 
 const AgentsPage: React.FC = () => {
@@ -30,17 +31,62 @@ const AgentsPage: React.FC = () => {
   const [promoteEmail, setPromoteEmail] = useState('');
   const [isPromoting, setIsPromoting] = useState(false);
 
-  // Captcha & Consent State
+  // Captcha & Consent State (Add Agent)
   const [captchaCode, setCaptchaCode] = useState('');
   const [typedCaptcha, setTypedCaptcha] = useState('');
   const [captchaError, setCaptchaError] = useState('');
   const [showConsentModal, setShowConsentModal] = useState(false);
+
+  // Disable Agent State
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [showDisableModal, setShowDisableModal] = useState(false);
+  const [disableCaptchaCode, setDisableCaptchaCode] = useState('');
+  const [typedDisableCaptcha, setTypedDisableCaptcha] = useState('');
+  const [disableCaptchaError, setDisableCaptchaError] = useState('');
+  const [isDisabling, setIsDisabling] = useState(false);
+
+  // Enable Agent State
+  const [showEnableModal, setShowEnableModal] = useState(false);
+  const [enableCaptchaCode, setEnableCaptchaCode] = useState('');
+  const [typedEnableCaptcha, setTypedEnableCaptcha] = useState('');
+  const [enableCaptchaError, setEnableCaptchaError] = useState('');
+  const [isEnabling, setIsEnabling] = useState(false);
 
   const generateCaptcha = () => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setCaptchaCode(code);
     setCaptchaError('');
     return code;
+  };
+
+  const generateDisableCaptcha = () => {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setDisableCaptchaCode(code);
+    setDisableCaptchaError('');
+    return code;
+  };
+
+  const generateEnableCaptcha = () => {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setEnableCaptchaCode(code);
+    setEnableCaptchaError('');
+    return code;
+  };
+
+  const handleOpenDisable = (agent: Agent) => {
+    setSelectedAgent(agent);
+    setTypedDisableCaptcha('');
+    setDisableCaptchaError('');
+    generateDisableCaptcha();
+    setShowDisableModal(true);
+  };
+
+  const handleOpenEnable = (agent: Agent) => {
+    setSelectedAgent(agent);
+    setTypedEnableCaptcha('');
+    setEnableCaptchaError('');
+    generateEnableCaptcha();
+    setShowEnableModal(true);
   };
 
   const handleOpenPromote = () => {
@@ -108,6 +154,60 @@ const AgentsPage: React.FC = () => {
     }
   };
 
+  const handleConfirmDisable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAgent || !user) return;
+
+    if (typedDisableCaptcha.trim() !== disableCaptchaCode) {
+      setDisableCaptchaError('Incorrect verification code. Please enter the 4-digit code shown.');
+      generateDisableCaptcha();
+      setTypedDisableCaptcha('');
+      return;
+    }
+
+    setIsDisabling(true);
+    try {
+      await adminService.toggleAgentStatus(selectedAgent.id, true, user.id, user.name || 'Admin');
+      showToast(`Agent ${selectedAgent.name || selectedAgent.email} has been disabled`, 'success');
+      setShowDisableModal(false);
+      setSelectedAgent(null);
+      setTypedDisableCaptcha('');
+      setDisableCaptchaError('');
+      loadAgents();
+    } catch (error: any) {
+      showToast(error.message || 'Failed to disable agent', 'error');
+    } finally {
+      setIsDisabling(false);
+    }
+  };
+
+  const handleConfirmEnable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAgent || !user) return;
+
+    if (typedEnableCaptcha.trim() !== enableCaptchaCode) {
+      setEnableCaptchaError('Incorrect verification code. Please enter the 4-digit code shown.');
+      generateEnableCaptcha();
+      setTypedEnableCaptcha('');
+      return;
+    }
+
+    setIsEnabling(true);
+    try {
+      await adminService.toggleAgentStatus(selectedAgent.id, false, user.id, user.name || 'Admin');
+      showToast(`Agent ${selectedAgent.name || selectedAgent.email} has been re-enabled`, 'success');
+      setShowEnableModal(false);
+      setSelectedAgent(null);
+      setTypedEnableCaptcha('');
+      setEnableCaptchaError('');
+      loadAgents();
+    } catch (error: any) {
+      showToast(error.message || 'Failed to enable agent', 'error');
+    } finally {
+      setIsEnabling(false);
+    }
+  };
+
   const filteredAgents = agents.filter(agent => 
     agent.email.toLowerCase().includes(searchQuery.toLowerCase()) || 
     (agent.name && agent.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -153,6 +253,7 @@ const AgentsPage: React.FC = () => {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Name / Email</th>
+                  <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                   <th className="py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
@@ -162,7 +263,7 @@ const AgentsPage: React.FC = () => {
                   <tr key={agent.id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${agent.disabled ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
                           <Users size={16} />
                         </div>
                         <div>
@@ -172,19 +273,57 @@ const AgentsPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3 px-4">
+                      {agent.disabled ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                          <UserX size={12} className="shrink-0" />
+                          Disabled
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 size={12} className="shrink-0" />
+                          Active
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
                       <div className="text-sm text-gray-900">
                         {safeFormatDate(agent.createdAt, 'MMM d, yyyy')}
                       </div>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/admin/agents/${agent.id}`)}
-                      >
-                        View Dashboard
-                        <ChevronRight size={16} className="ml-1" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/admin/agents/${agent.id}`)}
+                          className="text-xs"
+                        >
+                          View Dashboard
+                          <ChevronRight size={15} className="ml-1" />
+                        </Button>
+
+                        {agent.disabled ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenEnable(agent)}
+                            className="text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-300 font-medium"
+                          >
+                            <UserCheck size={14} className="mr-1" />
+                            Enable
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenDisable(agent)}
+                            className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 font-medium"
+                          >
+                            <UserX size={14} className="mr-1" />
+                            Disable
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -354,6 +493,241 @@ const AgentsPage: React.FC = () => {
                 No
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disable Agent Modal with 4-Digit Captcha */}
+      {showDisableModal && selectedAgent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-red-200">
+            {/* Warning Icon */}
+            <div className="w-14 h-14 rounded-full bg-red-50 border border-red-200 flex items-center justify-center text-red-600 mx-auto mb-4 shadow-sm">
+              <ShieldAlert size={28} />
+            </div>
+
+            <h2 className="text-xl font-serif font-bold text-gray-900 text-center mb-2">
+              Disable Agent
+            </h2>
+
+            <p className="text-sm text-gray-600 text-center mb-4">
+              Are you sure you want to disable agent{' '}
+              <span className="font-semibold text-gray-900">{selectedAgent.name || 'Agent'}</span>{' '}
+              (<span className="font-mono text-xs text-gray-700">{selectedAgent.email}</span>)?
+            </p>
+
+            <div className="bg-red-50 border border-red-200/80 rounded-xl p-3.5 mb-5 text-xs text-red-900 leading-relaxed">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={16} className="text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-red-950 block mb-0.5">Access Restriction:</span>
+                  This will immediately block their access to the agent portal, prevent them from creating or managing client applications, and restrict agent operations.
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmDisable} className="space-y-4">
+              {/* 4-Digit Captcha Validation */}
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Security Verification
+                  </label>
+                  <button
+                    type="button"
+                    onClick={generateDisableCaptcha}
+                    className="flex items-center gap-1 text-xs text-red-700 hover:text-red-800 font-medium transition-colors"
+                    title="Generate new code"
+                  >
+                    <RefreshCw size={13} />
+                    <span>Change code</span>
+                  </button>
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  Type the 4-digit code shown below to confirm disabling this agent:
+                </p>
+
+                <div className="flex items-center gap-3">
+                  {/* CAPTCHA badge display */}
+                  <div className="select-none px-4 py-2 bg-gradient-to-r from-red-100 via-gray-100 to-red-50 border-2 border-dashed border-red-300 rounded-lg shadow-inner font-mono text-2xl font-black tracking-[0.35em] text-gray-800 flex items-center justify-center">
+                    <span className="line-through decoration-red-500/60 decoration-2 select-none">
+                      {disableCaptchaCode}
+                    </span>
+                  </div>
+
+                  {/* Input */}
+                  <div className="flex-1">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={typedDisableCaptcha}
+                      onChange={(e) => {
+                        setTypedDisableCaptcha(e.target.value.replace(/\D/g, '').slice(0, 4));
+                        if (disableCaptchaError) setDisableCaptchaError('');
+                      }}
+                      placeholder="4-digit code"
+                      className="text-center font-mono text-lg font-bold tracking-widest"
+                      autoFocus
+                      required
+                    />
+                  </div>
+                </div>
+
+                {disableCaptchaError && (
+                  <p className="text-xs font-medium text-red-600 flex items-center gap-1 pt-1">
+                    <AlertTriangle size={13} className="shrink-0" />
+                    {disableCaptchaError}
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons: Yes, Disable on LEFT, Cancel on RIGHT */}
+              <div className="flex flex-row items-center justify-between gap-3 pt-2 border-t border-gray-100">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  isLoading={isDisabling}
+                  disabled={isDisabling || typedDisableCaptcha.length !== 4}
+                  className="flex-1 !bg-red-600 hover:!bg-red-700 !border-red-600 text-white font-semibold shadow-md"
+                >
+                  Yes, Disable
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowDisableModal(false);
+                    setSelectedAgent(null);
+                    setTypedDisableCaptcha('');
+                    setDisableCaptchaError('');
+                  }}
+                  disabled={isDisabling}
+                  className="flex-1 text-gray-700 hover:bg-gray-100 font-medium"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Enable Agent Modal with 4-Digit Captcha */}
+      {showEnableModal && selectedAgent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-emerald-200">
+            <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 mx-auto mb-4 shadow-sm">
+              <UserCheck size={28} />
+            </div>
+
+            <h2 className="text-xl font-serif font-bold text-gray-900 text-center mb-2">
+              Enable Agent
+            </h2>
+
+            <p className="text-sm text-gray-600 text-center mb-4">
+              Are you sure you want to restore agent portal access for{' '}
+              <span className="font-semibold text-gray-900">{selectedAgent.name || 'Agent'}</span>{' '}
+              (<span className="font-mono text-xs text-gray-700">{selectedAgent.email}</span>)?
+            </p>
+
+            <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3.5 mb-5 text-xs text-emerald-900 leading-relaxed">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-emerald-950 block mb-0.5">Restore Full Access:</span>
+                  This agent will be able to log in, access their dashboard, client directory, and submit applications again.
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmEnable} className="space-y-4">
+              {/* 4-Digit Captcha Validation */}
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Security Verification
+                  </label>
+                  <button
+                    type="button"
+                    onClick={generateEnableCaptcha}
+                    className="flex items-center gap-1 text-xs text-emerald-700 hover:text-emerald-800 font-medium transition-colors"
+                    title="Generate new code"
+                  >
+                    <RefreshCw size={13} />
+                    <span>Change code</span>
+                  </button>
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  Type the 4-digit code shown below to confirm re-enabling this agent:
+                </p>
+
+                <div className="flex items-center gap-3">
+                  {/* CAPTCHA badge display */}
+                  <div className="select-none px-4 py-2 bg-gradient-to-r from-emerald-100 via-gray-100 to-emerald-50 border-2 border-dashed border-emerald-300 rounded-lg shadow-inner font-mono text-2xl font-black tracking-[0.35em] text-gray-800 flex items-center justify-center">
+                    <span className="line-through decoration-emerald-500/60 decoration-2 select-none">
+                      {enableCaptchaCode}
+                    </span>
+                  </div>
+
+                  {/* Input */}
+                  <div className="flex-1">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={typedEnableCaptcha}
+                      onChange={(e) => {
+                        setTypedEnableCaptcha(e.target.value.replace(/\D/g, '').slice(0, 4));
+                        if (enableCaptchaError) setEnableCaptchaError('');
+                      }}
+                      placeholder="4-digit code"
+                      className="text-center font-mono text-lg font-bold tracking-widest"
+                      autoFocus
+                      required
+                    />
+                  </div>
+                </div>
+
+                {enableCaptchaError && (
+                  <p className="text-xs font-medium text-red-600 flex items-center gap-1 pt-1">
+                    <AlertTriangle size={13} className="shrink-0" />
+                    {enableCaptchaError}
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons: Yes, Enable on LEFT, Cancel on RIGHT */}
+              <div className="flex flex-row items-center justify-between gap-3 pt-2 border-t border-gray-100">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  isLoading={isEnabling}
+                  disabled={isEnabling || typedEnableCaptcha.length !== 4}
+                  className="flex-1 !bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600 text-white font-semibold shadow-md"
+                >
+                  Yes, Enable
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowEnableModal(false);
+                    setSelectedAgent(null);
+                    setTypedEnableCaptcha('');
+                    setEnableCaptchaError('');
+                  }}
+                  disabled={isEnabling}
+                  className="flex-1 text-gray-700 hover:bg-gray-100 font-medium"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -38,6 +38,7 @@ const ScannerPage = lazy(() => import('./pages/admin/ScannerPage'));
 const AuditPage = lazy(() => import('./pages/admin/AuditPage'));
 const CertificatesPage = lazy(() => import('./pages/admin/CertificatesPage'));
 const AgentDashboardPage = lazy(() => import('./pages/agent/AgentDashboardPage'));
+const AgentClientsPage = lazy(() => import('./pages/agent/AgentClientsPage'));
 const AgentCreateApplicationPage = lazy(() => import('./pages/agent/AgentCreateApplicationPage'));
 const AgentApplicationViewPage = lazy(() => import('./pages/agent/AgentApplicationViewPage'));
 const VerifyPage = lazy(() => import('./pages/verify/VerifyPage'));
@@ -270,6 +271,14 @@ const router = createBrowserRouter(
           element: (
             <Suspense fallback={<LoadingSpinner />}>
               <AgentDashboardPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'clients',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <AgentClientsPage />
             </Suspense>
           ),
         },

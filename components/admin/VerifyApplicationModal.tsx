@@ -8,7 +8,7 @@ import Button from '../ui/Button';
 import { CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { adminService } from '../../services/admin';
 import { CertificateDetails } from '../../types';
-import { safeFormatDate } from '../../utils/dateUtils';
+import { safeFormatDate, calculateDetailedAge } from '../../utils/dateUtils';
 
 // Generate roman numerals from 1 to 50
 const generateRomanNumerals = (): string[] => {
@@ -40,13 +40,19 @@ const generateRomanNumerals = (): string[] => {
 
 const ROMAN_NUMERALS = generateRomanNumerals();
 
-// Parse certificate number with compact format support (no hyphens)
-// Examples of valid formats (all starting with WBMSDBRW):
-// "WBMSDBRWI1C20241620252" (all fields present)
-// "WBMSDBRWI1C1621" (no years)
-// "WBMSDBRWI12122" (no volumeLetter, no years - minimal format)
-// Also supports legacy hyphenated format for backward compatibility
-const parseCertificateNumber = (certNumber: string | undefined) => {
+// Parse existing certificate number to pre-populate form
+// Handles formats like:
+// - Legacy: WB-MSD-BRW-I-1-2024-123-2024-45 or WB-MSD-BRW-I-1-A-2024-123-2024-45
+// - New: WBMSDBRWI1A2024123202445 or WBMSDBRWI1202412345
+const parseCertificateNumber = (certNumber?: string): {
+  bookNumber: string;
+  volumeNumber: string;
+  volumeLetter: string;
+  volumeYear: string;
+  serialNumber: string;
+  serialYear: string;
+  pageNumber: string;
+} => {
   const defaults = {
     bookNumber: 'I',
     volumeNumber: '',
@@ -97,9 +103,6 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
   const bookNumber = bookMatch[1];
   let rest = remainder.slice(bookNumber.length);
 
-  // Now we need to extract: volumeNumber, volumeLetter?, volumeYear?, serialNumber, serialYear?, pageNumber
-  // Strategy: work from the end backwards since pageNumber is last
-
   // Match volumeNumber (1+ digits at the start of rest)
   const volNumMatch = rest.match(/^(\d+)/);
   if (!volNumMatch) {
@@ -116,61 +119,37 @@ const parseCertificateNumber = (certNumber: string | undefined) => {
     rest = rest.slice(volumeLetter.length);
   }
 
-  // Now we have remaining digits that could be: volumeYear + serialNumber + serialYear + pageNumber
-  // or just: serialNumber + pageNumber
-  // or: volumeYear + serialNumber + pageNumber
-  // etc.
-
-  // Since parsing is ambiguous without separators, we'll use heuristics:
-  // - If we have a 4-digit sequence, treat first occurrence as volumeYear
-  // - 4-digit sequence later could be serialYear
-  // - Numbers between are serialNumber
-  // - Last number is pageNumber
-
-  // For now, use a simple approach: split remaining digits intelligently
-  // We assume typical formats and try to extract reasonably
-
+  // Extract years and numbers
   let volumeYear = '';
   let serialNumber = '';
   let serialYear = '';
   let pageNumber = '';
 
-  // If remaining is just digits, try to parse
-  if (/^\d+$/.test(rest)) {
-    const digits = rest;
-    const len = digits.length;
-
-    // Minimum is serialNumber + pageNumber (at least 2 chars each? flexible)
-    if (len >= 2) {
-      // Check if starts with 4-digit year
-      if (len >= 6 && /^\d{4}/.test(digits)) {
-        volumeYear = digits.slice(0, 4);
-        const afterVolYear = digits.slice(4);
-
-        // Check if there's another 4-digit year in the middle
-        if (afterVolYear.length >= 6) {
-          // Could be serialNum + serialYear(4) + page or other combinations
-          // Try: serialNum (1-3 digits) + serialYear(4) + page (rest)
-          const serialYearMatch = afterVolYear.match(/^(\d{1,3})(\d{4})(\d+)$/);
-          if (serialYearMatch) {
-            serialNumber = serialYearMatch[1];
-            serialYear = serialYearMatch[2];
-            pageNumber = serialYearMatch[3];
-          } else {
-            // Just split in half-ish
-            const mid = Math.floor(afterVolYear.length / 2);
-            serialNumber = afterVolYear.slice(0, mid) || afterVolYear.slice(0, 1);
-            pageNumber = afterVolYear.slice(mid) || afterVolYear.slice(-1);
-          }
-        } else {
-          // Short remaining: just serialNumber + pageNumber
-          const mid = Math.floor(afterVolYear.length / 2);
-          serialNumber = afterVolYear.slice(0, mid || 1);
-          pageNumber = afterVolYear.slice(mid || 1);
-        }
+  const digits = rest.replace(/\D/g, '');
+  if (digits.length >= 4) {
+    const yearMatch = digits.match(/^(20\d{2})/);
+    if (yearMatch) {
+      volumeYear = yearMatch[1];
+      const afterYear = digits.slice(4);
+      const yearMatch2 = afterYear.match(/(20\d{2})/);
+      if (yearMatch2 && yearMatch2.index !== undefined) {
+        serialNumber = afterYear.slice(0, yearMatch2.index);
+        serialYear = yearMatch2[1];
+        pageNumber = afterYear.slice(yearMatch2.index + 4);
       } else {
-        // No 4-digit year at start, just serialNumber + pageNumber
-        // Assume last 1-3 digits are pageNumber, rest is serialNumber
+        const len = afterYear.length;
+        const pageLen = Math.min(3, Math.floor(len / 2)) || 1;
+        serialNumber = afterYear.slice(0, len - pageLen);
+        pageNumber = afterYear.slice(-pageLen);
+      }
+    } else {
+      const len = digits.length;
+      const yearMatch2 = digits.match(/(20\d{2})/);
+      if (yearMatch2 && yearMatch2.index !== undefined) {
+        serialNumber = digits.slice(0, yearMatch2.index);
+        serialYear = yearMatch2[1];
+        pageNumber = digits.slice(yearMatch2.index + 4);
+      } else {
         const pageLen = Math.min(3, Math.floor(len / 2)) || 1;
         serialNumber = digits.slice(0, len - pageLen);
         pageNumber = digits.slice(-pageLen);
@@ -218,6 +197,8 @@ interface VerifyApplicationModalProps {
   }>;
   initialCertificateDetails?: CertificateDetails;
   marriageDate?: string;
+  groomDob?: string;
+  brideDob?: string;
 }
 
 const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
@@ -230,8 +211,13 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
   documents = [],
   initialCertificateDetails,
   marriageDate,
+  groomDob,
+  brideDob,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const groomAge = groomDob ? calculateDetailedAge(groomDob, marriageDate || new Date()) : null;
+  const brideAge = brideDob ? calculateDetailedAge(brideDob, marriageDate || new Date()) : null;
 
   // Check for rejected documents that haven't been re-uploaded
   const rejectedDocuments = useMemo(() => {
@@ -423,9 +409,31 @@ const VerifyApplicationModal: React.FC<VerifyApplicationModalProps> = ({
             <label className="block text-[10px] sm:text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">
               Marriage Date (বিবাহের তারিখ)
             </label>
-            <p className="text-xs sm:text-sm font-medium text-blue-900 bg-white border border-blue-200 rounded-md px-3 py-2">
-              {marriageDate ? safeFormatDate(marriageDate, 'dd-MM-yyyy') : 'Not Provided'}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-white border border-blue-200 rounded-md px-3 py-2">
+              <p className="text-xs sm:text-sm font-medium text-blue-900">
+                {marriageDate ? safeFormatDate(marriageDate, 'dd-MM-yyyy') : 'Not Provided'}
+              </p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {groomAge && (
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    groomAge.years >= 21
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    Groom Age: {groomAge.text}
+                  </span>
+                )}
+                {brideAge && (
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    brideAge.years >= 18
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    Bride Age: {brideAge.text}
+                  </span>
+                )}
+              </div>
+            </div>
             <p className="text-[10px] text-blue-500 mt-1.5 flex items-center gap-1">
               <AlertTriangle size={10} />
               This date is from the application and cannot be edited here.

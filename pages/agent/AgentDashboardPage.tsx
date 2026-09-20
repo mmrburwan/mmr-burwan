@@ -1,59 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { applicationService } from '../../services/application';
-import { Application } from '../../types';
+import { useNotification } from '../../contexts/NotificationContext';
+import { agentService } from '../../services/agent';
 import Card from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
-import { FileText, Clock, CheckCircle, Plus, ChevronRight, Eye } from 'lucide-react';
-import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { safeFormatDate } from '../../utils/dateUtils';
 import Button from '../../components/ui/Button';
+import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import {
+  Users,
+  FileText,
+  Plus,
+  Clock,
+  CheckCircle,
+  ChevronRight,
+  FileEdit,
+  ArrowRight
+} from 'lucide-react';
 
 const AgentDashboardPage: React.FC = () => {
   const { user } = useAuth();
+  const { showToast } = useNotification();
   const navigate = useNavigate();
-  const [applications, setApplications] = useState<Application[]>([]);
+
+  const [stats, setStats] = useState({ total: 0, approved: 0, pending: 0, draft: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (user?.id) {
-      loadApplications();
+      loadStats();
     }
-  }, [user]);
+  }, [user?.id]);
 
-  const loadApplications = async () => {
+  const loadStats = async () => {
+    if (!user?.id) return;
     setIsLoading(true);
     try {
-      if (!user?.id) return;
-      const apps = await applicationService.getApplicationsByAgent(user.id);
-      setApplications(apps);
+      const statsData = await agentService.getApplicationStats(user.id);
+      setStats(statsData);
     } catch (error) {
-      console.error('Failed to load applications:', error);
+      console.error('Failed to load stats:', error);
+      showToast('Failed to load dashboard statistics', 'error');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved': return 'bg-emerald-100 text-emerald-800';
-      case 'rejected': return 'bg-rose-100 text-rose-800';
-      case 'under_review': return 'bg-blue-100 text-blue-800';
-      case 'submitted': return 'bg-gold-100 text-gold-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusLabel = (status: string, verified?: boolean) => {
-    if (verified) return 'Verified';
-    switch (status) {
-      case 'approved': return 'Approved';
-      case 'rejected': return 'Action Needed';
-      case 'under_review': return 'Under Review';
-      case 'submitted': return 'Submitted';
-      case 'draft': return 'Draft';
-      default: return status;
     }
   };
 
@@ -65,146 +53,149 @@ const AgentDashboardPage: React.FC = () => {
     );
   }
 
-  const approvedCount = applications.filter(a => a.verified || a.status === 'approved').length;
-  const pendingCount = applications.filter(a => a.status === 'submitted' || a.status === 'under_review').length;
-  const draftCount = applications.filter(a => a.status === 'draft').length;
-
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-gray-900 mb-1">Agent Dashboard</h1>
-          <p className="text-sm text-gray-600">Manage your clients' applications</p>
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Agent Dashboard</h1>
+          <p className="text-sm text-gray-600">Overview of your agency activities and clients</p>
         </div>
-        <Button
-          variant="primary"
-          onClick={() => navigate('/agent/create-application')}
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/agent/clients')}
+            className="flex-1 sm:flex-initial"
+          >
+            <Users size={16} className="mr-1.5" />
+            Clients Directory
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => navigate('/agent/create-application')}
+            className="flex-1 sm:flex-initial"
+          >
+            <Plus size={16} className="mr-1.5" />
+            New Application
+          </Button>
+        </div>
+      </div>
+
+      {/* Top Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card
+          onClick={() => navigate('/agent/clients')}
+          className="p-4 sm:p-5 flex flex-col justify-center border border-gray-200 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group"
         >
-          <Plus size={18} className="mr-2" />
-          New Application
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Card className="p-4 sm:p-5 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-100 rounded-lg text-blue-700">
-              <FileText size={20} />
-            </div>
-            <h3 className="font-medium text-gray-600 text-sm">Total Applications</h3>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{applications.length}</p>
-        </Card>
-
-        <Card className="p-4 sm:p-5 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700">
-              <CheckCircle size={20} />
-            </div>
-            <h3 className="font-medium text-gray-600 text-sm">Approved</h3>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{approvedCount}</p>
-        </Card>
-
-        <Card className="p-4 sm:p-5 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-gold-100 rounded-lg text-gold-700">
-              <Clock size={20} />
-            </div>
-            <h3 className="font-medium text-gray-600 text-sm">Pending Review</h3>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{pendingCount}</p>
-        </Card>
-
-        <Card className="p-4 sm:p-5 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-gray-100 rounded-lg text-gray-700">
-              <FileText size={20} />
-            </div>
-            <h3 className="font-medium text-gray-600 text-sm">Drafts</h3>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{draftCount}</p>
-        </Card>
-      </div>
-
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-200">
-          <h2 className="font-semibold text-lg text-gray-900">Recent Applications</h2>
-        </div>
-        
-        {applications.length > 0 ? (
-          <div className="divide-y divide-gray-200">
-            {applications.map((app) => (
-              <div
-                key={app.id}
-                className="p-5 hover:bg-gray-50 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer"
-                onClick={() => navigate(`/agent/applications/${app.id}`)}
-              >
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-medium text-gray-900">
-                      {app.proxyUserEmail || 'No Email'}
-                    </h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(app.verified ? 'approved' : app.status)}`}>
-                      {getStatusLabel(app.status, app.verified)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>
-                      Groom: {app.userDetails?.firstName ? `${app.userDetails.firstName} ${app.userDetails.lastName || ''}` : 'N/A'}
-                    </span>
-                    <span>
-                      Bride: {app.partnerForm?.firstName ? `${app.partnerForm.firstName} ${app.partnerForm.lastName || ''}` : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-[10px] text-gray-400">
-                    Created: {safeFormatDate(app.submittedAt || app.lastUpdated, 'MMM d, yyyy')}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
-                  {app.status === 'draft' ? (
-                    <>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        className="flex-1 sm:flex-initial text-xs"
-                        onClick={() => navigate(`/agent/create-application?resume=${app.id}`)}
-                      >
-                        Resume
-                        <ChevronRight size={14} className="ml-1" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 sm:flex-initial text-xs"
-                        onClick={() => navigate(`/agent/applications/${app.id}`)}
-                      >
-                        <Eye size={14} className="mr-1.5" />
-                        View
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full sm:w-auto text-xs"
-                      onClick={() => navigate(`/agent/applications/${app.id}`)}
-                    >
-                      <Eye size={14} className="mr-1.5" />
-                      View Application
-                    </Button>
-                  )}
-                </div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg text-blue-700 group-hover:scale-105 transition-transform">
+                <FileText size={20} />
               </div>
-            ))}
+              <h3 className="font-medium text-gray-600 text-sm">Total Applications</h3>
+            </div>
+            <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
           </div>
-        ) : (
-          <div className="p-8 text-center text-gray-500">
-            <p>You haven't created any applications yet.</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.total}</p>
+        </Card>
+
+        <Card
+          onClick={() => navigate('/agent/clients')}
+          className="p-4 sm:p-5 flex flex-col justify-center border border-gray-200 hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700 group-hover:scale-105 transition-transform">
+                <CheckCircle size={20} />
+              </div>
+              <h3 className="font-medium text-gray-600 text-sm">Approved</h3>
+            </div>
+            <ChevronRight size={16} className="text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
           </div>
-        )}
-      </Card>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.approved}</p>
+        </Card>
+
+        <Card
+          onClick={() => navigate('/agent/clients')}
+          className="p-4 sm:p-5 flex flex-col justify-center border border-gray-200 hover:border-amber-400 hover:shadow-md transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-100 rounded-lg text-amber-700 group-hover:scale-105 transition-transform">
+                <Clock size={20} />
+              </div>
+              <h3 className="font-medium text-gray-600 text-sm">Pending Review</h3>
+            </div>
+            <ChevronRight size={16} className="text-gray-400 group-hover:text-amber-600 group-hover:translate-x-0.5 transition-all" />
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.pending}</p>
+        </Card>
+
+        <Card
+          onClick={() => navigate('/agent/clients')}
+          className="p-4 sm:p-5 flex flex-col justify-center border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gray-100 rounded-lg text-gray-700 group-hover:scale-105 transition-transform">
+                <FileEdit size={20} />
+              </div>
+              <h3 className="font-medium text-gray-600 text-sm">Drafts</h3>
+            </div>
+            <ChevronRight size={16} className="text-gray-400 group-hover:text-gray-600 group-hover:translate-x-0.5 transition-all" />
+          </div>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.draft}</p>
+        </Card>
+      </div>
+
+      {/* Quick Action Navigation Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        <div
+          onClick={() => navigate('/agent/clients')}
+          className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-gold-400 hover:shadow-lg transition-all cursor-pointer group flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gold-50 border border-gold-200 flex items-center justify-center text-gold-700 group-hover:scale-110 transition-transform">
+              <Users size={28} />
+            </div>
+            <div>
+              <h3 className="font-serif font-bold text-gray-900 text-lg group-hover:text-gold-700 transition-colors">
+                Clients Directory
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                View, search, filter and manage all your clients' marriage applications with full pagination.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center text-xs font-semibold text-gold-700 group-hover:translate-x-1 transition-transform ml-2">
+            <span>Open</span>
+            <ArrowRight size={16} className="ml-1" />
+          </div>
+        </div>
+
+        <div
+          onClick={() => navigate('/agent/create-application')}
+          className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-blue-400 hover:shadow-lg transition-all cursor-pointer group flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 group-hover:scale-110 transition-transform">
+              <Plus size={28} />
+            </div>
+            <div>
+              <h3 className="font-serif font-bold text-gray-900 text-lg group-hover:text-blue-700 transition-colors">
+                Create New Application
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                Register a new client account and prepare an offline marriage registration draft application.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center text-xs font-semibold text-blue-700 group-hover:translate-x-1 transition-transform ml-2">
+            <span>Start</span>
+            <ArrowRight size={16} className="ml-1" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

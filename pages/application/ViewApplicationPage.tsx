@@ -9,7 +9,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import { ArrowLeft, FileText, Eye, X, CheckCircle } from 'lucide-react';
-import { safeFormatDate } from '../../utils/dateUtils';
+import { safeFormatDate, calculateDetailedAge } from '../../utils/dateUtils';
 import { formatAadhaar } from '../../utils/formatUtils';
 
 const ViewApplicationPage: React.FC = () => {
@@ -112,6 +112,10 @@ const ViewApplicationPage: React.FC = () => {
   const partnerCurrentAddress = application.partnerCurrentAddress || {};
   const declarations = application.declarations || {};
 
+  const marriageDate = (declarations as any)?.marriageDate || (declarations as any)?.marriageRegistrationDate;
+  const groomAge = userDetails.dateOfBirth ? calculateDetailedAge(userDetails.dateOfBirth, marriageDate || new Date()) : null;
+  const brideAge = (partnerForm as any)?.dateOfBirth ? calculateDetailedAge((partnerForm as any).dateOfBirth, marriageDate || new Date()) : null;
+
   return (
     <div className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-6 lg:py-8">
       <div className="mb-3 sm:mb-6 lg:mb-8">
@@ -160,7 +164,7 @@ const ViewApplicationPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="space-y-2.5 sm:space-y-4 lg:space-y-6">
+      <div className="space-y-3 sm:space-y-6">
         {/* Marriage Information */}
         <Card className="p-2.5 sm:p-4 lg:p-6 bg-gold-50/30 border-gold-100">
           <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 mb-1.5 sm:mb-3 lg:mb-4">
@@ -169,15 +173,31 @@ const ViewApplicationPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Marriage Date</p>
-              <p className="font-medium text-gray-900">
-                {((declarations as any)?.marriageDate || (declarations as any)?.marriageRegistrationDate)
-                  ? safeFormatDate(
-                    (declarations as any).marriageDate || (declarations as any).marriageRegistrationDate,
-                    'dd-MM-yyyy',
-                    'Invalid date'
-                  )
-                  : 'Not provided'}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-medium text-gray-900">
+                  {marriageDate
+                    ? safeFormatDate(marriageDate, 'dd-MM-yyyy', 'Invalid date')
+                    : 'Not provided'}
+                </p>
+                {groomAge && (
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    groomAge.years >= 21
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    Groom Age: {groomAge.text}
+                  </span>
+                )}
+                {brideAge && (
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    brideAge.years >= 18
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    Bride Age: {brideAge.text}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </Card>
@@ -200,9 +220,20 @@ const ViewApplicationPage: React.FC = () => {
             </div>
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
-              <p className="font-medium text-gray-900">
-                {userDetails.dateOfBirth ? safeFormatDate(userDetails.dateOfBirth, 'dd-MM-yyyy') : '-'}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-medium text-gray-900">
+                  {userDetails.dateOfBirth ? safeFormatDate(userDetails.dateOfBirth, 'dd-MM-yyyy') : '-'}
+                </p>
+                {groomAge && (
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    groomAge.years >= 21
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    Age: {groomAge.text}
+                  </span>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Aadhaar Number</p>
@@ -254,9 +285,20 @@ const ViewApplicationPage: React.FC = () => {
             </div>
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Date of Birth</p>
-              <p className="font-medium text-gray-900">
-                {(partnerForm as any).dateOfBirth ? safeFormatDate((partnerForm as any).dateOfBirth, 'dd-MM-yyyy') : '-'}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-medium text-gray-900">
+                  {(partnerForm as any).dateOfBirth ? safeFormatDate((partnerForm as any).dateOfBirth, 'dd-MM-yyyy') : '-'}
+                </p>
+                {brideAge && (
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    brideAge.years >= 18
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    Age: {brideAge.text}
+                  </span>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Aadhaar Number</p>

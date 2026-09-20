@@ -99,6 +99,8 @@ const ClientsPage: React.FC = () => {
     registrationDate?: string;
     certificateDetails?: CertificateDetails;
     marriageDate?: string;
+    groomDob?: string;
+    brideDob?: string;
   }>({
     isOpen: false,
     applicationId: '',
@@ -982,6 +984,8 @@ const ClientsPage: React.FC = () => {
                                     registrationDate: client.application?.registrationDate,
                                     certificateDetails: client.application?.certificateDetails,
                                     marriageDate: (client.application?.declarations as any)?.marriageDate || (client.application?.declarations as any)?.marriageRegistrationDate,
+                                    groomDob: (client.application?.userDetails as any)?.dateOfBirth,
+                                    brideDob: (client.application?.partnerForm as any)?.dateOfBirth,
                                   });
                                 }}
                               >
@@ -1167,6 +1171,8 @@ const ClientsPage: React.FC = () => {
         currentRegistrationDate={verifyModalState.registrationDate}
         initialCertificateDetails={verifyModalState.certificateDetails}
         marriageDate={verifyModalState.marriageDate}
+        groomDob={verifyModalState.groomDob}
+        brideDob={verifyModalState.brideDob}
       />
 
       {/* Delete Application Confirmation Modal */}

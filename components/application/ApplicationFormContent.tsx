@@ -8,7 +8,7 @@ import { ApplicationProvider, useApplication } from '../../contexts/ApplicationC
 import { useNotification } from '../../contexts/NotificationContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { documentService } from '../../services/documents';
-import { safeFormatDate, calculateAge } from '../../utils/dateUtils';
+import { safeFormatDate, calculateAge, calculateDetailedAge } from '../../utils/dateUtils';
 import { formatAadhaar, handleAadhaarInput } from '../../utils/formatUtils';
 import Stepper from '../../components/ui/Stepper';
 import Button from '../../components/ui/Button';
@@ -244,6 +244,21 @@ const ApplicationFormContent: React.FC = () => {
   const groomFormValues = groomForm.watch();
   const brideFormValues = brideForm.watch();
   const declarationsFormValues = declarationsForm.watch();
+
+  // Watch marriage date & dates of birth for dynamic age calculation
+  const watchedMarriageDate = groomFormValues.marriageDate || (application?.declarations as any)?.marriageDate || (application?.declarations as any)?.marriageRegistrationDate;
+  const watchedGroomDob = groomFormValues.dateOfBirth;
+  const watchedBrideDob = brideFormValues.dateOfBirth;
+
+  const groomDetailedAge = useMemo(() => {
+    if (!watchedGroomDob) return null;
+    return calculateDetailedAge(watchedGroomDob, watchedMarriageDate || new Date());
+  }, [watchedGroomDob, watchedMarriageDate]);
+
+  const brideDetailedAge = useMemo(() => {
+    if (!watchedBrideDob) return null;
+    return calculateDetailedAge(watchedBrideDob, watchedMarriageDate || new Date());
+  }, [watchedBrideDob, watchedMarriageDate]);
 
   // Watch for address changes
   const groomSameAsPermanent = groomForm.watch('sameAsPermanent');
@@ -1152,6 +1167,30 @@ const ApplicationFormContent: React.FC = () => {
               <div className="space-y-3 sm:space-y-4">
                 <Input
                   label="Marriage Date"
+                  labelRight={
+                    groomDetailedAge || brideDetailedAge ? (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {groomDetailedAge && (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            groomDetailedAge.years >= 21
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
+                            Groom Age: {groomDetailedAge.text}
+                          </span>
+                        )}
+                        {brideDetailedAge && (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            brideDetailedAge.years >= 18
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
+                            Bride Age: {brideDetailedAge.text}
+                          </span>
+                        )}
+                      </div>
+                    ) : undefined
+                  }
                   type="date"
                   max={new Date().toISOString().split('T')[0]}
                   {...groomForm.register('marriageDate')}
@@ -1189,6 +1228,17 @@ const ApplicationFormContent: React.FC = () => {
                 />
                 <Input
                   label="Date of Birth"
+                  labelRight={
+                    groomDetailedAge ? (
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        groomDetailedAge.years >= 21
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        Age: {groomDetailedAge.text}
+                      </span>
+                    ) : undefined
+                  }
                   type="date"
                   {...groomForm.register('dateOfBirth')}
                   error={groomForm.formState.errors.dateOfBirth?.message}
@@ -1406,6 +1456,17 @@ const ApplicationFormContent: React.FC = () => {
                 />
                 <Input
                   label="Date of Birth"
+                  labelRight={
+                    brideDetailedAge ? (
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        brideDetailedAge.years >= 18
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        Age: {brideDetailedAge.text}
+                      </span>
+                    ) : undefined
+                  }
                   type="date"
                   {...brideForm.register('dateOfBirth')}
                   error={brideForm.formState.errors.dateOfBirth?.message}
@@ -2260,11 +2321,23 @@ const ApplicationFormContent: React.FC = () => {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-gray-500 mb-1">Marriage Date</p>
-                  <p className="font-medium text-gray-900">
-                    {marriageDate && marriageDate.trim() !== ''
-                      ? safeFormatDate(marriageDate, 'dd-MM-yyyy', 'Invalid date format')
-                      : 'Not provided'}
-                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-gray-900">
+                      {marriageDate && marriageDate.trim() !== ''
+                        ? safeFormatDate(marriageDate, 'dd-MM-yyyy', 'Invalid date format')
+                        : 'Not provided'}
+                    </span>
+                    {groomDetailedAge && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        Groom Age: {groomDetailedAge.text}
+                      </span>
+                    )}
+                    {brideDetailedAge && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        Bride Age: {brideDetailedAge.text}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </Card>
@@ -2295,7 +2368,14 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Date of Birth</p>
-                  <p className="font-medium text-gray-900">{safeFormatDate(groomData.dateOfBirth, 'dd-MM-yyyy')}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-gray-900">{safeFormatDate(groomData.dateOfBirth, 'dd-MM-yyyy')}</span>
+                    {groomDetailedAge && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                        Age: {groomDetailedAge.text}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Aadhaar Number</p>
@@ -2363,7 +2443,14 @@ const ApplicationFormContent: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Date of Birth</p>
-                  <p className="font-medium text-gray-900">{safeFormatDate(brideData.dateOfBirth, 'dd-MM-yyyy')}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-gray-900">{safeFormatDate(brideData.dateOfBirth, 'dd-MM-yyyy')}</span>
+                    {brideDetailedAge && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+                        Age: {brideDetailedAge.text}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Aadhaar Number</p>

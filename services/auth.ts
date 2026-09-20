@@ -27,6 +27,7 @@ const mapSupabaseUser = (supabaseUser: any, role: 'client' | 'admin' | 'agent' =
     name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
     role: supabaseUser.user_metadata?.role || role,
     createdAt: supabaseUser.created_at || new Date().toISOString(),
+    disabled: Boolean(supabaseUser.user_metadata?.is_disabled || supabaseUser.user_metadata?.disabled),
   };
 };
 
