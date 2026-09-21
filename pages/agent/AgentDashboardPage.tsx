@@ -14,7 +14,8 @@ import {
   CheckCircle,
   ChevronRight,
   FileEdit,
-  ArrowRight
+  ArrowRight,
+  MessageSquare
 } from 'lucide-react';
 
 const AgentDashboardPage: React.FC = () => {
@@ -61,7 +62,15 @@ const AgentDashboardPage: React.FC = () => {
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Agent Dashboard</h1>
           <p className="text-sm text-gray-600">Overview of your agency activities and clients</p>
         </div>
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/agent/messages')}
+            className="flex-1 sm:flex-initial text-blue-700 border-blue-200 hover:bg-blue-50"
+          >
+            <MessageSquare size={16} className="mr-1.5" />
+            Message Admin
+          </Button>
           <Button
             variant="outline"
             onClick={() => navigate('/agent/clients')}
@@ -149,50 +158,73 @@ const AgentDashboardPage: React.FC = () => {
       </div>
 
       {/* Quick Action Navigation Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <div
           onClick={() => navigate('/agent/clients')}
-          className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-gold-400 hover:shadow-lg transition-all cursor-pointer group flex items-center justify-between"
+          className="bg-white p-5 rounded-2xl border border-gray-200 hover:border-gold-400 hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gold-50 border border-gold-200 flex items-center justify-center text-gold-700 group-hover:scale-110 transition-transform">
-              <Users size={28} />
+          <div className="flex items-start gap-3.5 mb-4">
+            <div className="w-12 h-12 rounded-xl bg-gold-50 border border-gold-200 flex items-center justify-center text-gold-700 group-hover:scale-105 transition-transform flex-shrink-0">
+              <Users size={24} />
             </div>
             <div>
-              <h3 className="font-serif font-bold text-gray-900 text-lg group-hover:text-gold-700 transition-colors">
+              <h3 className="font-serif font-bold text-gray-900 text-base group-hover:text-gold-700 transition-colors">
                 Clients Directory
               </h3>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
                 View, search, filter and manage all your clients' marriage applications with full pagination.
               </p>
             </div>
           </div>
-          <div className="flex items-center text-xs font-semibold text-gold-700 group-hover:translate-x-1 transition-transform ml-2">
-            <span>Open</span>
-            <ArrowRight size={16} className="ml-1" />
+          <div className="flex items-center text-xs font-semibold text-gold-700 group-hover:translate-x-1 transition-transform pt-2 border-t border-gray-100">
+            <span>Open Directory</span>
+            <ArrowRight size={14} className="ml-1" />
           </div>
         </div>
 
         <div
           onClick={() => navigate('/agent/create-application')}
-          className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-blue-400 hover:shadow-lg transition-all cursor-pointer group flex items-center justify-between"
+          className="bg-white p-5 rounded-2xl border border-gray-200 hover:border-blue-400 hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 group-hover:scale-110 transition-transform">
-              <Plus size={28} />
+          <div className="flex items-start gap-3.5 mb-4">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 group-hover:scale-105 transition-transform flex-shrink-0">
+              <Plus size={24} />
             </div>
             <div>
-              <h3 className="font-serif font-bold text-gray-900 text-lg group-hover:text-blue-700 transition-colors">
-                Create New Application
+              <h3 className="font-serif font-bold text-gray-900 text-base group-hover:text-blue-700 transition-colors">
+                Create Application
               </h3>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
                 Register a new client account and prepare an offline marriage registration draft application.
               </p>
             </div>
           </div>
-          <div className="flex items-center text-xs font-semibold text-blue-700 group-hover:translate-x-1 transition-transform ml-2">
-            <span>Start</span>
-            <ArrowRight size={16} className="ml-1" />
+          <div className="flex items-center text-xs font-semibold text-blue-700 group-hover:translate-x-1 transition-transform pt-2 border-t border-gray-100">
+            <span>Start Application</span>
+            <ArrowRight size={14} className="ml-1" />
+          </div>
+        </div>
+
+        <div
+          onClick={() => navigate('/agent/messages')}
+          className="bg-white p-5 rounded-2xl border border-gray-200 hover:border-indigo-400 hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between"
+        >
+          <div className="flex items-start gap-3.5 mb-4">
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700 group-hover:scale-105 transition-transform flex-shrink-0">
+              <MessageSquare size={24} />
+            </div>
+            <div>
+              <h3 className="font-serif font-bold text-gray-900 text-base group-hover:text-indigo-700 transition-colors">
+                Contact Admin Desk
+              </h3>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                Send queries, request urgent reviews, or communicate directly with Marriage Registrar admin.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center text-xs font-semibold text-indigo-700 group-hover:translate-x-1 transition-transform pt-2 border-t border-gray-100">
+            <span>Open Chat</span>
+            <ArrowRight size={14} className="ml-1" />
           </div>
         </div>
       </div>

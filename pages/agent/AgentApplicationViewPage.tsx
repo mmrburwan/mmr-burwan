@@ -5,6 +5,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { applicationService } from '../../services/application';
 import { documentService } from '../../services/documents';
 import { Application, Document } from '../../types';
+import { supabase } from '../../lib/supabase';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
@@ -21,10 +22,19 @@ import {
   ExternalLink,
   ShieldCheck,
   AlertCircle,
-  Download
+  Download,
+  Upload,
+  Lock,
+  FileCheck,
+  MessageSquare
 } from 'lucide-react';
 import { safeFormatDate, calculateDetailedAge } from '../../utils/dateUtils';
+import { downloadFileFromUrl } from '../../utils/download';
 import { formatAadhaar } from '../../utils/formatUtils';
+import { certificateService } from '../../services/certificates';
+import { Certificate } from '../../types';
+import { downloadCertificate, viewCertificate } from '../../utils/certificateGenerator';
+import ImageCropModal from '../../components/ui/ImageCropModal';
 
 const AgentApplicationViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,16 +44,63 @@ const AgentApplicationViewPage: React.FC = () => {
 
   const [application, setApplication] = useState<Application | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+
+  // Document Re-upload State
+  const [reuploadingDoc, setReuploadingDoc] = useState<string | null>(null);
+  const reuploadFileInputsRef = React.useRef<Map<string, HTMLInputElement>>(new Map());
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [pendingCropFile, setPendingCropFile] = useState<{ file: File; documentId: string } | null>(null);
 
   useEffect(() => {
     if (id) {
       loadApplicationData(id);
     }
   }, [id, user]);
+
+  // Realtime subscription and focus auto-refresh for certificate updates
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`agent-application-${id}-realtime`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'certificates', filter: `application_id=eq.${id}` },
+        () => {
+          loadApplicationData(id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'applications', filter: `id=eq.${id}` },
+        () => {
+          loadApplicationData(id);
+        }
+      )
+      .subscribe();
+
+    const handleFocus = () => {
+      loadApplicationData(id);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadApplicationData(id);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [id]);
 
   const loadApplicationData = async (appId: string) => {
     setIsLoading(true);
@@ -65,6 +122,14 @@ const AgentApplicationViewPage: React.FC = () => {
       setApplication(app);
       const docs = await documentService.getDocuments(appId);
       setDocuments(docs);
+
+      try {
+        const cert = await certificateService.getCertificateByApplicationId(appId);
+        setCertificate(cert);
+      } catch (certError) {
+        console.error('Failed to load certificate:', certError);
+        setCertificate(null);
+      }
     } catch (error) {
       console.error('Failed to load application:', error);
       showToast('Error loading application details', 'error');
@@ -131,6 +196,127 @@ const AgentApplicationViewPage: React.FC = () => {
   const handlePrintSlip = () => {
     if (application?.id) {
       window.open(`/print/application/${application.id}/acknowledgement`, '_blank', 'width=800,height=800');
+    }
+  };
+
+  const handleReuploadDocument = async (documentId: string, file: File) => {
+    if (!application) return;
+
+    setReuploadingDoc(documentId);
+    try {
+      const targetDoc = documents.find(d => d.id === documentId);
+      await documentService.uploadDocument(
+        application.id,
+        file,
+        targetDoc?.type || 'aadhaar',
+        targetDoc?.belongsTo || 'user',
+        documentId
+      );
+
+      // Refresh documents list
+      const updated = await documentService.getDocuments(application.id);
+      setDocuments(updated);
+      showToast('Document re-uploaded successfully', 'success');
+    } catch (error: any) {
+      console.error('Failed to re-upload document:', error);
+      showToast(error.message || 'Failed to re-upload document', 'error');
+    } finally {
+      setReuploadingDoc(null);
+    }
+  };
+
+  const handleReuploadFileSelect = (documentId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Check file size (250KB limit)
+      const MAX_FILE_SIZE = 250 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        showToast('File too large. Maximum size is 250KB. Please compress or resize before uploading.', 'error');
+        event.target.value = '';
+        return;
+      }
+
+      // Check if this is a joint photo
+      const doc = documents.find(d => d.id === documentId);
+      if (doc && doc.type === 'photo' && doc.belongsTo === 'joint') {
+        setPendingCropFile({ file, documentId });
+        setCropModalOpen(true);
+        event.target.value = '';
+        return;
+      }
+
+      handleReuploadDocument(documentId, file);
+    }
+    event.target.value = '';
+  };
+
+  const handleCropComplete = async (croppedFile: File) => {
+    if (!pendingCropFile) return;
+
+    const MAX_FILE_SIZE = 250 * 1024;
+    if (croppedFile.size > MAX_FILE_SIZE) {
+      showToast('Cropped file too large. Please try again with a smaller image.', 'error');
+      setPendingCropFile(null);
+      setCropModalOpen(false);
+      return;
+    }
+
+    await handleReuploadDocument(pendingCropFile.documentId, croppedFile);
+    setPendingCropFile(null);
+    setCropModalOpen(false);
+  };
+
+  const handleCropSkip = async () => {
+    if (!pendingCropFile) return;
+    await handleReuploadDocument(pendingCropFile.documentId, pendingCropFile.file);
+    setPendingCropFile(null);
+    setCropModalOpen(false);
+  };
+
+  const isCertDownloadable = certificate !== null && certificate !== undefined
+    ? Boolean(certificate.canDownload)
+    : Boolean((application?.certificateDetails as any)?.canDownload);
+
+  const handleViewCert = async () => {
+    if (!application) return;
+    try {
+      const liveCert = await certificateService.getCertificateByApplicationId(application.id);
+      const isAllowed = liveCert !== null && liveCert !== undefined
+        ? Boolean(liveCert.canDownload)
+        : Boolean((application.certificateDetails as any)?.canDownload);
+
+      if (!isAllowed) {
+        showToast('Certificate view/download is currently locked by administrator', 'error');
+        if (liveCert) setCertificate(liveCert);
+        return;
+      }
+
+      await viewCertificate(application);
+    } catch (error) {
+      console.error('Failed to view certificate:', error);
+      showToast('Failed to open certificate preview', 'error');
+    }
+  };
+
+  const handleDownloadCert = async () => {
+    if (!application) return;
+    try {
+      const liveCert = await certificateService.getCertificateByApplicationId(application.id);
+      const isAllowed = liveCert !== null && liveCert !== undefined
+        ? Boolean(liveCert.canDownload)
+        : Boolean((application.certificateDetails as any)?.canDownload);
+
+      if (!isAllowed) {
+        showToast('Certificate view/download is currently locked by administrator', 'error');
+        if (liveCert) setCertificate(liveCert);
+        return;
+      }
+
+      await downloadCertificate(application);
+      showToast('Certificate downloaded successfully', 'success');
+    } catch (error) {
+      console.error('Failed to download certificate:', error);
+      showToast('Failed to download certificate', 'error');
     }
   };
 
@@ -211,15 +397,60 @@ const AgentApplicationViewPage: React.FC = () => {
                 Resume Application
               </Button>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrintSlip}
-                className="text-xs sm:text-sm"
-              >
-                <Printer size={16} className="mr-1.5" />
-                Print Acknowledgement Slip
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/agent/messages')}
+                  className="text-xs sm:text-sm text-blue-700 border-blue-200 hover:bg-blue-50"
+                >
+                  <MessageSquare size={16} className="mr-1.5" />
+                  Message Admin
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintSlip}
+                  className="text-xs sm:text-sm"
+                >
+                  <Printer size={16} className="mr-1.5" />
+                  Print Acknowledgement Slip
+                </Button>
+
+                {isCertDownloadable ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleViewCert}
+                      className="text-xs sm:text-sm text-blue-600 border-blue-200 hover:bg-blue-50"
+                      title="View certificate preview"
+                    >
+                      <FileText size={16} className="mr-1.5" />
+                      View Certificate
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleDownloadCert}
+                      className="text-xs sm:text-sm bg-gold-600 hover:bg-gold-700 text-white"
+                      title="Download certificate PDF"
+                    >
+                      <Download size={16} className="mr-1.5" />
+                      Download Certificate
+                    </Button>
+                  </>
+                ) : (application.verified || certificate || application.certificateNumber) ? (
+                  <span
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200"
+                    title="Certificate download is currently locked by administrator"
+                  >
+                    <Lock size={13} className="text-amber-600" />
+                    Certificate Locked by Admin
+                  </span>
+                ) : null}
+              </>
             )}
           </div>
         </div>
@@ -318,9 +549,15 @@ const AgentApplicationViewPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div>
-                <p className="text-gray-500 text-xs">Mobile Number</p>
-                <p className="font-medium text-gray-900">{userDetails.mobileNumber || '-'}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-gray-500 text-xs">Mobile Number</p>
+                  <p className="font-medium text-gray-900">{userDetails.mobileNumber || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs">Voter EPIC No OR Madhyamik ROLL No</p>
+                  <p className="font-medium text-gray-900 font-mono">{userDetails.voterOrRollNo || '-'}</p>
+                </div>
               </div>
               <div className="pt-2 border-t border-gray-100">
                 <div className="flex items-center gap-1.5 text-gray-700 font-medium mb-1">
@@ -381,9 +618,15 @@ const AgentApplicationViewPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div>
-                <p className="text-gray-500 text-xs">Mobile Number</p>
-                <p className="font-medium text-gray-900">{partnerForm.mobileNumber || '-'}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-gray-500 text-xs">Mobile Number</p>
+                  <p className="font-medium text-gray-900">{partnerForm.mobileNumber || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs">Voter EPIC No OR Madhyamik ROLL No</p>
+                  <p className="font-medium text-gray-900 font-mono">{(partnerForm as any).voterOrRollNo || '-'}</p>
+                </div>
               </div>
               <div className="pt-2 border-t border-gray-100">
                 <div className="flex items-center gap-1.5 text-gray-700 font-medium mb-1">
@@ -417,48 +660,96 @@ const AgentApplicationViewPage: React.FC = () => {
 
           {documents.length > 0 ? (
             <div className="divide-y divide-gray-100">
-              {documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-gray-50 px-2 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 bg-gray-100 rounded-lg text-gray-600 flex-shrink-0">
-                      <FileText size={18} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">
-                        {getDocumentTypeLabel(doc.type)}: <span className="text-gray-600 font-normal">{doc.name}</span>
-                      </p>
-                      <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-400 mt-0.5">
-                        <span className="capitalize">{doc.belongsTo || 'joint'}</span>
-                        {doc.size ? <span>• {(doc.size / 1024).toFixed(1)} KB</span> : null}
-                        {doc.uploadedAt ? <span>• {safeFormatDate(doc.uploadedAt, 'MMM d, yyyy')}</span> : null}
+              {documents.map((doc) => {
+                const reuploaded = doc.status === 'pending' && doc.isReuploaded === true;
+                return (
+                  <div
+                    key={doc.id}
+                    className={`py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-2.5 rounded-lg transition-colors ${
+                      reuploaded ? 'bg-blue-50/70 border border-blue-200' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2 bg-gray-100 rounded-lg text-gray-600 flex-shrink-0">
+                        <FileText size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">
+                            {getDocumentTypeLabel(doc.type)}: <span className="text-gray-600 font-normal">{doc.name}</span>
+                          </p>
+                          {reuploaded && (
+                            <Badge variant="info" size="sm" className="bg-blue-100 text-blue-700 border-blue-300 !text-[10px] flex-shrink-0">
+                              Re-uploaded
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-400 mt-0.5">
+                          <span className="capitalize">{doc.belongsTo || 'joint'}</span>
+                          {doc.size ? <span>• {(doc.size / 1024).toFixed(1)} KB</span> : null}
+                          {doc.uploadedAt ? <span>• {safeFormatDate(doc.uploadedAt, 'MMM d, yyyy')}</span> : null}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-auto flex-shrink-0">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                      doc.status === 'approved' ? 'bg-emerald-100 text-emerald-800' :
-                      doc.status === 'rejected' ? 'bg-rose-100 text-rose-800' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {doc.status}
-                    </span>
+                    <div className="flex items-center gap-2 self-end sm:self-auto flex-shrink-0">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        doc.status === 'approved' ? 'bg-emerald-100 text-emerald-800' :
+                        doc.status === 'rejected' ? 'bg-rose-100 text-rose-800' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {doc.status}
+                      </span>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="!py-1 !px-2.5 text-xs"
-                      onClick={() => handlePreview(doc)}
-                    >
-                      <Eye size={14} className="mr-1" />
-                      Preview
-                    </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="!py-1 !px-2.5 text-xs"
+                        onClick={() => handlePreview(doc)}
+                      >
+                        <Eye size={14} className="mr-1" />
+                        Preview
+                      </Button>
+
+                      {/* Re-upload button for Agent */}
+                      <input
+                        type="file"
+                        accept={doc.type === 'photo' ? 'image/*' : 'image/*,.pdf'}
+                        onChange={(e) => handleReuploadFileSelect(doc.id, e)}
+                        className="hidden"
+                        id={`agent-reupload-${doc.id}`}
+                        ref={(el) => {
+                          if (el) {
+                            reuploadFileInputsRef.current.set(doc.id, el);
+                          } else {
+                            reuploadFileInputsRef.current.delete(doc.id);
+                          }
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="!py-1 !px-2.5 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
+                        onClick={() => {
+                          const input = reuploadFileInputsRef.current.get(doc.id);
+                          if (input) {
+                            input.click();
+                          }
+                        }}
+                        disabled={reuploadingDoc === doc.id}
+                        title="Re-upload document"
+                      >
+                        {reuploadingDoc === doc.id ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-blue-600 mr-1"></div>
+                        ) : (
+                          <Upload size={14} className="mr-1" />
+                        )}
+                        Re-upload
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-xs sm:text-sm text-gray-400 italic py-4 text-center">
@@ -480,6 +771,22 @@ const AgentApplicationViewPage: React.FC = () => {
                 <p className="text-xs text-gray-500 truncate">{previewDocument.name}</p>
               </div>
               <div className="flex items-center gap-2">
+                {(previewUrl || previewDocument.url) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="!p-1.5 text-gray-600 hover:text-gray-900"
+                    onClick={async () => {
+                      const target = previewUrl || previewDocument.url;
+                      if (target) {
+                        await downloadFileFromUrl(target, previewDocument.name || 'document');
+                      }
+                    }}
+                    title="Download document"
+                  >
+                    <Download size={18} />
+                  </Button>
+                )}
                 {previewUrl && (
                   <Button
                     variant="ghost"
@@ -529,6 +836,20 @@ const AgentApplicationViewPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Crop Modal for Joint Photograph */}
+      {cropModalOpen && pendingCropFile && (
+        <ImageCropModal
+          isOpen={cropModalOpen}
+          onClose={() => {
+            setCropModalOpen(false);
+            setPendingCropFile(null);
+          }}
+          imageFile={pendingCropFile.file}
+          onCropComplete={handleCropComplete}
+          onSkip={handleCropSkip}
+        />
       )}
     </div>
   );

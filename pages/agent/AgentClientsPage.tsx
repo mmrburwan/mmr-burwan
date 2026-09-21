@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { agentService } from '../../services/agent';
 import { certificateService } from '../../services/certificates';
+import { supabase } from '../../lib/supabase';
 import { Application, Certificate } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -25,7 +26,9 @@ import {
   ArrowRight,
   ExternalLink,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Lock,
+  MessageSquare
 } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -134,24 +137,23 @@ const AgentClientsPage: React.FC = () => {
         }
       );
 
-      setApplications(data);
-      setTotalCount(count);
+      // Fetch certificates for applications FIRST before setting applications
+      const appIds = (data || [])
+        .map((app) => app.id)
+        .filter(Boolean);
 
-      // Fetch certificates for verified applications
-      const verifiedAppIds = data
-        .filter((app) => app.verified && app.id)
-        .map((app) => app.id);
-
-      if (verifiedAppIds.length > 0) {
+      let certMap: Record<string, Certificate> = {};
+      if (appIds.length > 0) {
         try {
-          const certMap = await certificateService.getCertificatesByApplicationIds(verifiedAppIds);
-          setCertificatesMap(certMap || {});
+          certMap = await certificateService.getCertificatesByApplicationIds(appIds);
         } catch (certErr) {
           console.error('Failed to load certificates map:', certErr);
         }
-      } else {
-        setCertificatesMap({});
       }
+
+      setCertificatesMap(certMap || {});
+      setApplications(data || []);
+      setTotalCount(count);
     } catch (error) {
       console.error('Failed to load applications:', error);
       showToast('Failed to load applications', 'error');
@@ -170,6 +172,51 @@ const AgentClientsPage: React.FC = () => {
   useEffect(() => {
     loadApplications(page, limit);
   }, [page, limit, debouncedSearchTerm, verifiedFilter, loadApplications]);
+
+  // Auto-refresh when tab becomes active / gains focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadApplications(page, limit);
+      }
+    };
+    const handleFocus = () => {
+      loadApplications(page, limit);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [loadApplications, page, limit]);
+
+  // Realtime subscription for live updates when admin toggles permissions
+  useEffect(() => {
+    const channel = supabase
+      .channel('agent-clients-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'certificates' },
+        () => {
+          loadApplications(page, limit);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'applications' },
+        () => {
+          loadApplications(page, limit);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadApplications, page, limit]);
 
   const handleUpdateComment = async () => {
     if (!user) return;
@@ -215,8 +262,28 @@ const AgentClientsPage: React.FC = () => {
     }
   };
 
+  const checkCanDownload = (application: Application): boolean => {
+    const cert = certificatesMap[application.id];
+    if (cert !== undefined && cert !== null) {
+      return Boolean(cert.canDownload);
+    }
+    return Boolean((application.certificateDetails as any)?.canDownload);
+  };
+
   const handleViewCertificate = async (application: Application) => {
     try {
+      // Live server check to verify permission hasn't been disabled
+      const liveCert = await certificateService.getCertificateByApplicationId(application.id);
+      const isAllowed = liveCert !== null && liveCert !== undefined
+        ? Boolean(liveCert.canDownload)
+        : Boolean((application.certificateDetails as any)?.canDownload);
+
+      if (!isAllowed) {
+        showToast('Certificate view/download is currently locked by administrator', 'error');
+        await loadApplications(page, limit);
+        return;
+      }
+
       await viewCertificate(application);
     } catch (error) {
       console.error('Failed to open certificate:', error);
@@ -226,6 +293,18 @@ const AgentClientsPage: React.FC = () => {
 
   const handleDownloadCertificate = async (application: Application) => {
     try {
+      // Live server check to verify permission hasn't been disabled
+      const liveCert = await certificateService.getCertificateByApplicationId(application.id);
+      const isAllowed = liveCert !== null && liveCert !== undefined
+        ? Boolean(liveCert.canDownload)
+        : Boolean((application.certificateDetails as any)?.canDownload);
+
+      if (!isAllowed) {
+        showToast('Certificate view/download is currently locked by administrator', 'error');
+        await loadApplications(page, limit);
+        return;
+      }
+
       await downloadCertificate(application);
       showToast('Certificate downloaded successfully', 'success');
     } catch (error) {
@@ -281,14 +360,24 @@ const AgentClientsPage: React.FC = () => {
             View and manage all registered clients and applications under your agency
           </p>
         </div>
-        <Button
-          variant="primary"
-          onClick={() => navigate('/agent/create-application')}
-          className="w-full sm:w-auto"
-        >
-          <Plus size={16} className="mr-1.5" />
-          New Application
-        </Button>
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/agent/messages')}
+            className="flex-1 sm:flex-initial text-blue-700 border-blue-200 hover:bg-blue-50"
+          >
+            <MessageSquare size={16} className="mr-1.5" />
+            Message Admin
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => navigate('/agent/create-application')}
+            className="flex-1 sm:flex-initial"
+          >
+            <Plus size={16} className="mr-1.5" />
+            New Application
+          </Button>
+        </div>
       </div>
 
       {/* Toolbar / Search & Filter Controls */}
@@ -498,7 +587,7 @@ const AgentClientsPage: React.FC = () => {
                           </Button>
 
                           {/* View Certificate & Download Certificate */}
-                          {(app.verified || certificatesMap[app.id]) && (
+                          {checkCanDownload(app) ? (
                             <>
                               <Button
                                 variant="ghost"
@@ -521,7 +610,15 @@ const AgentClientsPage: React.FC = () => {
                                 <span>Download</span>
                               </Button>
                             </>
-                          )}
+                          ) : (app.verified || certificatesMap[app.id] || app.certificateNumber) ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] sm:text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 cursor-not-allowed"
+                              title="Certificate download is currently locked by administrator"
+                            >
+                              <Lock size={11} className="text-amber-600 flex-shrink-0" />
+                              <span>Locked</span>
+                            </span>
+                          ) : null}
 
                           {/* Resume if Draft */}
                           {app.status === 'draft' && (
@@ -647,7 +744,7 @@ const AgentClientsPage: React.FC = () => {
                         ? safeFormatDateObject(new Date(app.lastUpdated), 'dd-MM-yyyy')
                         : '-'}
                     </span>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -672,6 +769,38 @@ const AgentClientsPage: React.FC = () => {
                         <StickyNote size={13} className="mr-1" />
                         Note
                       </Button>
+                      {checkCanDownload(app) ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!text-xs !py-1 !px-2 text-blue-600 hover:bg-blue-50"
+                            onClick={() => handleViewCertificate(app)}
+                            title="View certificate preview"
+                          >
+                            <FileText size={13} className="mr-1" />
+                            Cert
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!text-xs !py-1 !px-2 text-indigo-600 hover:bg-indigo-50"
+                            onClick={() => handleDownloadCertificate(app)}
+                            title="Download certificate PDF"
+                          >
+                            <FileCheck size={13} className="mr-1" />
+                            PDF
+                          </Button>
+                        </>
+                      ) : (app.verified || certificatesMap[app.id] || app.certificateNumber) ? (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200"
+                          title="Certificate download is currently locked by administrator"
+                        >
+                          <Lock size={10} className="text-amber-600" />
+                          <span>Cert Locked</span>
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>

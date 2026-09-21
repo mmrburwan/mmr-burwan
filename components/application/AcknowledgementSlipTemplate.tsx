@@ -13,10 +13,12 @@ const AcknowledgementSlipTemplate: React.FC<AcknowledgementSlipTemplateProps> = 
     const groomName = (`${(application.userDetails as any)?.firstName || ''} ${(application.userDetails as any)?.lastName || ''}`).trim();
     const groomFather = (application.userDetails as any)?.fatherName || 'N/A';
     const groomMobile = (application.userDetails as any)?.mobileNumber || 'N/A';
+    const groomVoterOrRoll = (application.userDetails as any)?.voterOrRollNo;
 
     const brideName = (`${(application.partnerForm as any)?.firstName || ''} ${(application.partnerForm as any)?.lastName || ''}`).trim();
     const brideFather = (application.partnerForm as any)?.fatherName || 'N/A';
     const brideMobile = (application.partnerForm as any)?.mobileNumber || 'N/A';
+    const brideVoterOrRoll = (application.partnerForm as any)?.voterOrRollNo;
 
     const displayEmail = userEmail || 'N/A';
 
@@ -102,6 +104,12 @@ const AcknowledgementSlipTemplate: React.FC<AcknowledgementSlipTemplateProps> = 
                                     <p className="text-[10px] text-gray-500">Mobile</p>
                                     <p className="font-medium text-sm">{groomMobile}</p>
                                 </div>
+                                {groomVoterOrRoll && (
+                                    <div>
+                                        <p className="text-[10px] text-gray-500">Voter / Admit Roll No</p>
+                                        <p className="font-medium text-sm font-mono">{groomVoterOrRoll}</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -120,6 +128,12 @@ const AcknowledgementSlipTemplate: React.FC<AcknowledgementSlipTemplateProps> = 
                                     <p className="text-[10px] text-gray-500">Mobile</p>
                                     <p className="font-medium text-sm">{brideMobile}</p>
                                 </div>
+                                {brideVoterOrRoll && (
+                                    <div>
+                                        <p className="text-[10px] text-gray-500">Voter / Admit Roll No</p>
+                                        <p className="font-medium text-sm font-mono">{brideVoterOrRoll}</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

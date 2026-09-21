@@ -22,6 +22,7 @@ import ApplicationSuccessModal from '../../components/ApplicationSuccessModal';
 import StateDistrictSelector from '../../components/StateDistrictSelector';
 import { ArrowRight, ArrowLeft, Save, Upload, X, FileText, Edit, CheckCircle, Eye, Download, LogOut } from 'lucide-react';
 import ImageCropModal from '../../components/ui/ImageCropModal';
+import { downloadFileFromUrl } from '../../utils/download';
 
 // Groom Details Schema (User personal + address)
 // Factory function to create schema with optional voterOrRollNo for admin context
@@ -3074,10 +3075,11 @@ const ApplicationFormContent: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       className="!px-2 sm:!px-3 !text-xs"
-                      onClick={() => {
+                      onClick={async () => {
                         const urlToDownload = previewUrl || (previewDocument as any).url;
                         if (urlToDownload) {
-                          window.open(urlToDownload, '_blank');
+                          const docName = previewDocument.file?.name || (previewDocument as any).name || 'document';
+                          await downloadFileFromUrl(urlToDownload, docName);
                         }
                       }}
                     >
@@ -3133,7 +3135,18 @@ const ApplicationFormContent: React.FC = () => {
                         <div className="text-center py-8 sm:py-12">
                           <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
                           <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Preview not available</p>
-                          <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => window.open(previewUrl, '_blank')}>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="!text-xs sm:!text-sm"
+                            onClick={async () => {
+                              const target = previewUrl || (previewDocument as any).url;
+                              if (target) {
+                                const docName = previewDocument.file?.name || (previewDocument as any).name || 'document';
+                                await downloadFileFromUrl(target, docName);
+                              }
+                            }}
+                          >
                             <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
                             Download to View
                           </Button>
@@ -3146,18 +3159,32 @@ const ApplicationFormContent: React.FC = () => {
                       <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Failed to load preview</p>
                       <div className="space-y-2">
                         {(previewDocument as any).url && (
-                          <Button variant="primary" size="sm" className="!text-xs sm:!text-sm w-full sm:w-auto" onClick={() => window.open((previewDocument as any).url, '_blank')}>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="!text-xs sm:!text-sm w-full sm:w-auto"
+                            onClick={async () => {
+                              const docName = (previewDocument as any).name || 'document';
+                              await downloadFileFromUrl((previewDocument as any).url, docName);
+                            }}
+                          >
                             <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
-                            Open in New Tab
+                            Download Document
                           </Button>
                         )}
                         {previewDocument.file && (
-                          <Button variant="outline" size="sm" className="!text-xs sm:!text-sm w-full sm:w-auto" onClick={() => {
-                            const url = URL.createObjectURL(previewDocument.file);
-                            window.open(url, '_blank');
-                          }}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="!text-xs sm:!text-sm w-full sm:w-auto"
+                            onClick={() => {
+                              const url = URL.createObjectURL(previewDocument.file);
+                              const docName = previewDocument.file?.name || 'document';
+                              downloadFileFromUrl(url, docName);
+                            }}
+                          >
                             <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
-                            Open File
+                            Download File
                           </Button>
                         )}
                       </div>

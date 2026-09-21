@@ -216,6 +216,24 @@ export const messageService = {
             }
           }
 
+          // If still unresolved or default "User", check if user is a field agent
+          if (userName === 'User') {
+            const { data: agentApp } = await supabase
+              .from('applications')
+              .select('agent_name, proxy_user_email')
+              .eq('agent_id', conv.user_id)
+              .not('agent_name', 'is', null)
+              .limit(1)
+              .maybeSingle();
+
+            if (agentApp?.agent_name) {
+              userName = `${agentApp.agent_name} (Agent)`;
+              if (!userEmail && agentApp.proxy_user_email) {
+                userEmail = agentApp.proxy_user_email;
+              }
+            }
+          }
+
           return {
             id: conv.id,
             userId: conv.user_id,

@@ -12,6 +12,7 @@ import Badge from '../../components/ui/Badge';
 import { MessageSquare, Send, Check, RotateCw, X, ArrowLeft } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { MentionedApplicationCard } from '../../components/chat/MentionedApplicationCard';
 
 const ChatPage: React.FC = () => {
   const navigate = useNavigate();
@@ -435,6 +436,24 @@ const ChatPage: React.FC = () => {
                             )}
                             <div className={`rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-md transition-all ${isOwn ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' : 'bg-white text-gray-900 border border-gray-200'}`}>
                               <p className="text-xs sm:text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
+                              {msg.attachments && msg.attachments.length > 0 && (
+                                <div className="mt-2 space-y-1.5">
+                                  {msg.attachments.map((att: any, idx: number) => {
+                                    if (att.type === 'application') {
+                                      return (
+                                        <MentionedApplicationCard
+                                          key={idx}
+                                          app={att}
+                                          mode="bubble"
+                                          userRole="citizen"
+                                          isOwn={isOwn}
+                                        />
+                                      );
+                                    }
+                                    return null;
+                                  })}
+                                </div>
+                              )}
                               {showTime && (
                                 <div className={`flex items-center gap-1 mt-1 sm:mt-1.5 ${isOwn ? 'justify-end' : 'justify-start'}`}>
                                   <span className={`text-[9px] sm:text-xs ${isOwn ? 'text-blue-100' : 'text-gray-400'}`}>{formatTime(msg.timestamp)}</span>

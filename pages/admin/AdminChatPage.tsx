@@ -9,10 +9,15 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Badge from '../../components/ui/Badge';
-import { MessageSquare, Send, Check, CheckCheck, Clock, Search, User, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Send, Check, CheckCheck, Clock, Search, User, ArrowLeft, FileText } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useDebounce } from '../../hooks/useDebounce';
+import {
+  MentionedApplicationCard,
+  ApplicationMentionData,
+} from '../../components/chat/MentionedApplicationCard';
+import { MentionApplicationModal } from '../../components/chat/MentionApplicationModal';
 
 type ConversationWithUser = Conversation & { userName?: string; userEmail?: string };
 
@@ -28,6 +33,8 @@ const AdminChatPage: React.FC = () => {
   const [messageText, setMessageText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<ApplicationMentionData | null>(null);
+  const [isMentionModalOpen, setIsMentionModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -210,10 +217,12 @@ const AdminChatPage: React.FC = () => {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!messageText.trim() || !user || isSending) return;
+    if ((!messageText.trim() && !selectedApplication) || !user || isSending) return;
 
     const textToSend = messageText.trim();
+    const appToAttach = selectedApplication;
     setMessageText('');
+    setSelectedApplication(null);
     setIsSending(true);
 
     try {
@@ -233,11 +242,34 @@ const AdminChatPage: React.FC = () => {
 
       // Send message as admin
       const adminName = user.name || user.email || 'Admin';
+      const attachments = appToAttach
+        ? [
+            {
+              type: 'application',
+              id: appToAttach.id,
+              name:
+                appToAttach.name ||
+                `${appToAttach.groomName || ''} & ${appToAttach.brideName || ''}`.trim(),
+              groomName: appToAttach.groomName,
+              brideName: appToAttach.brideName,
+              status: appToAttach.status,
+              verified: appToAttach.verified,
+              certificateNumber: appToAttach.certificateNumber,
+              url: `/admin/applications/${appToAttach.id}`,
+            },
+          ]
+        : undefined;
+
+      const messageContent =
+        textToSend ||
+        `Referenced Application: ${appToAttach?.groomName || ''} & ${appToAttach?.brideName || ''}`;
+
       await messageService.sendMessage(
         selectedConversation,
         user.id,
         adminName,
-        textToSend
+        messageContent,
+        attachments
       );
 
       // Update conversation's last message immediately for better UX
@@ -245,18 +277,19 @@ const AdminChatPage: React.FC = () => {
         prev.map((conv) =>
           conv.id === selectedConversation
             ? {
-              ...conv,
-              lastMessage: {
-                id: `temp-${Date.now()}`,
-                conversationId: selectedConversation,
-                senderId: user.id,
-                senderName: adminName,
-                content: textToSend,
-                status: 'sent',
-                timestamp: new Date().toISOString(),
-              },
-              updatedAt: new Date().toISOString(),
-            }
+                ...conv,
+                lastMessage: {
+                  id: `temp-${Date.now()}`,
+                  conversationId: selectedConversation,
+                  senderId: user.id,
+                  senderName: adminName,
+                  content: messageContent,
+                  attachments,
+                  status: 'sent',
+                  timestamp: new Date().toISOString(),
+                },
+                updatedAt: new Date().toISOString(),
+              }
             : conv
         )
       );
@@ -268,6 +301,7 @@ const AdminChatPage: React.FC = () => {
       console.error('Failed to send message:', error);
       showToast(error.message || 'Failed to send message', 'error');
       setMessageText(textToSend);
+      setSelectedApplication(appToAttach);
     } finally {
       setIsSending(false);
     }
@@ -495,15 +529,32 @@ const AdminChatPage: React.FC = () => {
                                 }
                               `}
                             >
-                              <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                              {showTime && (
-                                <div className={`flex items-center gap-1 mt-1 sm:mt-1.5 ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                                  <span className={`text-[10px] sm:text-xs ${isOwn ? 'text-blue-100' : 'text-gray-400'}`}>
-                                    {formatTime(msg.timestamp)}
-                                  </span>
-                                  {isOwn && getStatusIcon(msg.status)}
-                                </div>
-                              )}
+                                <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+
+                                {/* Mentioned Application Card in bubble */}
+                                {msg.attachments?.map((att: any, attIdx: number) => {
+                                  if (att.type === 'application') {
+                                    return (
+                                      <MentionedApplicationCard
+                                        key={attIdx}
+                                        application={att}
+                                        mode="bubble"
+                                        isOwn={isOwn}
+                                        userRole="admin"
+                                      />
+                                    );
+                                  }
+                                  return null;
+                                })}
+
+                                {showTime && (
+                                  <div className={`flex items-center gap-1 mt-1 sm:mt-1.5 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                                    <span className={`text-[10px] sm:text-xs ${isOwn ? 'text-blue-100' : 'text-gray-400'}`}>
+                                      {formatTime(msg.timestamp)}
+                                    </span>
+                                    {isOwn && getStatusIcon(msg.status)}
+                                  </div>
+                                )}
                             </div>
                           </div>
                         </div>
@@ -520,7 +571,28 @@ const AdminChatPage: React.FC = () => {
                   <div ref={messagesEndRef} />
                 </div>
                 <div className="p-2 sm:p-3 lg:p-4 border-t border-gray-200 bg-white">
-                  <div className="flex gap-1.5 sm:gap-2">
+                  {/* Draft Mention Card Preview */}
+                  {selectedApplication && (
+                    <div className="mb-2">
+                      <MentionedApplicationCard
+                        application={selectedApplication}
+                        mode="draft"
+                        onRemove={() => setSelectedApplication(null)}
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsMentionModalOpen(true)}
+                      className="!px-2.5 !py-2 text-gray-600 hover:text-gold-700 hover:bg-gold-50 border-gray-200 flex items-center gap-1 flex-shrink-0"
+                      title="Mention an application"
+                    >
+                      <FileText size={15} className="text-gold-600" />
+                      <span className="hidden sm:inline text-xs font-medium">Mention App</span>
+                    </Button>
                     <Input
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
@@ -537,7 +609,7 @@ const AdminChatPage: React.FC = () => {
                     <Button
                       variant="primary"
                       onClick={handleSend}
-                      disabled={!messageText.trim() || !user || isSending}
+                      disabled={(!messageText.trim() && !selectedApplication) || !user || isSending}
                       isLoading={isSending}
                       className="!px-3 sm:!px-4 lg:!px-6 !text-xs sm:!text-sm"
                       size="sm"
@@ -559,9 +631,37 @@ const AdminChatPage: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* Mention Application Modal */}
+      {isMentionModalOpen && (
+        <MentionApplicationModal
+          isOpen={isMentionModalOpen}
+          onClose={() => setIsMentionModalOpen(false)}
+          onSelect={(app) => {
+            const groomName = app.userDetails?.firstName
+              ? `${app.userDetails.firstName} ${app.userDetails.lastName || ''}`.trim()
+              : undefined;
+            const brideName = app.partnerForm?.firstName
+              ? `${app.partnerForm.firstName} ${app.partnerForm.lastName || ''}`.trim()
+              : undefined;
+
+            setSelectedApplication({
+              type: 'application',
+              id: app.id,
+              name: `${groomName || 'Groom'} & ${brideName || 'Bride'}`,
+              groomName,
+              brideName,
+              status: app.status,
+              verified: app.verified,
+              certificateNumber: app.certificateNumber,
+            });
+          }}
+          agentId={currentConversation?.userId}
+          role="admin"
+        />
+      )}
     </div>
   );
 };
 
 export default AdminChatPage;
-

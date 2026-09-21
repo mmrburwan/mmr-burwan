@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { messageService } from '../../services/messages';
 import {
   LayoutDashboard,
   LogOut,
@@ -8,11 +9,13 @@ import {
   X,
   UserPlus,
   Users,
+  MessageSquare,
 } from 'lucide-react';
 
 const AgentLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
       return localStorage.getItem('agent_sidebar_collapsed') === 'true';
@@ -22,6 +25,30 @@ const AgentLayout: React.FC = () => {
   });
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchUnread = async () => {
+      try {
+        const convs = await messageService.getConversations(user.id);
+        const total = convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+        setUnreadCount(total);
+      } catch (err) {
+        console.error('Failed to fetch unread count:', err);
+      }
+    };
+
+    fetchUnread();
+
+    const channel = messageService.subscribeToConversations(user.id, () => {
+      fetchUnread();
+    });
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user?.id]);
 
   const toggleCollapse = () => {
     setIsCollapsed(prev => {
@@ -37,6 +64,7 @@ const AgentLayout: React.FC = () => {
     { path: '/agent/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/agent/clients', icon: Users, label: 'Clients' },
     { path: '/agent/create-application', icon: UserPlus, label: 'Create Application' },
+    { path: '/agent/messages', icon: MessageSquare, label: 'Messages' },
   ];
 
   const handleLogout = async () => {
@@ -121,8 +149,18 @@ const AgentLayout: React.FC = () => {
                     }
                   `}
                 >
-                  <Icon size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
+                  <div className="relative flex-shrink-0">
+                    <Icon size={18} className="sm:w-5 sm:h-5" />
+                    {isCollapsed && item.label === 'Messages' && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-600 rounded-full ring-2 ring-white"></span>
+                    )}
+                  </div>
                   {!isCollapsed && <span className="text-xs sm:text-sm truncate">{item.label}</span>}
+                  {!isCollapsed && item.label === 'Messages' && unreadCount > 0 && (
+                    <span className="ml-auto bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                      {unreadCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -180,6 +218,17 @@ const AgentLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 ml-auto">
+            <Link
+              to="/agent/messages"
+              className="relative p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+              title="Messages with Admin"
+            >
+              <MessageSquare size={19} />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-blue-600 rounded-full ring-2 ring-white animate-pulse"></span>
+              )}
+            </Link>
+            <div className="h-4 w-px bg-gray-200" />
             <div className="text-xs sm:text-sm text-gray-600">
               <span className="font-medium text-gray-900 truncate max-w-[120px] sm:max-w-none">
                 {user?.name || 'Agent'}

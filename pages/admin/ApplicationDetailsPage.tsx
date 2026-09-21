@@ -17,6 +17,7 @@ import { ArrowLeft, FileText, CheckCircle, X, Eye, Edit2, Save, XCircle, Downloa
 import { safeFormatDate, calculateAge, calculateDetailedAge } from '../../utils/dateUtils';
 import { formatAadhaar, handleAadhaarInput } from '../../utils/formatUtils';
 import ImageCropModal from '../../components/ui/ImageCropModal';
+import { downloadFileFromUrl } from '../../utils/download';
 
 const ApplicationDetailsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -46,8 +47,8 @@ const ApplicationDetailsPage: React.FC = () => {
   // Edit form state
   const [editForm, setEditForm] = useState<any>({});
 
-  // Check if current admin created this application
-  const isAdminCreatedApplication = user?.role === 'admin' && application?.isProxyApplication === true && application?.createdByAdminId === user?.id;
+  // Allow admin to re-upload documents for proxy and any applications
+  const isAdminCreatedApplication = user?.role === 'admin';
 
   useEffect(() => {
     const loadData = async () => {
@@ -115,9 +116,13 @@ const ApplicationDetailsPage: React.FC = () => {
     setReuploadingDoc(documentId);
     try {
       // Use uploadDocument which will update existing document if it exists
-      await documentService.uploadDocument(application.id, file,
-        documents.find(d => d.id === documentId)?.type || 'aadhaar',
-        documents.find(d => d.id === documentId)?.belongsTo || 'user'
+      const targetDoc = documents.find(d => d.id === documentId);
+      await documentService.uploadDocument(
+        application.id,
+        file,
+        targetDoc?.type || 'aadhaar',
+        targetDoc?.belongsTo || 'user',
+        documentId
       );
 
       // Refresh documents list
@@ -1811,11 +1816,11 @@ const ApplicationDetailsPage: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   className="!text-xs sm:!text-sm !px-2 sm:!px-3"
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
                     const urlToDownload = previewUrl || previewDocument.url;
                     if (urlToDownload) {
-                      window.open(urlToDownload, '_blank');
+                      await downloadFileFromUrl(urlToDownload, previewDocument.name || 'document');
                     }
                   }}
                 >
@@ -1880,7 +1885,17 @@ const ApplicationDetailsPage: React.FC = () => {
                     <div className="text-center py-8 sm:py-12">
                       <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
                       <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Preview not available</p>
-                      <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => window.open(previewUrl, '_blank')}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="!text-xs sm:!text-sm"
+                        onClick={async () => {
+                          const target = previewUrl || previewDocument.url;
+                          if (target) {
+                            await downloadFileFromUrl(target, previewDocument.name || 'document');
+                          }
+                        }}
+                      >
                         <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
                         Download to View
                       </Button>
@@ -1893,9 +1908,16 @@ const ApplicationDetailsPage: React.FC = () => {
                   <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Failed to load preview</p>
                   <div className="space-y-2">
                     {previewDocument.url && (
-                      <Button variant="primary" size="sm" className="!text-xs sm:!text-sm w-full sm:w-auto" onClick={() => window.open(previewDocument.url, '_blank')}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="!text-xs sm:!text-sm w-full sm:w-auto"
+                        onClick={async () => {
+                          await downloadFileFromUrl(previewDocument.url, previewDocument.name || 'document');
+                        }}
+                      >
                         <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
-                        Open in New Tab
+                        Download Document
                       </Button>
                     )}
                   </div>

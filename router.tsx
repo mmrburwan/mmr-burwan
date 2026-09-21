@@ -41,6 +41,7 @@ const AgentDashboardPage = lazy(() => import('./pages/agent/AgentDashboardPage')
 const AgentClientsPage = lazy(() => import('./pages/agent/AgentClientsPage'));
 const AgentCreateApplicationPage = lazy(() => import('./pages/agent/AgentCreateApplicationPage'));
 const AgentApplicationViewPage = lazy(() => import('./pages/agent/AgentApplicationViewPage'));
+const AgentMessagesPage = lazy(() => import('./pages/agent/AgentMessagesPage'));
 const VerifyPage = lazy(() => import('./pages/verify/VerifyPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const HelpPage = lazy(() => import('./pages/help/HelpPage'));
@@ -295,6 +296,22 @@ const router = createBrowserRouter(
           element: (
             <Suspense fallback={<LoadingSpinner />}>
               <AgentApplicationViewPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'messages',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <AgentMessagesPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'chat',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <AgentMessagesPage />
             </Suspense>
           ),
         },

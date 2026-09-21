@@ -1,183 +1,1415 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { applicationService } from '../../services/application';
-import { Application } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNotification } from '../../contexts/NotificationContext';
+import { adminService } from '../../services/admin';
+import { certificateService } from '../../services/certificates';
+import { Application, CertificateDetails, Certificate } from '../../types';
 import Card from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
-import { FileText, Clock, CheckCircle, ChevronLeft, ArrowRight } from 'lucide-react';
-import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { safeFormatDate } from '../../utils/dateUtils';
 import Button from '../../components/ui/Button';
+import Badge from '../../components/ui/Badge';
+import Input from '../../components/ui/Input';
+import VerifyApplicationModal from '../../components/admin/VerifyApplicationModal';
+import DeleteApplicationModal from '../../components/admin/DeleteApplicationModal';
+import {
+  Users,
+  Search,
+  Eye,
+  MessageSquare,
+  FileCheck,
+  CheckCircle,
+  XCircle,
+  ArrowLeft,
+  FileText,
+  Trash2,
+  StickyNote,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Briefcase,
+  Mail,
+  Calendar,
+  Clock,
+  UserCheck,
+  ShieldCheck,
+  RefreshCw,
+} from 'lucide-react';
+import { safeFormatDateObject, safeFormatDate } from '../../utils/dateUtils';
+import { useDebounce } from '../../hooks/useDebounce';
+import { downloadCertificate, viewCertificate } from '../../utils/certificateGenerator';
+
+const CircularProgress = ({
+  progress,
+  size = 48,
+  strokeWidth = 3,
+  children,
+}: {
+  progress: number;
+  size?: number;
+  strokeWidth?: number;
+  children: React.ReactNode;
+}) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg className="absolute w-full h-full transform -rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#E5E7EB"
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#D4AF37"
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="transition-all duration-300 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center p-1">
+        {children}
+      </div>
+    </div>
+  );
+};
+
+interface ClientWithApplication {
+  userId: string;
+  email: string;
+  application: Application | null;
+}
+
+interface AgentProfile {
+  id: string;
+  email: string;
+  name: string;
+  createdAt: string;
+  disabled?: boolean;
+}
 
 const AgentDashboardViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const { showToast } = useNotification();
   const navigate = useNavigate();
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [agentName, setAgentName] = useState<string>('Agent');
 
-  useEffect(() => {
-    if (id) {
-      loadApplications();
+  const [agent, setAgent] = useState<AgentProfile | null>(null);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    verified: 0,
+    unverified: 0,
+    draft: 0,
+  });
+
+  const [clients, setClients] = useState<ClientWithApplication[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 400);
+  const [verifiedFilter, setVerifiedFilter] = useState<string>('all'); // 'all', 'verified', 'unverified', 'rejected', 'draft'
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [certificatesMap, setCertificatesMap] = useState<Record<string, Certificate | null>>({});
+  const [generatingCert, setGeneratingCert] = useState<string | null>(null);
+
+  // Modals
+  const [verifyModalState, setVerifyModalState] = useState<{
+    isOpen: boolean;
+    applicationId: string;
+    certificateNumber?: string;
+    registrationDate?: string;
+    certificateDetails?: CertificateDetails;
+    marriageDate?: string;
+    groomDob?: string;
+    brideDob?: string;
+  }>({
+    isOpen: false,
+    applicationId: '',
+  });
+
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isOpen: boolean;
+    applicationId: string;
+    groomName?: string;
+    brideName?: string;
+  }>({
+    isOpen: false,
+    applicationId: '',
+  });
+
+  const [commentModalState, setCommentModalState] = useState<{
+    isOpen: boolean;
+    applicationId: string;
+    comment: string;
+  }>({
+    isOpen: false,
+    applicationId: '',
+    comment: '',
+  });
+
+  // Load Agent Details
+  const loadAgentProfile = useCallback(async () => {
+    if (!id) return;
+    try {
+      const agents = await adminService.getAgents();
+      const current = agents.find((a) => a.id === id);
+      if (current) {
+        setAgent(current);
+      }
+    } catch (err) {
+      console.error('Failed to load agent profile:', err);
     }
   }, [id]);
 
-  const loadApplications = async () => {
-    setIsLoading(true);
+  // Load Agent Application Statistics
+  const loadStats = useCallback(async () => {
+    if (!id) return;
     try {
+      const statsData = await adminService.getApplicationStats(id);
+      setStats(statsData);
+    } catch (err) {
+      console.error('Failed to load agent stats:', err);
+    }
+  }, [id]);
+
+  // Load Agent Applications (scoped by agentId)
+  const loadApplications = useCallback(
+    async (targetPage: number = page, targetLimit: number = limit) => {
       if (!id) return;
-      const apps = await applicationService.getApplicationsByAgent(id);
-      setApplications(apps);
-      // In a real app we might want to fetch agent details separately, but for now we'll just display "Agent"
+      setIsFetching(true);
+      try {
+        const { data: applications, count } = await adminService.getApplications(
+          targetPage,
+          targetLimit,
+          {
+            search: debouncedSearchTerm,
+            verified: verifiedFilter,
+            agentId: id,
+          }
+        );
+
+        setTotalCount(count);
+
+        // Fallback for agent name if not yet loaded
+        if (!agent && applications.length > 0 && applications[0].agentName) {
+          setAgent((prev) =>
+            prev
+              ? prev
+              : {
+                  id,
+                  email: applications[0].proxyUserEmail || '',
+                  name: applications[0].agentName || 'Agent',
+                  createdAt: applications[0].submittedAt || '',
+                }
+          );
+        }
+
+        // Fetch emails for applications
+        const userIds = [...new Set(applications.map((app) => app.userId).filter(Boolean))];
+        const emailMap = userIds.length > 0 ? await adminService.getUserEmails(userIds) : {};
+
+        const clientsData: ClientWithApplication[] = applications.map((application) => ({
+          userId: application.userId,
+          email: emailMap[application.userId] || application.proxyUserEmail || 'N/A',
+          application,
+        }));
+
+        setClients(clientsData);
+
+        // Batch fetch certificates for verified applications
+        const verifiedAppIds = clientsData
+          .filter((client) => client.application?.verified && client.application?.id)
+          .map((client) => client.application!.id);
+
+        if (verifiedAppIds.length > 0) {
+          const certMap = await certificateService.getCertificatesByApplicationIds(verifiedAppIds);
+          setCertificatesMap(certMap);
+        } else {
+          setCertificatesMap({});
+        }
+      } catch (error) {
+        console.error('Failed to load agent applications:', error);
+        showToast('Failed to load applications', 'error');
+      } finally {
+        setIsLoading(false);
+        setIsFetching(false);
+      }
+    },
+    [id, agent, debouncedSearchTerm, verifiedFilter, showToast]
+  );
+
+  // Initial load
+  useEffect(() => {
+    loadAgentProfile();
+    loadStats();
+  }, [loadAgentProfile, loadStats]);
+
+  // Reset page to 1 whenever search or filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearchTerm, verifiedFilter]);
+
+  // Refetch applications on dependencies
+  useEffect(() => {
+    loadApplications(page, limit);
+  }, [page, limit, debouncedSearchTerm, verifiedFilter, loadApplications]);
+
+  // Action Handlers
+  const handleUpdateComment = async () => {
+    if (!user) return;
+    try {
+      await adminService.updateApplicationComment(
+        commentModalState.applicationId,
+        commentModalState.comment,
+        user.id,
+        user.name || user.email
+      );
+      showToast('Comment updated successfully', 'success');
+
+      setClients((prev) =>
+        prev.map((c) => {
+          if (c.application?.id === commentModalState.applicationId) {
+            return {
+              ...c,
+              application: {
+                ...c.application,
+                adminComment: commentModalState.comment,
+              },
+            };
+          }
+          return c;
+        })
+      );
+
+      setCommentModalState({ isOpen: false, applicationId: '', comment: '' });
+    } catch (error: any) {
+      showToast(error.message || 'Failed to update comment', 'error');
+    }
+  };
+
+  const handleVerify = async (
+    certificateNumber: string,
+    registrationDate: string,
+    registrarName: string,
+    certificateDetails: CertificateDetails
+  ) => {
+    if (!user) return;
+
+    try {
+      await adminService.verifyApplication(
+        verifyModalState.applicationId,
+        user.id,
+        user.name || user.email,
+        certificateNumber,
+        registrationDate,
+        registrarName,
+        certificateDetails
+      );
+      showToast('Application verified successfully', 'success');
+      setVerifyModalState({ isOpen: false, applicationId: '' });
+      await loadApplications(page, limit);
+      await loadStats();
+    } catch (error: any) {
+      showToast(error.message || 'Failed to verify application', 'error');
+      throw error;
+    }
+  };
+
+  const handleUnverify = async (applicationId: string) => {
+    if (!user) return;
+    try {
+      await adminService.unverifyApplication(
+        applicationId,
+        user.id,
+        user.name || user.email || 'Admin User'
+      );
+      showToast('Application unverified', 'success');
+      await loadApplications(page, limit);
+      await loadStats();
     } catch (error) {
-      console.error('Failed to load applications:', error);
+      showToast('Failed to unverify application', 'error');
+      console.error('Failed to unverify:', error);
+    }
+  };
+
+  const handleGenerateCertificate = async (applicationId: string) => {
+    if (!user) return;
+    setGeneratingCert(applicationId);
+    try {
+      await adminService.generateCertificate(
+        applicationId,
+        user.id,
+        user.name || user.email
+      );
+      showToast('Certificate generated successfully', 'success');
+      const cert = await certificateService.getCertificateByApplicationId(applicationId);
+      setCertificatesMap((prev) => ({
+        ...prev,
+        [applicationId]: cert || null,
+      }));
+    } catch (error: any) {
+      showToast(error.message || 'Failed to generate certificate', 'error');
     } finally {
-      setIsLoading(false);
+      setGeneratingCert(null);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved': return 'bg-emerald-100 text-emerald-800';
-      case 'rejected': return 'bg-rose-100 text-rose-800';
-      case 'under_review': return 'bg-blue-100 text-blue-800';
-      case 'submitted': return 'bg-gold-100 text-gold-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const handleViewCertificate = async (application: Application) => {
+    try {
+      await viewCertificate(application);
+    } catch (error) {
+      console.error('Failed to open certificate:', error);
+      showToast('Failed to open certificate preview', 'error');
     }
   };
 
-  const getStatusLabel = (status: string, verified?: boolean) => {
-    if (verified) return 'Verified';
-    switch (status) {
-      case 'approved': return 'Approved';
-      case 'rejected': return 'Action Needed';
-      case 'under_review': return 'Under Review';
-      case 'submitted': return 'Submitted';
-      case 'draft': return 'Draft';
-      default: return status;
+  const handleDownloadCertificate = async (application: Application) => {
+    try {
+      await downloadCertificate(application);
+      showToast('Certificate downloaded successfully', 'success');
+    } catch (error) {
+      console.error('Failed to download certificate:', error);
+      showToast('Failed to download certificate', 'error');
     }
+  };
+
+  const handleDeleteApplication = async (applicationId: string) => {
+    if (!user) return;
+
+    try {
+      await adminService.deleteApplication(applicationId, user.id, user.name || user.email);
+      showToast('Application deleted successfully', 'success');
+      setDeleteModalState((prev) => ({ ...prev, isOpen: false }));
+      await loadApplications(page, limit);
+      await loadStats();
+    } catch (error: any) {
+      showToast(error.message || 'Failed to delete application', 'error');
+      throw error;
+    }
+  };
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (page <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (page >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', page - 1, page, page + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
+      approved: 'success',
+      submitted: 'info',
+      under_review: 'warning',
+      rejected: 'error',
+      draft: 'warning',
+    };
+    return <Badge variant={variants[status] || 'info'}>{status}</Badge>;
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner />
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
       </div>
     );
   }
 
-  const approvedCount = applications.filter(a => a.verified || a.status === 'approved').length;
-  const pendingCount = applications.filter(a => a.status === 'submitted' || a.status === 'under_review').length;
-  const draftCount = applications.filter(a => a.status === 'draft').length;
+  const agentDisplayName = agent?.name || 'Agent';
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/admin/agents')}
-          className="text-gray-500 hover:text-gray-900 -ml-2"
-        >
-          <ChevronLeft size={20} />
-          Back to Agents
-        </Button>
-      </div>
-
-      <div className="mb-6">
-        <h1 className="font-serif text-2xl font-bold text-gray-900 mb-1">{agentName}'s Dashboard</h1>
-        <p className="text-sm text-gray-600">View applications managed by this agent</p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Card className="p-4 sm:p-5 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-100 rounded-lg text-blue-700">
-              <FileText size={20} />
-            </div>
-            <h3 className="font-medium text-gray-600 text-sm">Total Applications</h3>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{applications.length}</p>
-        </Card>
-
-        <Card className="p-4 sm:p-5 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700">
-              <CheckCircle size={20} />
-            </div>
-            <h3 className="font-medium text-gray-600 text-sm">Approved</h3>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{approvedCount}</p>
-        </Card>
-
-        <Card className="p-4 sm:p-5 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-gold-100 rounded-lg text-gold-700">
-              <Clock size={20} />
-            </div>
-            <h3 className="font-medium text-gray-600 text-sm">Pending Review</h3>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{pendingCount}</p>
-        </Card>
-
-        <Card className="p-4 sm:p-5 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-gray-100 rounded-lg text-gray-700">
-              <FileText size={20} />
-            </div>
-            <h3 className="font-medium text-gray-600 text-sm">Drafts</h3>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{draftCount}</p>
-        </Card>
-      </div>
-
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-200">
-          <h2 className="font-semibold text-lg text-gray-900">Agent's Applications</h2>
+    <div className="space-y-6">
+      {/* Top Navigation & Agent Profile Banner */}
+      <div className="mb-4 sm:mb-6 lg:mb-8">
+        <div className="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/admin/agents')}
+            className="flex-shrink-0 !text-xs sm:!text-sm !px-2 sm:!px-3 hover:bg-gold-50 text-gray-700"
+            size="sm"
+          >
+            <ArrowLeft size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            Back to Agents
+          </Button>
         </div>
-        
-        {applications.length > 0 ? (
-          <div className="divide-y divide-gray-200">
-            {applications.map((app) => (
-              <div
-                key={app.id}
-                className="p-5 hover:bg-gray-50 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer"
-                onClick={() => navigate(`/admin/applications/${app.id}`)}
-              >
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-medium text-gray-900">
-                      {app.proxyUserEmail || 'No Email'}
-                    </h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(app.verified ? 'approved' : app.status)}`}>
-                      {getStatusLabel(app.status, app.verified)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>
-                      Groom: {app.userDetails?.firstName ? `${app.userDetails.firstName} ${app.userDetails.lastName || ''}` : 'N/A'}
-                    </span>
-                    <span>
-                      Bride: {app.partnerForm?.firstName ? `${app.partnerForm.firstName} ${app.partnerForm.lastName || ''}` : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-[10px] text-gray-400">
-                    Created: {safeFormatDate(app.submittedAt || app.lastUpdated, 'MMM d, yyyy')}
-                  </div>
+
+        {/* Agent Info Card */}
+        <div className="bg-gradient-to-br from-white via-white to-gold-50/30 border border-slate-200/90 rounded-2xl p-4 sm:p-6 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white shadow-sm flex-shrink-0 font-serif font-bold text-xl sm:text-2xl">
+                {agentDisplayName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+                    {agentDisplayName}
+                  </h1>
+                  {agent?.disabled ? (
+                    <Badge variant="error" className="text-xs">
+                      Disabled Agent
+                    </Badge>
+                  ) : (
+                    <Badge variant="success" className="text-xs">
+                      Active Field Agent
+                    </Badge>
+                  )}
                 </div>
-                
-                <div className="text-gray-400">
-                  <ArrowRight size={20} />
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
+                  {agent?.email && (
+                    <span className="flex items-center gap-1">
+                      <Mail size={13} className="text-gray-400" />
+                      {agent.email}
+                    </span>
+                  )}
+                  {agent?.createdAt && (
+                    <span className="flex items-center gap-1">
+                      <Calendar size={13} className="text-gray-400" />
+                      Joined {safeFormatDate(agent.createdAt, 'dd MMM yyyy')}
+                    </span>
+                  )}
+                  <span className="text-slate-400 font-mono text-[11px]">
+                    ID: {id?.slice(0, 8)}...
+                  </span>
                 </div>
               </div>
-            ))}
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  loadApplications(page, limit);
+                  loadStats();
+                  showToast('Dashboard refreshed', 'info');
+                }}
+                className="!text-xs gap-1.5"
+              >
+                <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />
+                Refresh
+              </Button>
+              {agent?.id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/admin/chat?userId=${agent.id}`)}
+                  className="!text-xs gap-1.5 text-gold-700 hover:bg-gold-50 border-gold-200"
+                >
+                  <MessageSquare size={13} />
+                  Message Agent
+                </Button>
+              )}
+            </div>
           </div>
-        ) : (
-          <div className="p-8 text-center text-gray-500">
-            <p>This agent hasn't created any applications yet.</p>
+        </div>
+      </div>
+
+      {/* Summary Stat Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Total Applications */}
+        <Card
+          className={`p-4 sm:p-5 flex flex-col justify-between border cursor-pointer transition-all ${
+            verifiedFilter === 'all'
+              ? 'border-gold-500 shadow-sm ring-1 ring-gold-400/50 bg-white'
+              : 'border-slate-200/80 hover:border-gold-300 hover:shadow-xs bg-white'
+          }`}
+          onClick={() => setVerifiedFilter('all')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Total Applications
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-gold-100/70 text-gold-700 flex items-center justify-center">
+              <FileText size={16} />
+            </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.total}</span>
+            <span className="text-[11px] text-gray-400">All submissions</span>
+          </div>
+        </Card>
+
+        {/* Verified / Approved */}
+        <Card
+          className={`p-4 sm:p-5 flex flex-col justify-between border cursor-pointer transition-all ${
+            verifiedFilter === 'verified'
+              ? 'border-emerald-500 shadow-sm ring-1 ring-emerald-400/50 bg-white'
+              : 'border-slate-200/80 hover:border-emerald-300 hover:shadow-xs bg-white'
+          }`}
+          onClick={() => setVerifiedFilter('verified')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Approved / Verified
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center">
+              <CheckCircle size={16} />
+            </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl sm:text-3xl font-bold text-emerald-600">
+              {stats.verified}
+            </span>
+            <span className="text-[11px] text-emerald-600/80 font-medium">Certified</span>
+          </div>
+        </Card>
+
+        {/* Pending Review / Submitted */}
+        <Card
+          className={`p-4 sm:p-5 flex flex-col justify-between border cursor-pointer transition-all ${
+            verifiedFilter === 'unverified'
+              ? 'border-amber-500 shadow-sm ring-1 ring-amber-400/50 bg-white'
+              : 'border-slate-200/80 hover:border-amber-300 hover:shadow-xs bg-white'
+          }`}
+          onClick={() => setVerifiedFilter('unverified')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Pending Review
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-amber-100/70 text-amber-700 flex items-center justify-center">
+              <Clock size={16} />
+            </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl sm:text-3xl font-bold text-amber-600">
+              {stats.pending}
+            </span>
+            <span className="text-[11px] text-amber-600/80 font-medium">Awaiting check</span>
+          </div>
+        </Card>
+
+        {/* Drafts */}
+        <Card
+          className={`p-4 sm:p-5 flex flex-col justify-between border cursor-pointer transition-all ${
+            verifiedFilter === 'draft'
+              ? 'border-gray-500 shadow-sm ring-1 ring-gray-400/50 bg-white'
+              : 'border-slate-200/80 hover:border-gray-300 hover:shadow-xs bg-white'
+          }`}
+          onClick={() => setVerifiedFilter('draft')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Drafts
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+              <FileCheck size={16} />
+            </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl sm:text-3xl font-bold text-gray-700">{stats.draft}</span>
+            <span className="text-[11px] text-gray-400">Incomplete</span>
+          </div>
+        </Card>
+      </div>
+
+      {/* Filter & Search Toolbar (Matching ClientsPage) */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 lg:p-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-gold-500 animate-pulse"></span>
+            <p className="text-xs text-gray-600 font-medium">
+              Managing applications submitted by{' '}
+              <strong className="text-gray-900">{agentDisplayName}</strong>
+            </p>
+          </div>
+          <div className="text-[11px] sm:text-xs text-gray-500">
+            Filtered View:{' '}
+            <span className="font-semibold text-gray-800">
+              {verifiedFilter === 'all'
+                ? 'All'
+                : verifiedFilter.charAt(0).toUpperCase() + verifiedFilter.slice(1)}{' '}
+              ({totalCount})
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4 mt-3">
+          <div className="flex-1 min-w-0">
+            <Input
+              placeholder="Search by groom/bride name, email, phone or cert #..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              leftIcon={<Search size={16} className="sm:w-5 sm:h-5 text-gray-400" />}
+            />
+          </div>
+          <select
+            value={verifiedFilter}
+            onChange={(e) => setVerifiedFilter(e.target.value)}
+            className="px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl border border-gray-200 focus:border-gold-500 focus:ring-2 focus:ring-gold-500 focus:outline-none text-xs sm:text-sm w-full sm:w-auto bg-white cursor-pointer font-medium text-gray-700"
+          >
+            <option value="all">All Verification</option>
+            <option value="verified">Verified</option>
+            <option value="unverified">Unverified</option>
+            <option value="rejected">Rejected Documents</option>
+            <option value="draft">Draft</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Main Card View / Applications List */}
+      <Card className="p-3 sm:p-4 lg:p-6">
+        {isFetching && (
+          <div className="flex items-center justify-center py-2 mb-3 text-xs text-gold-700 bg-gold-50/80 rounded-lg animate-pulse">
+            <Loader2 size={14} className="animate-spin mr-1.5" />
+            Loading agent applications...
+          </div>
+        )}
+
+        {/* Mobile Card View */}
+        <div className={`block sm:hidden space-y-3 transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
+          {clients.map((client) => {
+            const groomName = client.application?.userDetails
+              ? `${client.application.userDetails.firstName}${
+                  client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''
+                }`
+              : '-';
+            const brideName = client.application?.partnerForm
+              ? `${client.application.partnerForm.firstName}${
+                  client.application.partnerForm.lastName ? ' ' + client.application.partnerForm.lastName : ''
+                }`
+              : '-';
+            const groomPhone = client.application?.userDetails?.mobileNumber || '-';
+            const bridePhone = client.application?.partnerForm?.mobileNumber || '-';
+            const userEmail = client.email || '-';
+
+            return (
+              <Card
+                key={client.application?.id || client.userId}
+                className="p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200"
+              >
+                <div className="space-y-3">
+                  {/* Header with Status Badge */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CircularProgress progress={client.application?.progress || 0} size={52}>
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-gold-100 to-gold-200 flex items-center justify-center shadow-sm">
+                          <Users size={18} className="text-gold-600" />
+                        </div>
+                      </CircularProgress>
+                      <div>
+                        <p className="text-[10px] font-medium text-gold-600 uppercase tracking-wide">
+                          Couple
+                        </p>
+                        <p className="text-xs font-semibold text-gray-800">
+                          {client.application?.progress || 0}% Completed
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {client.application ? (
+                        getStatusBadge(client.application.status)
+                      ) : (
+                        <Badge variant="default" className="!text-[10px]">
+                          No App
+                        </Badge>
+                      )}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                        <Briefcase size={10} />
+                        Agent
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Admin Note Sticky Note */}
+                  {client.application?.adminComment && (
+                    <div className="mb-2 bg-amber-50 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
+                      <div className="flex items-start gap-2.5">
+                        <div className="bg-amber-100 p-1 rounded-md mt-0.5">
+                          <StickyNote size={12} className="text-amber-700 fill-amber-300/50" />
+                        </div>
+                        <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                          {client.application.adminComment}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Couple Names */}
+                  <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs">🤵</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wide">Groom</p>
+                        <p className="font-semibold text-sm text-gray-900 truncate">{groomName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs">👰</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wide">Bride</p>
+                        <p className="font-semibold text-sm text-gray-900 truncate">{brideName}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Phone & Email */}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-blue-50/50 rounded-lg p-2">
+                        <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">
+                          Groom Phone
+                        </p>
+                        <p className="text-xs font-medium text-gray-800">{groomPhone}</p>
+                      </div>
+                      <div className="bg-pink-50/50 rounded-lg p-2">
+                        <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">
+                          Bride Phone
+                        </p>
+                        <p className="text-xs font-medium text-gray-800">{bridePhone}</p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50/50 rounded-lg p-2">
+                      <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">Email</p>
+                      <p className="text-xs font-medium text-gray-800 truncate">{userEmail}</p>
+                    </div>
+                  </div>
+
+                  {/* Status & Updated Row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 bg-gray-50 rounded-lg text-center">
+                      <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1">Status</p>
+                      <div className="flex items-center justify-center gap-1">
+                        {client.application?.verified !== undefined && (
+                          <Badge
+                            variant={client.application.verified ? 'success' : 'default'}
+                            className="!text-[9px] !px-1.5"
+                          >
+                            {client.application.verified ? '✓ Verified' : 'Unverified'}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 rounded-lg">
+                      <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1">Updated</p>
+                      <p className="text-[10px] font-medium text-gray-700">
+                        {client.application?.lastUpdated
+                          ? safeFormatDateObject(new Date(client.application.lastUpdated), 'dd-MM-yyyy')
+                          : '-'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    {client.application && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-gold-50 hover:bg-gold-100 text-gold-700 flex-1"
+                        onClick={() => {
+                          navigate(`/admin/applications/${client.application!.id}`);
+                        }}
+                      >
+                        <Eye size={14} className="mr-1" />
+                        View
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 flex-1"
+                      onClick={() => navigate(`/admin/chat?userId=${client.userId}`)}
+                    >
+                      <MessageSquare size={14} className="mr-1" />
+                      Message
+                    </Button>
+                    {client.application && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`!text-[11px] !px-3 !py-1.5 !rounded-lg ${
+                          client.application.adminComment
+                            ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                        } flex-1`}
+                        onClick={() => {
+                          setCommentModalState({
+                            isOpen: true,
+                            applicationId: client.application!.id,
+                            comment: client.application!.adminComment || '',
+                          });
+                        }}
+                      >
+                        <StickyNote
+                          size={14}
+                          className={`mr-1 ${client.application.adminComment ? 'fill-current' : ''}`}
+                        />
+                        {client.application.adminComment ? 'Edit Note' : 'Add Note'}
+                      </Button>
+                    )}
+                    {client.application && client.application.status === 'submitted' && (
+                      <>
+                        {client.application.verified ? (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex-1"
+                              onClick={() => handleUnverify(client.application!.id)}
+                            >
+                              <XCircle size={14} className="mr-1" />
+                              Unverify
+                            </Button>
+                            {!certificatesMap[client.application.id] ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-green-50 hover:bg-green-100 text-green-700 flex-1"
+                                disabled={generatingCert === client.application.id}
+                                onClick={() => handleGenerateCertificate(client.application!.id)}
+                              >
+                                <FileText size={14} className="mr-1" />
+                                {generatingCert === client.application.id ? 'Generating...' : 'Generate'}
+                              </Button>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 flex-1"
+                                  onClick={() => handleViewCertificate(client.application!)}
+                                >
+                                  <FileText size={14} className="mr-1" />
+                                  View Cert
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex-1"
+                                  onClick={() => handleDownloadCertificate(client.application!)}
+                                >
+                                  <FileCheck size={14} className="mr-1" />
+                                  Download
+                                </Button>
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-green-50 hover:bg-green-100 text-green-700 flex-1"
+                            onClick={() => {
+                              setVerifyModalState({
+                                isOpen: true,
+                                applicationId: client.application!.id,
+                                certificateNumber: client.application?.certificateNumber,
+                                registrationDate: client.application?.registrationDate,
+                                certificateDetails: client.application?.certificateDetails,
+                                marriageDate:
+                                  (client.application?.declarations as any)?.marriageDate ||
+                                  (client.application?.declarations as any)?.marriageRegistrationDate,
+                                groomDob: (client.application?.userDetails as any)?.dateOfBirth,
+                                brideDob: (client.application?.partnerForm as any)?.dateOfBirth,
+                              });
+                            }}
+                          >
+                            <CheckCircle size={14} className="mr-1" />
+                            Verify
+                          </Button>
+                        )}
+                      </>
+                    )}
+                    {client.application && client.application.status === 'draft' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex-1"
+                        onClick={() => {
+                          const groomName = client.application?.userDetails
+                            ? `${client.application.userDetails.firstName}${
+                                client.application.userDetails.lastName
+                                  ? ' ' + client.application.userDetails.lastName
+                                  : ''
+                              }`
+                            : undefined;
+                          const brideName = client.application?.partnerForm
+                            ? `${client.application.partnerForm.firstName}${
+                                client.application.partnerForm.lastName
+                                  ? ' ' + client.application.partnerForm.lastName
+                                  : ''
+                              }`
+                            : undefined;
+
+                          setDeleteModalState({
+                            isOpen: true,
+                            applicationId: client.application!.id,
+                            groomName,
+                            brideName,
+                          });
+                        }}
+                      >
+                        <Trash2 size={14} className="mr-1" />
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className={`hidden sm:block overflow-x-auto transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">
+                  Groom & Bride
+                </th>
+                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">
+                  Phone & Email
+                </th>
+                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">
+                  Status
+                </th>
+                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">
+                  Actions
+                </th>
+                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">
+                  Last Updated
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {clients.map((client) => {
+                const groomName = client.application?.userDetails
+                  ? `${client.application.userDetails.firstName}${
+                      client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''
+                    }`
+                  : '-';
+                const brideName = client.application?.partnerForm
+                  ? `${client.application.partnerForm.firstName}${
+                      client.application.partnerForm.lastName ? ' ' + client.application.partnerForm.lastName : ''
+                    }`
+                  : '-';
+                const groomPhone = client.application?.userDetails?.mobileNumber || '-';
+                const bridePhone = client.application?.partnerForm?.mobileNumber || '-';
+                const userEmail = client.email || '-';
+
+                return (
+                  <tr
+                    key={client.application?.id || client.userId}
+                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <CircularProgress progress={client.application?.progress || 0} size={46}>
+                          <div className="w-full h-full rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0">
+                            <Users size={16} className="text-gold-600" />
+                          </div>
+                        </CircularProgress>
+                        <div className="flex flex-col">
+                          {client.application?.adminComment && (
+                            <div className="mb-1.5 flex items-start gap-1.5 p-1.5 bg-amber-50/80 border border-amber-200/60 rounded-md shadow-sm w-fit max-w-[240px]">
+                              <StickyNote size={11} className="mt-0.5 text-amber-600 fill-amber-100 flex-shrink-0" />
+                              <span
+                                className="text-[10px] text-amber-900 font-medium line-clamp-2 leading-tight"
+                                title={client.application.adminComment}
+                              >
+                                {client.application.adminComment}
+                              </span>
+                            </div>
+                          )}
+                          <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">
+                            🤵 {groomName}
+                          </span>
+                          <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">
+                            👰 {brideName}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
+                      <div className="flex flex-col text-[10px] sm:text-xs lg:text-sm text-gray-600 gap-1.5">
+                        <div>
+                          <span className="font-medium truncate">🤵 {groomPhone}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium truncate">👰 {bridePhone}</span>
+                        </div>
+                        <div>
+                          <span className="truncate text-[9px] sm:text-[10px] lg:text-xs text-gray-500">
+                            📧 {userEmail}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
+                      <div className="flex flex-col gap-1.5">
+                        {client.application ? (
+                          getStatusBadge(client.application.status)
+                        ) : (
+                          <Badge variant="default" className="!text-[10px] sm:!text-xs">
+                            No Application
+                          </Badge>
+                        )}
+                        {client.application?.verified !== undefined && (
+                          <Badge
+                            variant={client.application.verified ? 'success' : 'default'}
+                            className="!text-[10px] sm:!text-xs"
+                          >
+                            {client.application.verified ? '✓ Verified' : 'Unverified'}
+                          </Badge>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
+                      <div className="flex flex-wrap gap-1 sm:gap-2">
+                        {client.application && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
+                            onClick={() => {
+                              navigate(`/admin/applications/${client.application!.id}`);
+                            }}
+                          >
+                            <Eye size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                            <span className="hidden sm:inline">View</span>
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
+                          onClick={() => navigate(`/admin/chat?userId=${client.userId}`)}
+                        >
+                          <MessageSquare size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                          <span className="hidden sm:inline">Message</span>
+                        </Button>
+                        {client.application && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 ${
+                              client.application.adminComment ? 'text-amber-700 hover:bg-amber-50' : ''
+                            }`}
+                            onClick={() => {
+                              setCommentModalState({
+                                isOpen: true,
+                                applicationId: client.application!.id,
+                                comment: client.application!.adminComment || '',
+                              });
+                            }}
+                            title={client.application.adminComment}
+                          >
+                            <StickyNote
+                              size={12}
+                              className={`sm:w-4 sm:h-4 mr-0.5 sm:mr-1 ${
+                                client.application.adminComment ? 'fill-current' : ''
+                              }`}
+                            />
+                            <span className="hidden sm:inline">Note</span>
+                          </Button>
+                        )}
+                        {client.application && client.application.status === 'submitted' && (
+                          <>
+                            {client.application.verified ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
+                                  onClick={() => handleUnverify(client.application!.id)}
+                                >
+                                  <XCircle size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                  <span className="hidden sm:inline">Unverify</span>
+                                </Button>
+                                {!certificatesMap[client.application.id] ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
+                                    disabled={generatingCert === client.application.id}
+                                    onClick={() => handleGenerateCertificate(client.application!.id)}
+                                  >
+                                    <FileText size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                    <span className="hidden sm:inline">
+                                      {generatingCert === client.application.id
+                                        ? 'Generating...'
+                                        : 'Generate Cert'}
+                                    </span>
+                                  </Button>
+                                ) : (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-blue-600 hover:bg-blue-50"
+                                      onClick={() => handleViewCertificate(client.application!)}
+                                    >
+                                      <FileText size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                      <span className="hidden sm:inline">View</span>
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-indigo-600 hover:bg-indigo-50"
+                                      onClick={() => handleDownloadCertificate(client.application!)}
+                                    >
+                                      <FileCheck size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                      <span className="hidden sm:inline">Download</span>
+                                    </Button>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
+                                onClick={() => {
+                                  setVerifyModalState({
+                                    isOpen: true,
+                                    applicationId: client.application!.id,
+                                    certificateNumber: client.application?.certificateNumber,
+                                    registrationDate: client.application?.registrationDate,
+                                    certificateDetails: client.application?.certificateDetails,
+                                    marriageDate:
+                                      (client.application?.declarations as any)?.marriageDate ||
+                                      (client.application?.declarations as any)?.marriageRegistrationDate,
+                                    groomDob: (client.application?.userDetails as any)?.dateOfBirth,
+                                    brideDob: (client.application?.partnerForm as any)?.dateOfBirth,
+                                  });
+                                }}
+                              >
+                                <CheckCircle size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                <span className="hidden sm:inline">Verify</span>
+                              </Button>
+                            )}
+                          </>
+                        )}
+                        {client.application && client.application.status === 'draft' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-red-600 hover:bg-red-50"
+                            onClick={() => {
+                              const groomName = client.application?.userDetails
+                                ? `${client.application.userDetails.firstName}${
+                                    client.application.userDetails.lastName
+                                      ? ' ' + client.application.userDetails.lastName
+                                      : ''
+                                  }`
+                                : undefined;
+                              const brideName = client.application?.partnerForm
+                                ? `${client.application.partnerForm.firstName}${
+                                    client.application.partnerForm.lastName
+                                      ? ' ' + client.application.partnerForm.lastName
+                                      : ''
+                                  }`
+                                : undefined;
+
+                              setDeleteModalState({
+                                isOpen: true,
+                                applicationId: client.application!.id,
+                                groomName,
+                                brideName,
+                              });
+                            }}
+                            title="Delete Draft"
+                          >
+                            <Trash2 size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                            <span className="hidden sm:inline">Delete</span>
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+
+                    <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm text-gray-600">
+                      {client.application?.lastUpdated
+                        ? safeFormatDateObject(new Date(client.application.lastUpdated), 'dd-MM-yyyy')
+                        : '-'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {clients.length === 0 && (
+          <div className="text-center py-8 sm:py-12">
+            <Users size={40} className="text-gray-300 mx-auto mb-3" />
+            <p className="text-sm font-medium text-gray-600">No applications found for this agent</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Try adjusting your search keywords or verification filter
+            </p>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalCount > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-gray-600">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-center sm:justify-start">
+              <span>
+                Showing <strong className="text-gray-900">{Math.min((page - 1) * limit + 1, totalCount)}</strong> to{' '}
+                <strong className="text-gray-900">{Math.min(page * limit, totalCount)}</strong> of{' '}
+                <strong className="text-gray-900">{totalCount}</strong> applications
+              </span>
+              <div className="flex items-center gap-1.5 ml-1 sm:ml-2">
+                <span className="text-gray-500 text-xs hidden sm:inline">Per page:</span>
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="px-2 py-1 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-gold-500 focus:outline-none bg-white cursor-pointer"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 flex-wrap justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1 || isFetching}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="!px-2 sm:!px-2.5 !py-1 text-xs"
+              >
+                <ChevronLeft size={14} className="mr-0.5 sm:mr-1" />
+                Prev
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((p, idx) =>
+                  typeof p === 'number' ? (
+                    <button
+                      key={idx}
+                      onClick={() => setPage(p)}
+                      disabled={isFetching}
+                      className={`min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 rounded-lg text-xs font-medium transition-colors ${
+                        page === p
+                          ? 'bg-gold-500 text-white shadow-sm font-semibold'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ) : (
+                    <span key={idx} className="px-1 text-gray-400 select-none">
+                      ...
+                    </span>
+                  )
+                )}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages || isFetching}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="!px-2 sm:!px-2.5 !py-1 text-xs"
+              >
+                Next
+                <ChevronRight size={14} className="ml-0.5 sm:ml-1" />
+              </Button>
+            </div>
           </div>
         )}
       </Card>
+
+      {/* Comment Modal */}
+      {commentModalState.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl transform transition-all">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              {commentModalState.comment ? 'Edit Application Note' : 'Add Application Note'}
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Private Admin Note
+                </label>
+                <textarea
+                  className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent resize-none"
+                  placeholder="Enter internal notes about this application..."
+                  value={commentModalState.comment}
+                  onChange={(e) =>
+                    setCommentModalState((prev) => ({ ...prev, comment: e.target.value }))
+                  }
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This note is visible only to admins and not clients.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCommentModalState((prev) => ({ ...prev, isOpen: false }))}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateComment} className="flex-1">
+                  Save Note
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Verify Application Modal */}
+      <VerifyApplicationModal
+        isOpen={verifyModalState.isOpen}
+        onClose={() => setVerifyModalState({ isOpen: false, applicationId: '' })}
+        onConfirm={handleVerify}
+        applicationId={verifyModalState.applicationId}
+        currentCertificateNumber={verifyModalState.certificateNumber}
+        currentRegistrationDate={verifyModalState.registrationDate}
+        initialCertificateDetails={verifyModalState.certificateDetails}
+        marriageDate={verifyModalState.marriageDate}
+        groomDob={verifyModalState.groomDob}
+        brideDob={verifyModalState.brideDob}
+      />
+
+      {/* Delete Application Confirmation Modal */}
+      <DeleteApplicationModal
+        isOpen={deleteModalState.isOpen}
+        onClose={() => setDeleteModalState({ ...deleteModalState, isOpen: false })}
+        onConfirm={() => handleDeleteApplication(deleteModalState.applicationId)}
+        applicationId={deleteModalState.applicationId}
+        groomName={deleteModalState.groomName}
+        brideName={deleteModalState.brideName}
+      />
     </div>
   );
 };

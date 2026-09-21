@@ -13,6 +13,7 @@ import Badge from '../../components/ui/Badge';
 import { Upload, FileText, AlertCircle, ArrowLeft, XCircle, Info, UploadCloud, Eye, Download, X } from 'lucide-react';
 import { safeFormatDate } from '../../utils/dateUtils';
 import ImageCropModal from '../../components/ui/ImageCropModal';
+import { downloadFileFromUrl } from '../../utils/download';
 
 const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -846,9 +847,11 @@ const DocumentsPage: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   className="!px-2 sm:!px-3 !text-xs"
-                  onClick={() => {
+                  onClick={async () => {
                     const urlToDownload = previewUrl || previewDocument.url;
-                    window.open(urlToDownload, '_blank');
+                    if (urlToDownload) {
+                      await downloadFileFromUrl(urlToDownload, previewDocument.name || 'document');
+                    }
                   }}
                 >
                   <Download size={14} className="sm:w-4 sm:h-4 mr-1" />
@@ -896,8 +899,17 @@ const DocumentsPage: React.FC = () => {
                   ) : (
                     <div className="text-center py-8 sm:py-12">
                       <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                      <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Preview not available</p>
-                      <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => window.open(previewUrl, '_blank')}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="!text-xs sm:!text-sm"
+                        onClick={async () => {
+                          const target = previewUrl || previewDocument.url;
+                          if (target) {
+                            await downloadFileFromUrl(target, previewDocument.name || 'document');
+                          }
+                        }}
+                      >
                         <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
                         Download to View
                       </Button>
@@ -908,9 +920,18 @@ const DocumentsPage: React.FC = () => {
                 <div className="text-center py-8 sm:py-12">
                   <FileText size={36} className="sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
                   <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Failed to load preview</p>
-                  <Button variant="primary" size="sm" className="!text-xs sm:!text-sm" onClick={() => window.open(previewDocument.url, '_blank')}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="!text-xs sm:!text-sm"
+                    onClick={async () => {
+                      if (previewDocument.url) {
+                        await downloadFileFromUrl(previewDocument.url, previewDocument.name || 'document');
+                      }
+                    }}
+                  >
                     <Download size={14} className="sm:w-4 sm:h-4 mr-1.5" />
-                    Open in New Tab
+                    Download Document
                   </Button>
                 </div>
               )}

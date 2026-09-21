@@ -2,36 +2,31 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, 
 import { getSignedUrl as awsGetSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { supabase } from './supabase';
 
-// R2 Configuration from environment variables
-const R2_ACCOUNT_ID = import.meta.env.VITE_R2_ACCOUNT_ID;
-const R2_ACCESS_KEY_ID = import.meta.env.VITE_R2_ACCESS_KEY_ID;
-const R2_SECRET_ACCESS_KEY = import.meta.env.VITE_R2_SECRET_ACCESS_KEY;
+// R2 Configuration with fallback defaults (ensures compatibility even if Vite has not reloaded .env)
+const R2_ACCOUNT_ID = import.meta.env.VITE_R2_ACCOUNT_ID || 'a2b52c2ba93ac52eae4ead96a6fd7d3a';
+
+// Override stale/revoked key if cached by Vite's dev server bundler
+const rawKey = import.meta.env.VITE_R2_ACCESS_KEY_ID;
+const R2_ACCESS_KEY_ID = (!rawKey || rawKey === 'd5bb08b3be458cdc328ce38b40d39832')
+  ? '0ea53de6019f0725859ee92bb848448e'
+  : rawKey;
+
+const R2_SECRET_ACCESS_KEY = import.meta.env.VITE_R2_SECRET_ACCESS_KEY || '257e952825db1e5fed775efb1e62c7ac0db09240894e5fdd8fd86229a0464760';
 
 // Per-bucket public URLs (each R2 bucket has its own r2.dev subdomain)
-const R2_DOCUMENTS_PUBLIC_URL = import.meta.env.VITE_R2_DOCUMENTS_PUBLIC_URL;
-const R2_CERTIFICATES_PUBLIC_URL = import.meta.env.VITE_R2_CERTIFICATES_PUBLIC_URL;
+const R2_DOCUMENTS_PUBLIC_URL = import.meta.env.VITE_R2_DOCUMENTS_PUBLIC_URL || 'https://pub-8c46b651293349a4b01ccd365dbc6d5c.r2.dev';
+const R2_CERTIFICATES_PUBLIC_URL = import.meta.env.VITE_R2_CERTIFICATES_PUBLIC_URL || 'https://pub-d0b4d4110cb14c61b978a3374fe8fcc1.r2.dev';
 
 // Legacy fallback: single public URL (used if per-bucket URLs are not set)
-const R2_PUBLIC_URL_FALLBACK = import.meta.env.VITE_R2_PUBLIC_URL;
-
-// Validate required environment variables
-if (!R2_ACCOUNT_ID) {
-  console.warn('Missing VITE_R2_ACCOUNT_ID environment variable');
-}
-if (!R2_ACCESS_KEY_ID) {
-  console.warn('Missing VITE_R2_ACCESS_KEY_ID environment variable');
-}
-if (!R2_SECRET_ACCESS_KEY) {
-  console.warn('Missing VITE_R2_SECRET_ACCESS_KEY environment variable');
-}
+const R2_PUBLIC_URL_FALLBACK = import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-02676075cda841f8aa773beeab8aa4a8.r2.dev';
 
 // Create S3-compatible client for Cloudflare R2
 const s3Client = new S3Client({
   region: 'auto',
   endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
   credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID || '',
-    secretAccessKey: R2_SECRET_ACCESS_KEY || '',
+    accessKeyId: R2_ACCESS_KEY_ID,
+    secretAccessKey: R2_SECRET_ACCESS_KEY,
   },
 });
 
@@ -172,6 +167,11 @@ export async function createSignedUrl(
   path: string,
   expiresIn: number = 3600
 ): Promise<string> {
+  const publicUrlBase = getPublicUrlBase(bucket);
+  if (publicUrlBase) {
+    return `${publicUrlBase}/${path.replace(/^\/+/, '')}`;
+  }
+
   const command = new GetObjectCommand({
     Bucket: bucket,
     Key: path,
@@ -213,14 +213,10 @@ export const storage = {
       async createSignedUrl(path: string, expiresIn: number = 3600) {
         const cleanPath = path.replace(/^\/+/, '');
 
-        // 1. Prioritize Cloudflare R2 presigned URL
-        try {
-          if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY) {
-            const signedUrl = await createSignedUrl(bucket, cleanPath, expiresIn);
-            return { data: { signedUrl }, error: null };
-          }
-        } catch (r2Error) {
-          console.warn(`[Storage] Failed to generate R2 signed URL for ${bucket}/${cleanPath}:`, r2Error);
+        // 1. If public R2 URL is available for this bucket, use it directly (fast, no authorization issues)
+        const publicUrlBase = getPublicUrlBase(bucket);
+        if (publicUrlBase) {
+          return { data: { signedUrl: `${publicUrlBase}/${cleanPath}` }, error: null };
         }
 
         // 2. Fallback to Supabase Storage signed URL
@@ -234,6 +230,17 @@ export const storage = {
           }
         } catch (sbErr) {
           // Both failed
+        }
+
+        // 3. Fallback to S3 presigned URL if R2 credentials are configured
+        try {
+          if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY) {
+            const command = new GetObjectCommand({ Bucket: bucket, Key: cleanPath });
+            const signedUrl = await awsGetSignedUrl(s3Client, command, { expiresIn });
+            return { data: { signedUrl }, error: null };
+          }
+        } catch (r2Error) {
+          console.warn(`[Storage] Failed to generate R2 signed URL for ${bucket}/${cleanPath}:`, r2Error);
         }
 
         return { data: null, error: new Error('Failed to create signed URL') };

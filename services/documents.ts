@@ -7,23 +7,42 @@ export const documentService = {
     applicationId: string,
     file: File,
     type: Document['type'],
-    belongsTo?: 'user' | 'partner' | 'joint'
+    belongsTo?: 'user' | 'partner' | 'joint',
+    targetDocumentId?: string
   ): Promise<Document> {
-    // Check if document of same type and belongsTo already exists
-    const { data: existingDocs, error: checkError } = await supabase
-      .from('documents')
-      .select('id, file_path')
-      .eq('application_id', applicationId)
-      .eq('type', type)
-      .eq('belongs_to', belongsTo || 'user');
+    let existingDoc: { id: string; file_path?: string } | null = null;
 
-    if (checkError) {
-      console.error('Error checking for existing document:', checkError);
+    if (targetDocumentId) {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('id, file_path')
+        .eq('id', targetDocumentId)
+        .maybeSingle();
+      if (!error && data) {
+        existingDoc = data;
+      }
+    }
+
+    if (!existingDoc) {
+      // Check if document of same type and belongsTo already exists
+      const { data: existingDocs, error: checkError } = await supabase
+        .from('documents')
+        .select('id, file_path')
+        .eq('application_id', applicationId)
+        .eq('type', type)
+        .eq('belongs_to', belongsTo || 'user');
+
+      if (checkError) {
+        console.error('Error checking for existing document:', checkError);
+      }
+
+      if (existingDocs && existingDocs.length > 0) {
+        existingDoc = existingDocs[0];
+      }
     }
 
     // If document already exists, update it instead of creating a duplicate
-    if (existingDocs && existingDocs.length > 0) {
-      const existingDoc = existingDocs[0];
+    if (existingDoc) {
       
       // Delete old file from storage
       if (existingDoc.file_path) {
@@ -403,79 +422,75 @@ export const documentService = {
       .eq('id', documentId)
       .single();
 
-    if (error) {
+    if (error || !document) {
       throw new Error('Document not found');
     }
 
-    // First try to use stored file_path if available
-    if ((document as any).file_path) {
-      try {
-        const { data: signedUrlData, error: signedUrlError } = await storage.from('documents')
-          .createSignedUrl((document as any).file_path, 3600);
+    // 1. If stored URL is already an active Cloudflare R2 public URL (r2.dev), return it directly
+    if (document.url && (document.url.includes('.r2.dev') || document.url.includes('pub-'))) {
+      return document.url;
+    }
 
-        if (!signedUrlError && signedUrlData) {
-          return signedUrlData.signedUrl;
+    const DEFAULT_R2_DOCS_URL = 'https://pub-8c46b651293349a4b01ccd365dbc6d5c.r2.dev';
+
+    // 2. Resolve the relative file path
+    let filePath: string = (document as any).file_path || '';
+    if (!filePath && document.url) {
+      if (document.url.includes('.r2.cloudflarestorage.com/')) {
+        filePath = document.url.split('.r2.cloudflarestorage.com/')[1].split('?')[0];
+      } else if (document.url.includes('/documents/')) {
+        filePath = document.url.split('/documents/')[1].split('?')[0];
+      } else if (document.url.includes('/storage/v1/object/public/documents/')) {
+        filePath = document.url.split('/storage/v1/object/public/documents/')[1].split('?')[0];
+      } else {
+        try {
+          const urlObj = new URL(document.url);
+          filePath = urlObj.pathname.replace(/^\/+/, '');
+          if (filePath.startsWith('documents/')) {
+            filePath = filePath.substring('documents/'.length);
+          }
+        } catch {
+          // ignore
         }
-      } catch (e) {
-        console.error('Failed to create signed URL with stored file_path:', e);
       }
     }
 
-    // Fallback: Try to extract file path from URL
-    try {
-      const url = new URL(document.url);
-      // Extract path after /documents/ (works for both old Supabase URLs and new R2 URLs)
-      let filePath = url.pathname;
-      
-      // Handle different URL formats
-      if (filePath.includes('/documents/')) {
-        filePath = filePath.split('/documents/')[1];
-      } else if (filePath.includes('/storage/v1/object/public/documents/')) {
-        filePath = filePath.split('/storage/v1/object/public/documents/')[1];
-      } else if (filePath.startsWith('/')) {
-        filePath = filePath.substring(1);
-      }
+    filePath = filePath ? filePath.replace(/^\/+/, '') : '';
 
-      // Remove query parameters if any
-      filePath = filePath.split('?')[0];
-
-      if (filePath) {
-        // Get signed URL (valid for 1 hour)
-        const { data: signedUrlData, error: signedUrlError } = await storage.from('documents')
-          .createSignedUrl(filePath, 3600);
-
-        if (!signedUrlError && signedUrlData) {
-          return signedUrlData.signedUrl;
-        }
-      }
-    } catch (urlError) {
-      // If URL parsing fails, try to extract path from the stored URL string directly
-      console.error('Error parsing document URL:', urlError);
-      
-      const urlString = document.url;
-      let filePath = urlString;
-      
-      if (urlString.includes('/documents/')) {
-        filePath = urlString.split('/documents/')[1].split('?')[0];
-      } else if (urlString.includes('documents/')) {
-        filePath = urlString.split('documents/')[1].split('?')[0];
-      }
-
-      if (filePath && filePath !== urlString) {
+    if (filePath) {
+      // 3. If file is on Supabase Storage (url contains supabase.co), generate valid Supabase signed URL:
+      if (document.url && document.url.includes('supabase.co')) {
         try {
-          const { data: signedUrlData, error: signedUrlError } = await storage.from('documents')
+          const { data: sbData, error: sbError } = await supabase.storage
+            .from('documents')
             .createSignedUrl(filePath, 3600);
 
-          if (!signedUrlError && signedUrlData) {
-            return signedUrlData.signedUrl;
+          if (!sbError && sbData?.signedUrl) {
+            const finalUrl = sbData.signedUrl.startsWith('http')
+              ? sbData.signedUrl
+              : `${(import.meta as any).env.VITE_SUPABASE_URL}/storage/v1${sbData.signedUrl.startsWith('/') ? '' : '/'}${sbData.signedUrl}`;
+            return finalUrl;
           }
-        } catch (e) {
-          console.error('Failed to create signed URL with extracted path:', e);
+        } catch (sbErr) {
+          console.warn('Failed to generate Supabase signed URL:', sbErr);
         }
+      }
+
+      // 4. Construct the direct public CDN URL (R2)
+      const r2BaseUrl = (import.meta as any).env.VITE_R2_DOCUMENTS_PUBLIC_URL || DEFAULT_R2_DOCS_URL;
+      if (r2BaseUrl && (!document.url || !document.url.includes('supabase.co'))) {
+        return `${r2BaseUrl.replace(/\/$/, '')}/${filePath}`;
       }
     }
 
-    // Final fallback: return original URL
+    // 5. Final fallback: sanitize any r2.cloudflarestorage.com URL to public CDN
+    if (document.url && document.url.includes('r2.cloudflarestorage.com')) {
+      const cleanPath = document.url.split('.r2.cloudflarestorage.com/')[1]?.split('?')[0];
+      if (cleanPath) {
+        return `${DEFAULT_R2_DOCS_URL}/${cleanPath.replace(/^\/+/, '')}`;
+      }
+    }
+
     return document.url;
   },
 };

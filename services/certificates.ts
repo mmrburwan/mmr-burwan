@@ -192,17 +192,29 @@ export const certificateService = {
   },
 
   async getCertificateByApplicationId(applicationId: string): Promise<Certificate | null> {
-    const { data, error } = await supabase
-      .from('certificates')
-      .select('*')
-      .eq('application_id', applicationId)
-      .maybeSingle();
+    let data: any = null;
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
+    try {
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('get_agent_certificates', { app_ids: [applicationId] });
+      if (!rpcError && Array.isArray(rpcData) && rpcData.length > 0) {
+        data = rpcData[0];
       }
-      throw new Error(error.message);
+    } catch {
+      // Fallback
+    }
+
+    if (!data) {
+      const { data: directData, error } = await supabase
+        .from('certificates')
+        .select('*')
+        .eq('application_id', applicationId)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        throw new Error(error.message);
+      }
+      data = directData;
     }
 
     if (!data) return null;
@@ -230,18 +242,35 @@ export const certificateService = {
       return {};
     }
 
-    const { data, error } = await supabase
-      .from('certificates')
-      .select('*')
-      .in('application_id', applicationIds);
+    let records: any[] = [];
 
-    if (error) {
-      console.error('Failed to batch fetch certificates:', error);
-      return {};
+    // Try RPC first (bypasses RLS for agents)
+    try {
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('get_agent_certificates', { app_ids: applicationIds });
+      if (!rpcError && Array.isArray(rpcData) && rpcData.length > 0) {
+        records = rpcData;
+      }
+    } catch {
+      // Continue to direct query fallback
+    }
+
+    // Direct table select fallback
+    if (records.length === 0) {
+      const { data, error } = await supabase
+        .from('certificates')
+        .select('*')
+        .in('application_id', applicationIds);
+
+      if (!error && data) {
+        records = data;
+      } else if (error) {
+        console.error('Failed to batch fetch certificates:', error);
+      }
     }
 
     const certificateMap: Record<string, Certificate> = {};
-    (data || []).forEach((item: any) => {
+    records.forEach((item: any) => {
       if (item.application_id) {
         certificateMap[item.application_id] = {
           id: item.id,
@@ -266,13 +295,39 @@ export const certificateService = {
   },
 
   async updateDownloadPermission(certificateId: string, canDownload: boolean): Promise<void> {
-    const { error } = await supabase
+    const { data: certData, error } = await supabase
       .from('certificates')
       .update({ can_download: canDownload })
-      .eq('id', certificateId);
+      .eq('id', certificateId)
+      .select('application_id')
+      .maybeSingle();
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    // Also sync canDownload into the application's certificate_details JSONB
+    if (certData?.application_id) {
+      try {
+        const { data: appData } = await supabase
+          .from('applications')
+          .select('certificate_details')
+          .eq('id', certData.application_id)
+          .maybeSingle();
+
+        const currentDetails = appData?.certificate_details || {};
+        await supabase
+          .from('applications')
+          .update({
+            certificate_details: {
+              ...currentDetails,
+              canDownload: canDownload
+            }
+          })
+          .eq('id', certData.application_id);
+      } catch (syncErr) {
+        console.warn('Failed to sync canDownload into application.certificate_details:', syncErr);
+      }
     }
   },
 
@@ -362,6 +417,29 @@ export const certificateService = {
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    if (updates.canDownload !== undefined && data.application_id) {
+      try {
+        const { data: appData } = await supabase
+          .from('applications')
+          .select('certificate_details')
+          .eq('id', data.application_id)
+          .maybeSingle();
+
+        const currentDetails = appData?.certificate_details || {};
+        await supabase
+          .from('applications')
+          .update({
+            certificate_details: {
+              ...currentDetails,
+              canDownload: updates.canDownload
+            }
+          })
+          .eq('id', data.application_id);
+      } catch (syncErr) {
+        console.warn('Failed to sync canDownload into application.certificate_details:', syncErr);
+      }
     }
 
     return {

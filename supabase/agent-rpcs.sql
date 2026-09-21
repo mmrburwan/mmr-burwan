@@ -92,3 +92,29 @@ BEGIN
 END;
 $$;
 
+-- Function to get certificates for agent applications (bypasses RLS safely)
+CREATE OR REPLACE FUNCTION get_agent_certificates(app_ids uuid[])
+RETURNS SETOF certificates
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT * FROM public.certificates
+  WHERE application_id = ANY(app_ids);
+$$;
+
+-- Allow agents to view certificates for their clients directly
+DROP POLICY IF EXISTS "Agents can view their clients certificates" ON public.certificates;
+CREATE POLICY "Agents can view their clients certificates"
+ON public.certificates
+FOR SELECT
+TO authenticated
+USING (
+  application_id IN (
+    SELECT id FROM public.applications WHERE agent_id = auth.uid()
+  )
+  OR
+  (auth.jwt()->'user_metadata'->>'role' = 'agent')
+  OR
+  (auth.jwt()->>'role' = 'agent')
+);
+

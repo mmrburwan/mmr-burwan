@@ -8,9 +8,10 @@ import { Application, Document } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
-import { ArrowLeft, FileText, Eye, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, FileText, Eye, X, CheckCircle, Download } from 'lucide-react';
 import { safeFormatDate, calculateDetailedAge } from '../../utils/dateUtils';
 import { formatAadhaar } from '../../utils/formatUtils';
+import { downloadFileFromUrl } from '../../utils/download';
 
 const ViewApplicationPage: React.FC = () => {
   const navigate = useNavigate();
@@ -243,6 +244,10 @@ const ViewApplicationPage: React.FC = () => {
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Mobile Number</p>
               <p className="font-medium text-gray-900">{userDetails.mobileNumber || '-'}</p>
             </div>
+            <div>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Voter EPIC No OR Madhyamik ROLL No</p>
+              <p className="font-medium text-gray-900 font-mono">{userDetails.voterOrRollNo || '-'}</p>
+            </div>
           </div>
         </Card>
 
@@ -309,6 +314,10 @@ const ViewApplicationPage: React.FC = () => {
             <div>
               <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Mobile Number</p>
               <p className="font-medium text-gray-900">{(partnerForm as any).mobileNumber || '-'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Voter EPIC No OR Madhyamik ROLL No</p>
+              <p className="font-medium text-gray-900 font-mono">{(partnerForm as any).voterOrRollNo || '-'}</p>
             </div>
           </div>
         </Card>
@@ -603,16 +612,32 @@ const ViewApplicationPage: React.FC = () => {
               <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900 truncate flex-1">
                 {getDocumentTypeLabel(previewDocument.type)}: {previewDocument.name}
               </h3>
-              <button
-                onClick={() => {
-                  setPreviewDocument(null);
-                  setPreviewUrl(null);
-                }}
-                className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0 ml-2"
-                aria-label="Close"
-              >
-                <X size={18} className="sm:w-5 sm:h-5" />
-              </button>
+              <div className="flex items-center gap-1 sm:gap-2">
+                {(previewUrl || previewDocument.url) && (
+                  <button
+                    onClick={async () => {
+                      const target = previewUrl || previewDocument.url;
+                      if (target) {
+                        await downloadFileFromUrl(target, previewDocument.name || 'document');
+                      }
+                    }}
+                    className="p-1.5 sm:p-2 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+                    title="Download document"
+                  >
+                    <Download size={18} className="sm:w-5 sm:h-5" />
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setPreviewDocument(null);
+                    setPreviewUrl(null);
+                  }}
+                  className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+                  aria-label="Close"
+                >
+                  <X size={18} className="sm:w-5 sm:h-5" />
+                </button>
+              </div>
             </div>
             <div className="p-3 sm:p-4">
               {isLoadingPreview ? (

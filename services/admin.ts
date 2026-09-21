@@ -55,7 +55,7 @@ export const adminService = {
   async getApplications(
     page: number = 1,
     limit: number = 10,
-    filters?: { search?: string; verified?: string; creatorType?: 'all' | 'admin' | 'agent' | 'user' }
+    filters?: { search?: string; verified?: string; creatorType?: 'all' | 'admin' | 'agent' | 'user'; agentId?: string }
   ): Promise<{ data: Application[]; count: number }> {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -70,6 +70,11 @@ export const adminService = {
           : `*, documents (*)`,
         { count: 'exact' }
       );
+
+    // Apply Agent ID Filter if specified
+    if (filters?.agentId) {
+      query = query.eq('agent_id', filters.agentId);
+    }
 
     // Apply Verification & Status Filters
     if (filters?.verified && filters.verified !== 'all') {
@@ -186,7 +191,7 @@ export const adminService = {
     return applicationService.mapApplication(data);
   },
 
-  async getApplicationStats(): Promise<{
+  async getApplicationStats(agentId?: string): Promise<{
     total: number;
     pending: number;
     verified: number;
@@ -197,34 +202,42 @@ export const adminService = {
     // This is much lighter than fetching all rows.
 
     // 1. Total
-    const totalPromise = supabase
+    let totalPromise = supabase
       .from('applications')
       .select('id', { count: 'exact', head: true });
 
     // 2. Pending Review (submitted)
-    const pendingPromise = supabase
+    let pendingPromise = supabase
       .from('applications')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'submitted');
 
     // 3. Verified
-    const verifiedPromise = supabase
+    let verifiedPromise = supabase
       .from('applications')
       .select('id', { count: 'exact', head: true })
       .eq('verified', true);
 
     // 4. Unverified (submitted AND verified is false/null)
-    const unverifiedPromise = supabase
+    let unverifiedPromise = supabase
       .from('applications')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'submitted')
       .or('verified.is.false,verified.is.null');
 
     // 5. Draft
-    const draftPromise = supabase
+    let draftPromise = supabase
       .from('applications')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'draft');
+
+    if (agentId) {
+      totalPromise = totalPromise.eq('agent_id', agentId);
+      pendingPromise = pendingPromise.eq('agent_id', agentId);
+      verifiedPromise = verifiedPromise.eq('agent_id', agentId);
+      unverifiedPromise = unverifiedPromise.eq('agent_id', agentId);
+      draftPromise = draftPromise.eq('agent_id', agentId);
+    }
 
     const [totalRes, pendingRes, verifiedRes, unverifiedRes, draftRes] = await Promise.all([
       totalPromise,
