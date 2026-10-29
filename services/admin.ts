@@ -5,7 +5,9 @@ import { notificationService } from './notifications';
 import { emailService } from './email';
 import { certificateService } from './certificates';
 import { supabase } from '../lib/supabase';
-import { Application, CertificateDetails } from '../types';
+import { Application, CertificateDetails, DivorceApplication, DivorceCertificate } from '../types';
+import { divorceApplicationService } from './divorceApplication';
+import { divorceCertificateService } from './divorceCertificates';
 
 export const adminService = {
   async checkCertificateNumber(certificateNumber: string, currentApplicationId?: string): Promise<boolean> {
@@ -1278,5 +1280,352 @@ export const adminService = {
     }
 
     return data;
+  },
+
+  async checkDivorceCertificateNumber(certificateNumber: string, currentApplicationId?: string): Promise<boolean> {
+    let appQuery = supabase
+      .from('divorce_applications')
+      .select('id')
+      .eq('certificate_number', certificateNumber)
+      .eq('verified', true);
+
+    if (currentApplicationId) {
+      appQuery = appQuery.neq('id', currentApplicationId);
+    }
+
+    const { data: appData, error: appError } = await appQuery;
+    if (appError) {
+      console.error('Error checking certificate number in divorce applications:', appError);
+      throw new Error('Failed to check certificate number uniqueness');
+    }
+
+    if (appData && appData.length > 0) return true;
+
+    let certQuery = supabase
+      .from('divorce_certificates')
+      .select('id')
+      .eq('certificate_number', certificateNumber);
+
+    if (currentApplicationId) {
+      certQuery = certQuery.neq('divorce_application_id', currentApplicationId);
+    }
+
+    const { data: certData, error: certError } = await certQuery;
+    if (certError) {
+      console.error('Error checking certificate number in divorce certificates:', certError);
+      throw new Error('Failed to check certificate number uniqueness in certificates');
+    }
+
+    if (certData && certData.length > 0) return true;
+
+    return this.checkCertificateNumber(certificateNumber, currentApplicationId);
+  },
+
+  async getDivorceApplications(
+    page: number = 1,
+    limit: number = 10,
+    filters?: { search?: string; verified?: string }
+  ): Promise<{ data: DivorceApplication[]; count: number }> {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    let query = supabase
+      .from('divorce_applications')
+      .select(`*, documents:divorce_documents (*)`, { count: 'exact' });
+
+    if (filters?.verified && filters.verified !== 'all') {
+      switch (filters.verified) {
+        case 'verified':
+          query = query.eq('verified', true);
+          break;
+        case 'unverified':
+        case 'submitted':
+          query = query
+            .eq('status', 'submitted')
+            .or('verified.is.false,verified.is.null');
+          break;
+        case 'draft':
+          query = query.eq('status', 'draft');
+          break;
+      }
+    }
+
+    if (filters?.search && filters.search.trim()) {
+      const term = filters.search.trim();
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term);
+
+      const searchClauses: string[] = [
+        `certificate_number.ilike.%${term}%`,
+        `user_details->>firstName.ilike.%${term}%`,
+        `user_details->>lastName.ilike.%${term}%`,
+        `partner_form->>firstName.ilike.%${term}%`,
+        `partner_form->>lastName.ilike.%${term}%`,
+        `user_details->>mobileNumber.ilike.%${term}%`,
+        `partner_form->>mobileNumber.ilike.%${term}%`,
+        `proxy_user_email.ilike.%${term}%`,
+      ];
+
+      if (isUUID) {
+        searchClauses.push(`id.eq.${term}`);
+      }
+
+      query = query.or(searchClauses.join(','));
+    }
+
+    const { data, error, count } = await query
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      console.error('Error fetching divorce applications:', error);
+      throw new Error(error.message);
+    }
+
+    return {
+      data: (data || []).map((app) => divorceApplicationService.mapDivorceApplication(app)),
+      count: count || 0,
+    };
+  },
+
+  async getDivorceApplicationStats(): Promise<{
+    total: number;
+    pending: number;
+    verified: number;
+    unverified: number;
+  }> {
+    const totalPromise = supabase
+      .from('divorce_applications')
+      .select('id', { count: 'exact', head: true });
+
+    const pendingPromise = supabase
+      .from('divorce_applications')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'submitted');
+
+    const verifiedPromise = supabase
+      .from('divorce_applications')
+      .select('id', { count: 'exact', head: true })
+      .eq('verified', true);
+
+    const unverifiedPromise = supabase
+      .from('divorce_applications')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'submitted')
+      .or('verified.is.false,verified.is.null');
+
+    const [totalRes, pendingRes, verifiedRes, unverifiedRes] = await Promise.all([
+      totalPromise,
+      pendingPromise,
+      verifiedPromise,
+      unverifiedPromise,
+    ]);
+
+    return {
+      total: totalRes.count || 0,
+      pending: pendingRes.count || 0,
+      verified: verifiedRes.count || 0,
+      unverified: unverifiedRes.count || 0,
+    };
+  },
+
+  async verifyDivorceApplication(
+    applicationId: string,
+    actorId: string,
+    actorName: string,
+    certificateNumber: string,
+    registrationDate: string,
+    registrarName: string,
+    certificateDetails: CertificateDetails
+  ): Promise<DivorceApplication> {
+    const { error } = await supabase
+      .from('divorce_applications')
+      .update({
+        verified: true,
+        verified_at: new Date().toISOString(),
+        verified_by: actorId,
+        certificate_number: certificateNumber,
+        registration_date: registrationDate,
+        registrar_name: registrarName,
+        certificate_details: certificateDetails,
+      })
+      .eq('id', applicationId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const { data, error: fetchError } = await supabase
+      .from('divorce_applications')
+      .select(`
+        *,
+        documents:divorce_documents (*)
+      `)
+      .eq('id', applicationId)
+      .single();
+
+    if (fetchError || !data) {
+      throw new Error(fetchError?.message || 'Failed to fetch updated divorce application');
+    }
+
+    const userDetails = data.user_details as any;
+    const partnerDetails = data.partner_form as any;
+    const husbandName = userDetails?.firstName && userDetails?.lastName
+      ? `${userDetails.firstName} ${userDetails.lastName}`.trim()
+      : userDetails?.firstName || 'Husband';
+
+    const wifeName = partnerDetails?.firstName && partnerDetails?.lastName
+      ? `${partnerDetails.firstName} ${partnerDetails.lastName}`.trim()
+      : partnerDetails?.firstName || 'Wife';
+
+    try {
+      await notificationService.createNotification({
+        userId: data.user_id,
+        type: 'divorce_verified',
+        title: 'Divorce Registration Application Verified',
+        message: `Dear ${husbandName}, your divorce registration application has been verified successfully. Certificate Number: ${certificateNumber}.`,
+      });
+    } catch (notifErr) {
+      console.error('Failed to create divorce verification notification:', notifErr);
+    }
+
+    await auditService.createLog({
+      actorId,
+      actorName,
+      actorRole: 'admin',
+      action: 'divorce_application_verified',
+      resourceType: 'divorce_application',
+      resourceId: applicationId,
+      details: { certificateNumber, registrationDate },
+    });
+
+    try {
+      const existingCert = await divorceCertificateService.getDivorceCertificateByApplicationId(applicationId);
+      if (existingCert) {
+        await divorceCertificateService.updateDivorceCertificate(existingCert.id, {
+          certificateNumber,
+          registrationDate,
+          husbandName,
+          wifeName,
+        });
+      } else {
+        await divorceCertificateService.issueDivorceCertificate(
+          data.user_id,
+          applicationId,
+          certificateNumber,
+          registrationDate,
+          husbandName,
+          wifeName,
+          false
+        );
+      }
+    } catch (certErr: any) {
+      console.error('Failed to issue divorce certificate record during verification:', certErr);
+      await supabase
+        .from('divorce_applications')
+        .update({
+          verified: false,
+          verified_at: null,
+          verified_by: null,
+          certificate_number: null,
+          registration_date: null,
+        })
+        .eq('id', applicationId);
+
+      throw new Error(`Divorce certificate creation failed: ${certErr.message || 'Unknown error'}`);
+    }
+
+    return divorceApplicationService.mapDivorceApplication(data);
+  },
+
+  async unverifyDivorceApplication(applicationId: string, actorId: string, actorName: string): Promise<DivorceApplication> {
+    try {
+      const existingCert = await divorceCertificateService.getDivorceCertificateByApplicationId(applicationId);
+      if (existingCert) {
+        await supabase
+          .from('divorce_certificates')
+          .delete()
+          .eq('id', existingCert.id);
+      }
+    } catch (certDeleteError) {
+      console.error('Error cleaning up divorce certificate during unverify:', certDeleteError);
+    }
+
+    const { data, error } = await supabase
+      .from('divorce_applications')
+      .update({
+        verified: false,
+        verified_at: null,
+        verified_by: null,
+      })
+      .eq('id', applicationId)
+      .select(`
+        *,
+        documents:divorce_documents (*)
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await auditService.createLog({
+      actorId,
+      actorName,
+      actorRole: 'admin',
+      action: 'divorce_application_unverified',
+      resourceType: 'divorce_application',
+      resourceId: applicationId,
+    });
+
+    return divorceApplicationService.mapDivorceApplication(data);
+  },
+
+  async updateDivorceApplicationComment(applicationId: string, comment: string, actorId: string, actorName: string): Promise<DivorceApplication> {
+    const { data, error } = await supabase
+      .from('divorce_applications')
+      .update({ admin_comment: comment, last_updated: new Date().toISOString() })
+      .eq('id', applicationId)
+      .select(`
+        *,
+        documents:divorce_documents (*)
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    await auditService.createLog({
+      actorId,
+      actorName,
+      actorRole: 'admin',
+      action: 'divorce_application_comment_updated',
+      resourceType: 'divorce_application',
+      resourceId: applicationId,
+      details: { comment },
+    });
+
+    return divorceApplicationService.mapDivorceApplication(data);
+  },
+
+  async deleteDivorceApplication(applicationId: string, actorId: string, actorName: string): Promise<void> {
+    try {
+      await supabase.from('divorce_documents').delete().eq('divorce_application_id', applicationId);
+      await supabase.from('divorce_certificates').delete().eq('divorce_application_id', applicationId);
+      const { error } = await supabase.from('divorce_applications').delete().eq('id', applicationId);
+      if (error) throw new Error(error.message);
+
+      await auditService.createLog({
+        actorId,
+        actorName,
+        actorRole: 'admin',
+        action: 'divorce_application_deleted',
+        resourceType: 'divorce_application',
+        resourceId: applicationId,
+      });
+    } catch (err: any) {
+      console.error('Error deleting divorce application:', err);
+      throw err;
+    }
   }
 };

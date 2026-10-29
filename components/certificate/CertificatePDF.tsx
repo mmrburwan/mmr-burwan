@@ -1,3 +1,5 @@
+import '../../utils/polyfills';
+import '../../utils/pdfFonts';
 import React from 'react';
 import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer';
 import { Application } from '../../types';

@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { divorceApplicationService } from '../../services/divorceApplication';
+import { downloadDivorceCertificate, viewDivorceCertificate } from '../../utils/divorceCertificateGenerator';
+import { divorceCertificateService } from '../../services/divorceCertificates';
+import { Award } from 'lucide-react';
 import { certificateService } from '../../services/certificates';
 import { applicationService } from '../../services/application';
 import { notificationService } from '../../services/notifications';
 import { adminService } from '../../services/admin';
 import { profileService } from '../../services/profile';
 import { useNotification } from '../../contexts/NotificationContext';
-import { Certificate } from '../../types';
+import { Certificate, DivorceCertificate } from '../../types';
 import { downloadCertificate, viewCertificate } from '../../utils/certificateGenerator';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -17,8 +22,23 @@ import { useDebounce } from '../../hooks/useDebounce';
 
 const CertificatesPage: React.FC = () => {
   const { showToast } = useNotification();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'divorce' ? 'divorce' : 'marriage';
+  const [activeCertTab, setActiveCertTab] = useState<'marriage' | 'divorce'>(initialTab);
+  const [divorceCertCount, setDivorceCertCount] = useState<number>(0);
+
+  const handleTabChange = (tab: 'marriage' | 'divorce') => {
+    setActiveCertTab(tab);
+    if (tab === 'divorce') {
+      setSearchParams({ tab: 'divorce' });
+    } else {
+      setSearchParams({});
+    }
+  };
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [filteredCertificates, setFilteredCertificates] = useState<Certificate[]>([]);
+  const [divorceCertificates, setDivorceCertificates] = useState<DivorceCertificate[]>([]);
+  const [filteredDivorceCertificates, setFilteredDivorceCertificates] = useState<DivorceCertificate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -48,6 +68,18 @@ const CertificatesPage: React.FC = () => {
     };
 
     loadCertificates();
+
+    const loadDivorceCertificates = async () => {
+      try {
+        const dCerts = await divorceCertificateService.getAllDivorceCertificates();
+        setDivorceCertificates(dCerts);
+        setFilteredDivorceCertificates(dCerts);
+        setDivorceCertCount(dCerts.length);
+      } catch (err) {
+        console.error('Failed to load divorce certificates:', err);
+      }
+    };
+    loadDivorceCertificates();
   }, [showToast]);
 
   // Filter certificates based on search and filters
@@ -128,7 +160,71 @@ const CertificatesPage: React.FC = () => {
     }
 
     setFilteredCertificates(filtered);
-  }, [debouncedSearchTerm, filters, certificates]);
+
+    // Apply filters to divorce certificates
+    let filteredDivorce = divorceCertificates;
+    if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
+      const searchLower = debouncedSearchTerm.trim().toLowerCase();
+      filteredDivorce = filteredDivorce.filter((cert) => {
+        const husband = (cert.husbandName || '').trim().toLowerCase();
+        const wife = (cert.wifeName || '').trim().toLowerCase();
+        const certNumber = (cert.certificateNumber || '').trim().toLowerCase();
+        const verificationId = (cert.verificationId || '').trim().toLowerCase();
+
+        return (
+          (husband && husband.includes(searchLower)) ||
+          (wife && wife.includes(searchLower)) ||
+          (certNumber && certNumber.includes(searchLower)) ||
+          (verificationId && verificationId.includes(searchLower))
+        );
+      });
+    }
+
+    if (filters.downloadPermission !== 'all') {
+      filteredDivorce = filteredDivorce.filter((cert) => {
+        if (filters.downloadPermission === 'enabled') return cert.canDownload === true;
+        if (filters.downloadPermission === 'disabled') return cert.canDownload === false;
+        return true;
+      });
+    }
+
+    if (filters.issuedDateFrom) {
+      const fromDate = new Date(filters.issuedDateFrom);
+      filteredDivorce = filteredDivorce.filter((cert) => new Date(cert.issuedOn) >= fromDate);
+    }
+
+    if (filters.issuedDateTo) {
+      const toDate = new Date(filters.issuedDateTo);
+      toDate.setHours(23, 59, 59, 999);
+      filteredDivorce = filteredDivorce.filter((cert) => new Date(cert.issuedOn) <= toDate);
+    }
+
+    if (filters.registrationDateFrom && filters.registrationDateFrom.trim()) {
+      const fromDate = new Date(filters.registrationDateFrom);
+      filteredDivorce = filteredDivorce.filter((cert) => {
+        if (!cert.registrationDate) return false;
+        return new Date(cert.registrationDate) >= fromDate;
+      });
+    }
+
+    if (filters.registrationDateTo && filters.registrationDateTo.trim()) {
+      const toDate = new Date(filters.registrationDateTo);
+      toDate.setHours(23, 59, 59, 999);
+      filteredDivorce = filteredDivorce.filter((cert) => {
+        if (!cert.registrationDate) return false;
+        return new Date(cert.registrationDate) <= toDate;
+      });
+    }
+
+    if (filters.verificationId && filters.verificationId.trim()) {
+      const verificationIdLower = filters.verificationId.trim().toLowerCase();
+      filteredDivorce = filteredDivorce.filter((cert) => {
+        return (cert.verificationId || '').toLowerCase().includes(verificationIdLower);
+      });
+    }
+
+    setFilteredDivorceCertificates(filteredDivorce);
+  }, [debouncedSearchTerm, filters, certificates, divorceCertificates]);
 
   const handleResetFilters = () => {
     setSearchTerm('');
@@ -190,6 +286,66 @@ const CertificatesPage: React.FC = () => {
     }
   };
 
+  const handleViewDivorce = async (cert: DivorceCertificate) => {
+    try {
+      if (!cert.divorceApplicationId) {
+        showToast('Application record not linked to this certificate', 'error');
+        return;
+      }
+      const app = await divorceApplicationService.getDivorceApplicationById(cert.divorceApplicationId);
+      if (!app) {
+        showToast('Divorce application data not found', 'error');
+        return;
+      }
+      await viewDivorceCertificate(app);
+    } catch (error) {
+      console.error('View divorce certificate error:', error);
+      showToast('Failed to open certificate preview', 'error');
+    }
+  };
+
+  const handleDownloadDivorce = async (cert: DivorceCertificate) => {
+    try {
+      if (!cert.divorceApplicationId) {
+        showToast('Application record not linked to this certificate', 'error');
+        return;
+      }
+      const app = await divorceApplicationService.getDivorceApplicationById(cert.divorceApplicationId);
+      if (!app) {
+        showToast('Divorce application data not found', 'error');
+        return;
+      }
+      await downloadDivorceCertificate(app);
+      showToast('Divorce certificate downloaded successfully', 'success');
+    } catch (error) {
+      console.error('Download divorce certificate error:', error);
+      showToast('Failed to generate certificate download', 'error');
+    }
+  };
+
+  const handleToggleDivorceDownloadPermission = async (cert: DivorceCertificate) => {
+    try {
+      const newPermission = !cert.canDownload;
+      await divorceCertificateService.updateDownloadPermission(cert.id, newPermission);
+
+      setDivorceCertificates(prevCerts =>
+        prevCerts.map(c =>
+          c.id === cert.id ? { ...c, canDownload: newPermission } : c
+        )
+      );
+
+      showToast(
+        newPermission
+          ? 'Download permission enabled for user'
+          : 'Download permission disabled for user',
+        'success'
+      );
+    } catch (error) {
+      console.error('Failed to update divorce download permission:', error);
+      showToast('Failed to update download permission', 'error');
+    }
+  };
+
   const handleToggleDownloadPermission = async (cert: Certificate) => {
     try {
       const newPermission = !cert.canDownload;
@@ -243,16 +399,84 @@ const CertificatesPage: React.FC = () => {
     <div>
       <div className="mb-4 sm:mb-6 lg:mb-8">
         <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Verified Certificates</h1>
-        <p className="text-xs sm:text-sm text-gray-600">View and download all verified marriage certificates</p>
+        <p className="text-xs sm:text-sm text-gray-600">View and download verified marriage and divorce certificates</p>
       </div>
 
+      {/* Browser-like Tab Switch Bar */}
+      <div className="mb-4 sm:mb-6">
+        <div className="bg-slate-100/90 border border-slate-200/90 rounded-t-2xl px-2 sm:px-3 pt-2 pb-0 flex items-end justify-between overflow-x-auto no-scrollbar shadow-xs">
+          <div className="flex items-end gap-1 sm:gap-2 min-w-max">
+            <button
+              type="button"
+              onClick={() => handleTabChange('marriage')}
+              className={`group relative flex items-center gap-2 sm:gap-2.5 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-t-xl transition-all duration-150 select-none text-xs sm:text-sm font-medium ${
+                activeCertTab === 'marriage'
+                  ? 'bg-white text-gray-900 border-t-2 border-t-gold-500 border-x border-slate-200/90 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] font-semibold z-10 -mb-[1px]'
+                  : 'bg-slate-200/50 hover:bg-slate-200/90 text-gray-600 hover:text-gray-900 border border-transparent'
+              }`}
+            >
+              <FileText size={16} className={activeCertTab === 'marriage' ? 'text-gold-600' : 'text-gray-400'} />
+              <span>Marriage Certificates</span>
+              <span className={`ml-0.5 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full transition-colors ${
+                activeCertTab === 'marriage'
+                  ? 'bg-gold-100 text-gold-800 border border-gold-200'
+                  : 'bg-gray-200/70 text-gray-700'
+              }`}>
+                {certificates.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange('divorce')}
+              className={`group relative flex items-center gap-2 sm:gap-2.5 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-t-xl transition-all duration-150 select-none text-xs sm:text-sm font-medium ${
+                activeCertTab === 'divorce'
+                  ? 'bg-white text-gray-900 border-t-2 border-t-gold-500 border-x border-slate-200/90 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] font-semibold z-10 -mb-[1px]'
+                  : 'bg-slate-200/50 hover:bg-slate-200/90 text-gray-600 hover:text-gray-900 border border-transparent'
+              }`}
+            >
+              <Award size={16} className={activeCertTab === 'divorce' ? 'text-rose-600' : 'text-gray-400'} />
+              <span>Divorce Certificates</span>
+              <span className={`ml-0.5 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full transition-colors ${
+                activeCertTab === 'divorce'
+                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                  : 'bg-gray-200/70 text-gray-700'
+              }`}>
+                {divorceCertCount}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Description / Context Header */}
+        <div className="bg-white border border-slate-200/90 border-t-0 rounded-b-2xl p-3 sm:p-4 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${activeCertTab === 'marriage' ? 'bg-gold-500' : 'bg-rose-500'} animate-pulse`}></span>
+              <p className="text-xs text-gray-600 font-medium">
+                {activeCertTab === 'marriage'
+                  ? 'Official government Muslim marriage registration certificates'
+                  : 'Official government Muslim divorce certificates issued under 1876 Act'}
+              </p>
+            </div>
+            <div className="text-[11px] sm:text-xs text-gray-500">
+              Active Category:{' '}
+              <span className="font-semibold text-gray-800">
+                {activeCertTab === 'marriage' ? 'Marriage Certificates' : 'Divorce Certificates'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and Advanced Filters Card */}
       <Card className="p-3 sm:p-4 lg:p-6 mb-3 sm:mb-4 lg:mb-6">
         <div className="flex flex-col gap-3 sm:gap-4">
           {/* Search Bar */}
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <div className="flex-1 min-w-0">
               <Input
-                placeholder="Search by groom name, bride name, or certificate number..."
+                placeholder={activeCertTab === 'divorce' ? "Search by husband name, wife name, or certificate number..." : "Search by groom name, bride name, or certificate number..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 leftIcon={<Search size={16} className="sm:w-5 sm:h-5" />}
@@ -388,8 +612,8 @@ const CertificatesPage: React.FC = () => {
         <div className="flex items-center justify-between mb-3 sm:mb-4 lg:mb-6">
           <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900">
             {hasActiveFilters() || debouncedSearchTerm
-              ? `Filtered Certificates (${filteredCertificates.length} of ${certificates.length})`
-              : `All Verified Certificates (${certificates.length})`}
+              ? `Filtered Certificates (${(activeCertTab === 'divorce' ? filteredDivorceCertificates : filteredCertificates).length} of ${(activeCertTab === 'divorce' ? divorceCertificates : certificates).length})`
+              : `All Verified Certificates (${(activeCertTab === 'divorce' ? divorceCertificates : certificates).length})`}
           </h3>
         </div>
 
@@ -398,13 +622,13 @@ const CertificatesPage: React.FC = () => {
             <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-t-2 border-b-2 border-gold-500 mx-auto mb-3 sm:mb-4"></div>
             <p className="text-xs sm:text-sm text-gray-500">Loading certificates...</p>
           </div>
-        ) : certificates.length === 0 ? (
+        ) : (activeCertTab === 'divorce' ? divorceCertificates.length === 0 : certificates.length === 0) ? (
           <div className="text-center py-6 sm:py-8 lg:py-12">
             <FileText size={32} className="sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3 lg:mb-4" />
             <p className="text-xs sm:text-sm text-gray-500">No verified certificates yet</p>
             <p className="text-[10px] sm:text-xs text-gray-400 mt-1">Certificates will appear here after applications are verified</p>
           </div>
-        ) : filteredCertificates.length === 0 ? (
+        ) : (activeCertTab === 'divorce' ? filteredDivorceCertificates.length === 0 : filteredCertificates.length === 0) ? (
           <div className="text-center py-6 sm:py-8 lg:py-12">
             <FileText size={32} className="sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3 lg:mb-4" />
             <p className="text-xs sm:text-sm text-gray-500">No certificates found</p>
@@ -426,7 +650,121 @@ const CertificatesPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2 sm:space-y-3 lg:space-y-4">
-            {filteredCertificates.map((cert) => (
+            {activeCertTab === 'divorce' ? (
+              filteredDivorceCertificates.map((cert) => (
+                <div
+                  key={cert.id}
+                  className="p-3 sm:p-4 lg:p-5 bg-gray-50 hover:bg-gray-100 rounded-lg sm:rounded-xl transition-colors border border-gray-200"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                    <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-lg bg-rose-100 flex items-center justify-center flex-shrink-0">
+                        <FileText size={20} className="sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-rose-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
+                          <p className="font-bold text-xs sm:text-sm lg:text-base text-gray-900 uppercase">
+                            {cert.husbandName && cert.wifeName
+                              ? `${cert.husbandName} & ${cert.wifeName}`
+                              : cert.husbandName || cert.wifeName || 'N/A'}
+                          </p>
+                          <Badge variant="success" className="!text-[10px] sm:!text-xs">
+                            Verified
+                          </Badge>
+                        </div>
+
+                        {cert.certificateNumber && (
+                          <div className="flex items-center gap-1.5 mb-1 sm:mb-1.5">
+                            <p className="text-[11px] sm:text-sm lg:text-base text-gray-900 font-mono font-bold uppercase tracking-wider">
+                              Certificate: {cert.certificateNumber}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar size={12} className="sm:w-3.5 sm:h-3.5 text-gray-400 flex-shrink-0" />
+                            <p className="text-[10px] sm:text-xs text-gray-500">
+                              Issued: {safeFormatDateObject(new Date(cert.issuedOn), 'dd-MM-yyyy')}
+                            </p>
+                          </div>
+                          {cert.registrationDate && (
+                            <div className="flex items-center gap-1.5">
+                              <Calendar size={12} className="sm:w-3.5 sm:h-3.5 text-gray-400 flex-shrink-0" />
+                              <p className="text-[10px] sm:text-xs text-gray-500">
+                                Registered: {safeFormatDateObject(new Date(cert.registrationDate), 'dd-MM-yyyy')}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <p className="text-[10px] sm:text-xs text-gray-400 mt-1.5 sm:mt-2 truncate">
+                          Verification ID: {cert.verificationId}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 sm:ml-4">
+                      {/* Download Permission Toggle */}
+                      <div className="flex flex-col items-center gap-1 sm:gap-1.5">
+                        <button
+                          onClick={() => handleToggleDivorceDownloadPermission(cert)}
+                          className={`
+                            relative inline-flex h-6 w-11 sm:h-7 sm:w-12 items-center rounded-full transition-colors
+                            focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2
+                            ${cert.canDownload ? 'bg-gold-500' : 'bg-gray-300'}
+                          `}
+                          aria-label={cert.canDownload ? 'Disable download' : 'Enable download'}
+                          title={cert.canDownload ? 'User can download - Click to disable' : 'User cannot download - Click to enable'}
+                        >
+                          <span
+                            className={`
+                              inline-block h-4 w-4 sm:h-5 sm:w-5 transform rounded-full bg-white transition-transform
+                              ${cert.canDownload ? 'translate-x-6 sm:translate-x-7' : 'translate-x-1'}
+                            `}
+                          />
+                        </button>
+                        <div className="flex items-center gap-1">
+                          {cert.canDownload ? (
+                            <>
+                              <Unlock size={12} className="text-emerald-600" />
+                              <span className="text-[10px] font-medium text-emerald-600">Enabled</span>
+                            </>
+                          ) : (
+                            <>
+                              <Lock size={12} className="text-gray-400" />
+                              <span className="text-[10px] font-medium text-gray-500">Locked</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDivorce(cert)}
+                          className="text-gold-700 bg-gold-50 hover:bg-gold-100 rounded-lg text-xs"
+                        >
+                          <Eye size={16} className="mr-1 sm:mr-1.5" />
+                          View
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleDownloadDivorce(cert)}
+                          className="text-xs"
+                        >
+                          <Download size={16} className="mr-1 sm:mr-1.5" />
+                          Download
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              filteredCertificates.map((cert) => (
               <div
                 key={cert.id}
                 className="p-3 sm:p-4 lg:p-5 bg-gray-50 hover:bg-gray-100 rounded-lg sm:rounded-xl transition-colors border border-gray-200"
@@ -535,7 +873,8 @@ const CertificatesPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         )}
       </Card>

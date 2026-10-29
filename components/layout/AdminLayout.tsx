@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   UserPlus,
+  FileX,
+  Award,
 } from 'lucide-react';
 
 const AdminLayout: React.FC = () => {
@@ -42,7 +44,7 @@ const AdminLayout: React.FC = () => {
   const menuItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/create-application', icon: UserPlus, label: 'Create Application' },
-    { path: '/admin/clients', icon: Users, label: 'Clients' },
+    { path: '/admin/clients', icon: Users, label: 'Clients/ Applications' },
     { path: '/admin/agents', icon: Users, label: 'Agents' },
     { path: '/admin/appointments', icon: Calendar, label: 'Appointments' },
     { path: '/admin/certificates', icon: FileText, label: 'Certificates' },

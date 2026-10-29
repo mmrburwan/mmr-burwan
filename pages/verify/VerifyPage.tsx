@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { certificateService } from '../../services/certificates';
+import { divorceCertificateService } from '../../services/divorceCertificates';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -17,6 +18,10 @@ interface CertificateVerificationData {
   userAddress: any;
   partnerAddress: any;
   declarations: any;
+  isDivorce?: boolean;
+  divorceDate?: string;
+  divorceType?: string;
+  marriageCertificateNumber?: string;
 }
 
 const VerifyPage: React.FC = () => {
@@ -53,7 +58,10 @@ const VerifyPage: React.FC = () => {
       setError('');
 
       try {
-        const data = await certificateService.getCertificateByCertificateNumber(id);
+        let data = await certificateService.getCertificateByCertificateNumber(id);
+        if (!data) {
+          data = await divorceCertificateService.getDivorceCertificateByCertificateNumber(id);
+        }
 
         if (data) {
           setCertificateData(data);
@@ -86,9 +94,9 @@ const VerifyPage: React.FC = () => {
 
     // Validate certificate number format - accept both compact (WBMSDBRW) and legacy (WB-MSD-BRW-) formats
     const certNumUpper = certificateNumber.trim().toUpperCase();
-    const isValidFormat = certNumUpper.startsWith('WBMSDBRW') || certNumUpper.startsWith('WB-MSD-BRW-');
+    const isValidFormat = certNumUpper.startsWith('WBMSDBRW') || certNumUpper.startsWith('WB-MSD-BRW-') || certNumUpper.startsWith('MMR-BW-');
     if (!isValidFormat) {
-      setError('Please enter a valid certificate number starting with WBMSDBRW or WB-MSD-BRW-');
+      setError('Please enter a valid certificate number (WBMSDBRW...) or verification ID (MMR-BW-...)');
       return;
     }
 
@@ -97,7 +105,10 @@ const VerifyPage: React.FC = () => {
     setHasSearched(false);
 
     try {
-      const data = await certificateService.getCertificateByCertificateNumber(certificateNumber.trim());
+      let data = await certificateService.getCertificateByCertificateNumber(certificateNumber.trim());
+      if (!data) {
+        data = await divorceCertificateService.getDivorceCertificateByCertificateNumber(certificateNumber.trim());
+      }
 
       if (data) {
         setCertificateData(data);
@@ -196,7 +207,7 @@ const VerifyPage: React.FC = () => {
                     <CheckCircle size={24} className="sm:w-8 sm:h-8 text-green-600" />
                   </div>
                   <h2 className="font-serif text-lg sm:text-xl font-bold text-gray-900 mb-1">
-                    Certificate Verified
+                    {certificateData.isDivorce ? 'Divorce Certificate Verified' : 'Certificate Verified'}
                   </h2>
                   <p className="text-xs sm:text-sm text-gray-600 mb-3">
                     This certificate is valid and issued by MMR Burwan office.
@@ -215,7 +226,7 @@ const VerifyPage: React.FC = () => {
                   <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">
                     <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
                       <Users size={14} className="sm:w-4 sm:h-4 text-indigo-600" />
-                      <h4 className="font-serif font-semibold text-sm sm:text-base text-gray-900">Groom Details</h4>
+                      <h4 className="font-serif font-semibold text-sm sm:text-base text-gray-900">{certificateData.isDivorce ? 'Husband Details' : 'Groom Details'}</h4>
                     </div>
                     <div className="space-y-2">
                       <div>
@@ -240,7 +251,7 @@ const VerifyPage: React.FC = () => {
                   <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">
                     <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
                       <Users size={14} className="sm:w-4 sm:h-4 text-rose-600" />
-                      <h4 className="font-serif font-semibold text-sm sm:text-base text-gray-900">Bride Details</h4>
+                      <h4 className="font-serif font-semibold text-sm sm:text-base text-gray-900">{certificateData.isDivorce ? 'Wife Details' : 'Bride Details'}</h4>
                     </div>
                     <div className="space-y-2">
                       <div>
@@ -260,6 +271,40 @@ const VerifyPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Divorce Particulars */}
+                  {certificateData.isDivorce && (
+                    <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">
+                      <div className="flex items-center gap-1.5 sm:gap-2 mb-2">
+                        <Calendar size={14} className="sm:w-4 sm:h-4 text-amber-600" />
+                        <h4 className="font-serif font-semibold text-sm sm:text-base text-gray-900">Divorce Particulars</h4>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
+                        <div>
+                          <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider font-medium">Date of Divorce</p>
+                          <p className="font-semibold text-gray-900">
+                            {certificateData.divorceDate
+                              ? safeFormatDateObject(new Date(certificateData.divorceDate), 'dd-MM-yyyy')
+                              : 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider font-medium">Type of Divorce</p>
+                          <p className="font-semibold text-gold-700 uppercase">
+                            {certificateData.divorceType || 'TALAQ'}
+                          </p>
+                        </div>
+                        {certificateData.marriageCertificateNumber && (
+                          <div className="sm:col-span-2">
+                            <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider font-medium">Original Marriage Certificate</p>
+                            <p className="font-mono font-semibold text-gray-900">
+                              {certificateData.marriageCertificateNumber}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Registration Date */}
                   <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">

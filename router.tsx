@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
 import AuthLayout from './components/layout/AuthLayout';
 import AdminLayout from './components/layout/AdminLayout';
@@ -37,6 +37,10 @@ const AppointmentsAdminPage = lazy(() => import('./pages/admin/AppointmentsAdmin
 const ScannerPage = lazy(() => import('./pages/admin/ScannerPage'));
 const AuditPage = lazy(() => import('./pages/admin/AuditPage'));
 const CertificatesPage = lazy(() => import('./pages/admin/CertificatesPage'));
+const CreateDivorceApplicationPage = lazy(() => import('./pages/admin/CreateDivorceApplicationPage'));
+const DivorceApplicationsPage = lazy(() => import('./pages/admin/DivorceApplicationsPage'));
+const DivorceApplicationDetailsPage = lazy(() => import('./pages/admin/DivorceApplicationDetailsPage'));
+const DivorceCertificatesPage = lazy(() => import('./pages/admin/DivorceCertificatesPage'));
 const AgentDashboardPage = lazy(() => import('./pages/agent/AgentDashboardPage'));
 const AgentClientsPage = lazy(() => import('./pages/agent/AgentClientsPage'));
 const AgentCreateApplicationPage = lazy(() => import('./pages/agent/AgentCreateApplicationPage'));
@@ -420,6 +424,26 @@ const router = createBrowserRouter(
               <CertificatesPage />
             </Suspense>
           ),
+        },
+        {
+          path: 'divorce/create',
+          element: <Navigate to="/admin/create-application?type=divorce" replace />,
+        },
+        {
+          path: 'divorce/applications',
+          element: <Navigate to="/admin/clients?tab=divorce" replace />,
+        },
+        {
+          path: 'divorce/applications/:applicationId',
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <DivorceApplicationDetailsPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: 'divorce/certificates',
+          element: <Navigate to="/admin/certificates?tab=divorce" replace />,
         },
       ],
     },

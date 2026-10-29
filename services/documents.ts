@@ -478,7 +478,7 @@ export const documentService = {
 
       // 4. Construct the direct public CDN URL (R2)
       const r2BaseUrl = (import.meta as any).env.VITE_R2_DOCUMENTS_PUBLIC_URL || DEFAULT_R2_DOCS_URL;
-      if (r2BaseUrl && (!document.url || !document.url.includes('supabase.co'))) {
+      if (r2BaseUrl) {
         return `${r2BaseUrl.replace(/\/$/, '')}/${filePath}`;
       }
     }

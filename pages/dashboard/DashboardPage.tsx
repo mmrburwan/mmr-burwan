@@ -8,13 +8,17 @@ import { applicationService } from '../../services/application';
 import { appointmentService } from '../../services/appointments';
 import { certificateService } from '../../services/certificates';
 import { messageService } from '../../services/messages';
-import { Profile, Application, Certificate, Appointment } from '../../types';
+import { Profile, Application, Certificate, Appointment, DivorceApplication, DivorceCertificate } from '../../types';
+import { divorceApplicationService } from '../../services/divorceApplication';
+import { divorceCertificateService } from '../../services/divorceCertificates';
+import { downloadDivorceCertificate } from '../../utils/divorceCertificateGenerator';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Stepper from '../../components/ui/Stepper';
 import {
   FileText,
+  FileX,
   Upload,
   Calendar,
   MessageSquare,
@@ -39,6 +43,8 @@ const DashboardPage: React.FC = () => {
   const [application, setApplication] = useState<Application | null>(null);
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [divorceApplication, setDivorceApplication] = useState<DivorceApplication | null>(null);
+  const [divorceCertificate, setDivorceCertificate] = useState<DivorceCertificate | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
@@ -60,12 +66,14 @@ const DashboardPage: React.FC = () => {
     }
 
     try {
-      const [profileData, appData, aptData, certData, conversations] = await Promise.all([
+      const [profileData, appData, aptData, certData, conversations, divorceAppData, divorceCertData] = await Promise.all([
         profileService.getProfile(user.id),
         applicationService.getApplication(user.id),
         appointmentService.getUserAppointment(user.id).catch(() => null),
         certificateService.getCertificate(user.id),
         messageService.getConversations(user.id),
+        divorceApplicationService.getDivorceApplication(user.id).catch(() => null),
+        divorceCertificateService.getDivorceCertificate(user.id).catch(() => null),
       ]);
 
       // Recalculate completion if profile exists
@@ -82,6 +90,8 @@ const DashboardPage: React.FC = () => {
       setApplication(appData);
       setAppointment(aptData);
       setCertificate(certData);
+      setDivorceApplication(divorceAppData);
+      setDivorceCertificate(divorceCertData);
       setUnreadMessages(conversations.reduce((sum, c) => sum + c.unreadCount, 0));
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -521,6 +531,106 @@ const DashboardPage: React.FC = () => {
           )}
         </Card>
       </div>
+
+        {/* Divorce Certificate Card (Visible if divorce application or certificate exists) */}
+        {(divorceApplication || divorceCertificate) && (
+          <Card className="p-3 sm:p-4 border-amber-200 bg-amber-50/20">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 flex items-center gap-1.5 sm:gap-2">
+                <FileX size={16} className="sm:w-5 sm:h-5 text-amber-700" />
+                Divorce Registration Certificate
+              </h3>
+              {divorceApplication?.verified && <Badge variant="success">Verified</Badge>}
+            </div>
+            {divorceApplication?.verified ? (
+              <div className="space-y-2 sm:space-y-3">
+                <div>
+                  <p className="text-[11px] sm:text-xs text-gray-500">Status</p>
+                  <p className="font-medium text-xs sm:text-sm text-gray-900">
+                    Divorce Registration Verified
+                  </p>
+                  {divorceApplication.certificateNumber && (
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 break-all font-mono">
+                      Certificate No: {divorceApplication.certificateNumber}
+                    </p>
+                  )}
+                  {divorceApplication.divorceDate && (
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                      Divorce Date: {safeFormatDate(divorceApplication.divorceDate, 'dd-MM-yyyy')} ({divorceApplication.divorceType?.toUpperCase() || 'TALAQ'})
+                    </p>
+                  )}
+                </div>
+                {divorceCertificate ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="!text-xs sm:!text-sm flex-1"
+                        onClick={() => {
+                          const certNumber = divorceCertificate.certificateNumber || divorceApplication?.certificateNumber;
+                          if (certNumber) {
+                            navigate(`/verify/${certNumber}`);
+                          } else {
+                            showToast('Certificate number not available', 'error');
+                          }
+                        }}
+                      >
+                        <Award size={14} className="mr-1 sm:w-4 sm:h-4" />
+                        View Certificate
+                      </Button>
+                      {divorceCertificate.canDownload ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="!text-xs sm:!text-sm flex-1"
+                          onClick={async () => {
+                            if (divorceApplication) {
+                              try {
+                                await downloadDivorceCertificate(divorceApplication);
+                                showToast('Divorce certificate downloaded successfully', 'success');
+                              } catch (error: any) {
+                                console.error('Failed to download divorce certificate:', error);
+                                showToast(error.message || 'Failed to download certificate', 'error');
+                              }
+                            }
+                          }}
+                        >
+                          Download PDF
+                        </Button>
+                      ) : null}
+                    </div>
+                    {!divorceCertificate.canDownload && (
+                      <div className="p-2 sm:p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <p className="text-[10px] sm:text-xs text-gray-600 text-center">
+                          Download permission is currently locked by admin. You can view the verified certificate above.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-2 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-[10px] sm:text-xs text-amber-800 text-center">
+                      Certificate is being prepared by registrar office.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <p className="text-[11px] sm:text-xs text-gray-500">Status</p>
+                <p className="font-medium text-xs sm:text-sm text-gray-900">
+                  {divorceApplication?.status === 'submitted' || divorceApplication?.status === 'under_review'
+                    ? 'Application Under Review by Admin'
+                    : 'Divorce Registration in Process'}
+                </p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1 leading-relaxed">
+                  Your divorce application has been recorded and will be verified by the registrar.
+                </p>
+              </div>
+            )}
+          </Card>
+        )}
 
       {/* Quick Actions */}
       <div className="mt-4 sm:mt-6">

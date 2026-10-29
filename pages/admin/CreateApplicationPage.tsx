@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,12 +12,14 @@ import { supabase } from '../../lib/supabase';
 import ApplicationFormContent from '../../components/application/ApplicationFormContent';
 import AdminApplicationSuccessModal from '../../components/admin/AdminApplicationSuccessModal';
 import SelectCertificateNumberModal from '../../components/admin/SelectCertificateNumberModal';
+import CreateDivorceApplicationPage from './CreateDivorceApplicationPage';
+import { FileX, Heart, Plus, ArrowLeft } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Badge from '../../components/ui/Badge';
 import { UserPlus, ArrowRight, Loader2, Clock, FileText, ChevronRight, X, Award, Trash2 } from 'lucide-react';
-import { Application } from '../../types';
+import { Application, DivorceApplication } from '../../types';
 import { safeFormatDate } from '../../utils/dateUtils';
 
 // Basic info schema for account creation
@@ -270,6 +272,15 @@ const CreateApplicationPage: React.FC = () => {
   const { user: adminUser } = useAuth();
   const { showToast } = useNotification();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [applicationType, setApplicationType] = useState<'marriage' | 'divorce'>(() => {
+    return searchParams.get('type') === 'divorce' ? 'divorce' : 'marriage';
+  });
+
+  const handleTypeChange = (type: 'marriage' | 'divorce') => {
+    setApplicationType(type);
+    setSearchParams(type === 'divorce' ? { type: 'divorce' } : {});
+  };
 
   const [phase, setPhase] = useState<'pending-list' | 'basic-info' | 'application-form'>('pending-list');
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -283,10 +294,27 @@ const CreateApplicationPage: React.FC = () => {
   const [showCertificateModal, setShowCertificateModal] = useState(false);
   const [selectedCertificateNumber, setSelectedCertificateNumber] = useState<string | null>(null);
   const [certificateEmailTrigger, setCertificateEmailTrigger] = useState(0);
+  const [isFillingDivorceForm, setIsFillingDivorceForm] = useState(false);
+  const [pendingDivorceApplications, setPendingDivorceApplications] = useState<DivorceApplication[]>([]);
+  const [isLoadingPendingDivorce, setIsLoadingPendingDivorce] = useState(false);
+
+  const loadPendingDivorceApplications = async () => {
+    if (!adminUser) return;
+    setIsLoadingPendingDivorce(true);
+    try {
+      const res = await adminService.getDivorceApplications(1, 50, { verified: 'unverified' });
+      setPendingDivorceApplications(res.data.filter(app => !app.verified));
+    } catch (err) {
+      console.error('Failed to load pending divorce applications:', err);
+    } finally {
+      setIsLoadingPendingDivorce(false);
+    }
+  };
 
   useEffect(() => {
     if (adminUser && adminUser.role === 'admin') {
       loadPendingApplications();
+      loadPendingDivorceApplications();
     }
   }, [adminUser]);
 
@@ -440,14 +468,163 @@ const CreateApplicationPage: React.FC = () => {
   if (phase === 'pending-list') {
     return (
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6 lg:py-8">
-        <div className="mb-4 sm:mb-6 lg:mb-8">
-          <h1 className="font-serif text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
-            Create Application for Offline User
+        <div className="mb-4 sm:mb-6">
+          <h1 className="font-serif text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-1">
+            Create Application
           </h1>
           <p className="text-xs sm:text-sm text-gray-600">
-            Create a new application or continue pending ones
+            Select application category: apply for marriage registration or divorce registration
           </p>
         </div>
+
+        {/* Browser-like Application Category Switcher */}
+        <div className="mb-6">
+          <div className="inline-flex p-1 bg-slate-200/70 rounded-xl border border-gray-200/90 shadow-inner w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => handleTypeChange('marriage')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2 px-4 sm:px-6 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 ${
+                applicationType === 'marriage'
+                  ? 'bg-white text-gray-900 shadow-sm border border-gray-200 text-gold-700 font-bold'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/40'
+              }`}
+            >
+              <Heart size={16} className={applicationType === 'marriage' ? 'text-gold-600 fill-gold-100' : 'text-gray-400'} />
+              <span>Marriage Registration</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTypeChange('divorce')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2 px-4 sm:px-6 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 ${
+                applicationType === 'divorce'
+                  ? 'bg-white text-gray-900 shadow-sm border border-gray-200 text-rose-700 font-bold'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/40'
+              }`}
+            >
+              <FileX size={16} className={applicationType === 'divorce' ? 'text-rose-600' : 'text-gray-400'} />
+              <span>Apply for Divorce</span>
+            </button>
+          </div>
+        </div>
+
+        {applicationType === 'divorce' ? (
+          isFillingDivorceForm ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsFillingDivorceForm(false);
+                    loadPendingDivorceApplications();
+                  }}
+                >
+                  <ArrowLeft size={16} className="mr-1.5" />
+                  Back to Pending Divorce Applications
+                </Button>
+              </div>
+              <CreateDivorceApplicationPage isEmbedded={true} />
+            </div>
+          ) : (
+            <div className="space-y-4 sm:space-y-6">
+              {/* Apply For Divorce Button Card */}
+              <Card className="p-4 sm:p-5 lg:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                  <div>
+                    <h2 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">
+                      Apply For Divorce Registration
+                    </h2>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      Start a new application for divorce registration under Bengal Act 1876
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setIsFillingDivorceForm(true)}
+                    className="w-full sm:w-auto"
+                  >
+                    <Plus size={16} className="mr-2" />
+                    Apply For Divorce
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Pending Divorce Applications Section */}
+              {isLoadingPendingDivorce ? (
+                <Card className="p-6 sm:p-8">
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 size={24} className="animate-spin text-gold-600" />
+                  </div>
+                </Card>
+              ) : pendingDivorceApplications.length > 0 ? (
+                <Card className="p-4 sm:p-5 lg:p-6">
+                  <div className="flex items-center justify-between mb-4 sm:mb-5">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Clock size={18} className="sm:w-5 sm:h-5 text-gold-600" />
+                      <h2 className="font-semibold text-sm sm:text-base lg:text-lg text-gray-900">
+                        Pending Divorce Applications
+                      </h2>
+                      <Badge variant="outline" className="!text-[10px] sm:!text-xs">
+                        {pendingDivorceApplications.length}
+                      </Badge>
+                    </div>
+                  </div>
+                  <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-5">
+                    You have {pendingDivorceApplications.length} divorce application{pendingDivorceApplications.length > 1 ? 's' : ''} awaiting verification. Click on any application to review or verify.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {pendingDivorceApplications.map((app) => (
+                      <div
+                        key={app.id}
+                        className="group flex items-center justify-between p-4 sm:p-5 bg-gradient-to-br from-gray-50 to-white hover:from-rose-50 hover:to-white rounded-xl border border-gray-200 hover:border-rose-300 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
+                        onClick={() => navigate(`/admin/divorce/applications/${app.id}`)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="p-1.5 sm:p-2 bg-rose-100 rounded-lg group-hover:bg-rose-200 transition-colors">
+                              <FileX size={14} className="sm:w-4 sm:h-4 text-rose-700" />
+                            </div>
+                            <p className="font-semibold text-xs sm:text-sm text-gray-900 truncate">
+                              {app.userDetails?.firstName} & {app.partnerForm?.firstName || 'Wife'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="!text-[10px] sm:!text-xs">
+                              {app.status === 'submitted' ? 'Pending Verification' : app.status}
+                            </Badge>
+                            <span className="text-[10px] sm:text-xs text-rose-700 font-semibold uppercase">
+                              {app.divorceType || 'Talaq'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] sm:text-xs text-gray-500">
+                            {safeFormatDate(app.lastUpdated || app.submittedAt || new Date().toISOString(), 'dd-MM-yyyy')}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 ml-3">
+                          <ChevronRight size={18} className="sm:w-5 sm:h-5 text-gray-400 group-hover:text-rose-600 transition-colors" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              ) : (
+                <Card className="p-6 sm:p-8 lg:p-10">
+                  <div className="text-center py-6 sm:py-8">
+                    <FileX size={32} className="sm:w-12 sm:h-12 mx-auto text-gray-300 mb-3 sm:mb-4" />
+                    <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1 sm:mb-2">
+                      No Pending Divorce Applications
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      You don't have any pending divorce applications. Start a new one to get started.
+                    </p>
+                  </div>
+                </Card>
+              )}
+            </div>
+          )
+        ) : (
+          <>
 
         {/* Create New Application Button */}
         <Card className="p-4 sm:p-5 lg:p-6 mb-4 sm:mb-6">
@@ -635,6 +812,8 @@ const CreateApplicationPage: React.FC = () => {
             }, 100);
           }}
         />
+          </>
+        )}
       </div>
     );
   }

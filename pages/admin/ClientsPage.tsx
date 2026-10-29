@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { adminService } from '../../services/admin';
 import { certificateService } from '../../services/certificates';
-import { Application, CertificateDetails, Certificate } from '../../types';
+import { Application, CertificateDetails, Certificate, DivorceApplication } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
 import VerifyApplicationModal from '../../components/admin/VerifyApplicationModal';
 import DeleteApplicationModal from '../../components/admin/DeleteApplicationModal';
-import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText, Trash2, StickyNote, ChevronLeft, ChevronRight, Loader2, ShieldCheck, Briefcase, UserCheck, Layers } from 'lucide-react';
+import VerifyDivorceApplicationModal from '../../components/admin/VerifyDivorceApplicationModal';
+import { downloadDivorceCertificate, viewDivorceCertificate } from '../../utils/divorceCertificateGenerator';
+import { Users, Search, Eye, MessageSquare, FileCheck, CheckCircle, XCircle, ArrowLeft, FileText, Trash2, StickyNote, ChevronLeft, ChevronRight, Loader2, ShieldCheck, Briefcase, UserCheck, Layers, FileX } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
 import { downloadCertificate, viewCertificate } from '../../utils/certificateGenerator';
@@ -73,14 +75,28 @@ const ClientsPage: React.FC = () => {
   const { user } = useAuth();
   const { showToast } = useNotification();
   const navigate = useNavigate();
-  type CreatorTabType = 'admin' | 'agent' | 'user' | 'all';
-  const [creatorFilter, setCreatorFilter] = useState<CreatorTabType>('admin');
+  type CreatorTabType = 'admin' | 'agent' | 'user' | 'all' | 'divorce';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') as CreatorTabType;
+  const [creatorFilter, setCreatorFilter] = useState<CreatorTabType>(
+    initialTab === 'divorce' ? 'divorce' : 'admin'
+  );
+  const [divorceCount, setDivorceCount] = useState<number>(0);
   const [creatorCounts, setCreatorCounts] = useState<{
     all: number;
     admin: number;
     agent: number;
     user: number;
   }>({ all: 0, admin: 0, agent: 0, user: 0 });
+
+  const handleTabChange = (tabId: CreatorTabType) => {
+    setCreatorFilter(tabId);
+    if (tabId === 'divorce') {
+      setSearchParams({ tab: 'divorce' });
+    } else {
+      setSearchParams({});
+    }
+  };
   const [clients, setClients] = useState<ClientWithApplication[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
@@ -116,6 +132,19 @@ const ClientsPage: React.FC = () => {
     applicationId: '',
   });
 
+  const [divorceApplications, setDivorceApplications] = useState<DivorceApplication[]>([]);
+  const [verifyDivorceModalState, setVerifyDivorceModalState] = useState<{
+    isOpen: boolean;
+    applicationId: string;
+    certificateNumber?: string;
+    registrationDate?: string;
+    divorceDate?: string;
+    divorceType?: string;
+  }>({
+    isOpen: false,
+    applicationId: '',
+  });
+
   const [commentModalState, setCommentModalState] = useState<{
     isOpen: boolean;
     applicationId: string;
@@ -131,6 +160,24 @@ const ClientsPage: React.FC = () => {
     targetLimit: number = limit,
     targetCreator: CreatorTabType = creatorFilter
   ) => {
+    if (targetCreator === 'divorce') {
+      setIsFetching(true);
+      try {
+        const { data: dApps, count } = await adminService.getDivorceApplications(targetPage, targetLimit, {
+          search: debouncedSearchTerm,
+          verified: verifiedFilter,
+        });
+        setDivorceApplications(dApps);
+        setTotalCount(count);
+      } catch (error) {
+        console.error('Failed to load divorce applications:', error);
+        showToast('Failed to load divorce applications', 'error');
+      } finally {
+        setIsLoading(false);
+        setIsFetching(false);
+      }
+      return;
+    }
     setIsFetching(true);
     try {
       const { data: applications, count } = await adminService.getApplications(targetPage, targetLimit, {
@@ -180,6 +227,8 @@ const ClientsPage: React.FC = () => {
     try {
       const counts = await adminService.getApplicationCreatorCounts();
       setCreatorCounts(counts);
+      const divorceStats = await adminService.getDivorceApplicationStats().catch(() => ({ total: 0 }));
+      setDivorceCount(divorceStats.total || 0);
     } catch (error) {
       console.error('Failed to load creator counts:', error);
     }
@@ -200,30 +249,101 @@ const ClientsPage: React.FC = () => {
     loadCreatorCounts();
   }, [loadCreatorCounts]);
 
+  const handleVerifyDivorce = async (
+    certificateNumber: string,
+    registrationDate: string,
+    registrarName: string,
+    certificateDetails: CertificateDetails
+  ) => {
+    if (!user) return;
+    try {
+      await adminService.verifyDivorceApplication(
+        verifyDivorceModalState.applicationId,
+        user.id,
+        user.name || user.email,
+        certificateNumber,
+        registrationDate,
+        registrarName,
+        certificateDetails
+      );
+      showToast('Divorce application verified successfully', 'success');
+      setVerifyDivorceModalState({ isOpen: false, applicationId: '' });
+      await loadClients(page, limit, 'divorce');
+      await loadCreatorCounts();
+    } catch (error: any) {
+      showToast(error.message || 'Failed to verify divorce application', 'error');
+      throw error;
+    }
+  };
+
+  const handleUnverifyDivorce = async (applicationId: string) => {
+    if (!user) return;
+    try {
+      await adminService.unverifyDivorceApplication(
+        applicationId,
+        user.id,
+        user.name || user.email || 'Admin User'
+      );
+      showToast('Divorce application unverified', 'success');
+      await loadClients(page, limit, 'divorce');
+      await loadCreatorCounts();
+    } catch (error) {
+      showToast('Failed to unverify divorce application', 'error');
+      console.error('Failed to unverify divorce:', error);
+    }
+  };
+
+  const handleViewDivorceCert = async (app: DivorceApplication) => {
+    try {
+      await viewDivorceCertificate(app);
+    } catch (error) {
+      console.error('Failed to view divorce certificate:', error);
+      showToast('Failed to view certificate preview', 'error');
+    }
+  };
+
+  const handleDownloadDivorceCert = async (app: DivorceApplication) => {
+    try {
+      await downloadDivorceCertificate(app);
+      showToast('Divorce certificate downloaded successfully', 'success');
+    } catch (error) {
+      console.error('Failed to download divorce certificate:', error);
+      showToast('Failed to download certificate', 'error');
+    }
+  };
+
   const handleUpdateComment = async () => {
     if (!user) return;
     try {
-      await adminService.updateApplicationComment(
-        commentModalState.applicationId,
-        commentModalState.comment,
-        user.id,
-        user.name || user.email
-      );
+      if (creatorFilter === 'divorce') {
+        await adminService.updateDivorceApplicationComment(
+          commentModalState.applicationId,
+          commentModalState.comment,
+          user.id,
+          user.name || user.email
+        );
+        setDivorceApplications(prev => prev.map(a => a.id === commentModalState.applicationId ? { ...a, adminComment: commentModalState.comment } : a));
+      } else {
+        await adminService.updateApplicationComment(
+          commentModalState.applicationId,
+          commentModalState.comment,
+          user.id,
+          user.name || user.email
+        );
+        setClients(prev => prev.map(c => {
+          if (c.application?.id === commentModalState.applicationId) {
+            return {
+              ...c,
+              application: {
+                ...c.application,
+                adminComment: commentModalState.comment,
+              },
+            };
+          }
+          return c;
+        }));
+      }
       showToast('Comment updated successfully', 'success');
-
-      // Update local state without full reload
-      setClients(prev => prev.map(c => {
-        if (c.application?.id === commentModalState.applicationId) {
-          return {
-            ...c,
-            application: {
-              ...c.application,
-              adminComment: commentModalState.comment,
-            },
-          };
-        }
-        return c;
-      }));
 
       setCommentModalState({ isOpen: false, applicationId: '', comment: '' });
     } catch (error: any) {
@@ -316,7 +436,11 @@ const ClientsPage: React.FC = () => {
     if (!user) return;
 
     try {
-      await adminService.deleteApplication(applicationId, user.id, user.name || user.email);
+      if (creatorFilter === 'divorce') {
+        await adminService.deleteDivorceApplication(applicationId, user.id, user.name || user.email);
+      } else {
+        await adminService.deleteApplication(applicationId, user.id, user.name || user.email);
+      }
       showToast('Application deleted successfully', 'success');
       setDeleteModalState(prev => ({ ...prev, isOpen: false }));
       await loadClients(page, limit, creatorFilter);
@@ -431,6 +555,14 @@ const ClientsPage: React.FC = () => {
       badgeColor: creatorFilter === 'all' ? 'bg-gold-100 text-gold-800 border border-gold-200' : 'bg-gray-200/70 text-gray-700',
       description: 'Consolidated overview of all applications across all sources',
     },
+    {
+      id: 'divorce',
+      label: 'Divorce Applications',
+      icon: <FileX size={16} className={creatorFilter === 'divorce' ? 'text-rose-600' : 'text-gray-400'} />,
+      count: divorceCount,
+      badgeColor: creatorFilter === 'divorce' ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-gray-200/70 text-gray-700',
+      description: 'Applications registered for divorce verification and certificate issuance',
+    },
   ];
 
   if (isLoading) {
@@ -455,8 +587,8 @@ const ClientsPage: React.FC = () => {
             Back
           </Button>
         </div>
-        <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Clients</h1>
-        <p className="text-xs sm:text-sm text-gray-600">Manage and view all registered clients</p>
+        <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Clients/ Applications</h1>
+        <p className="text-xs sm:text-sm text-gray-600">Unified registry for marriage clients and divorce applications</p>
       </div>
 
       {/* Browser Tab Filter System */}
@@ -470,7 +602,7 @@ const ClientsPage: React.FC = () => {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setCreatorFilter(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`group relative flex items-center gap-2 sm:gap-2.5 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-t-xl transition-all duration-150 select-none text-xs sm:text-sm font-medium ${
                     isActive
                       ? 'bg-white text-gray-900 border-t-2 border-t-gold-500 border-x border-slate-200/90 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] font-semibold z-10 -mb-[1px]'
@@ -494,7 +626,7 @@ const ClientsPage: React.FC = () => {
         <div className="bg-white border border-slate-200/90 border-t-0 rounded-b-2xl p-3 sm:p-4 lg:p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-gold-500 animate-pulse"></span>
+              <span className={`w-2 h-2 rounded-full ${creatorFilter === 'divorce' ? 'bg-rose-500' : 'bg-gold-500'} animate-pulse`}></span>
               <p className="text-xs text-gray-600 font-medium">
                 {tabs.find(t => t.id === creatorFilter)?.description}
               </p>
@@ -510,7 +642,11 @@ const ClientsPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4 mt-3">
             <div className="flex-1 min-w-0">
               <Input
-                placeholder="Search by groom/bride name, email or phone..."
+                placeholder={
+                  creatorFilter === 'divorce'
+                    ? "Search by husband/wife name, email, phone or certificate..."
+                    : "Search by groom/bride name, email or phone..."
+                }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 leftIcon={<Search size={16} className="sm:w-5 sm:h-5" />}
@@ -524,7 +660,7 @@ const ClientsPage: React.FC = () => {
               <option value="all">All Verification</option>
               <option value="verified">Verified</option>
               <option value="unverified">Unverified</option>
-              <option value="rejected">Rejected Documents</option>
+              {creatorFilter !== 'divorce' && <option value="rejected">Rejected Documents</option>}
               <option value="draft">Draft</option>
             </select>
           </div>
@@ -540,7 +676,211 @@ const ClientsPage: React.FC = () => {
         )}
         {/* Mobile Card View */}
         <div className={`block sm:hidden space-y-3 transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
-          {clients.map((client) => {
+          {creatorFilter === 'divorce' ? (
+            divorceApplications.map((app) => {
+              const husbandName = app.userDetails
+                ? `${app.userDetails.firstName}${app.userDetails.lastName ? ' ' + app.userDetails.lastName : ''}`
+                : '-';
+              const wifeName = app.partnerForm
+                ? `${app.partnerForm.firstName}${app.partnerForm.lastName ? ' ' + app.partnerForm.lastName : ''}`
+                : '-';
+              const husbandPhone = app.userDetails?.mobileNumber || '-';
+              const wifePhone = app.partnerForm?.mobileNumber || '-';
+              const userEmail = app.proxyUserEmail || app.userDetails?.email || '-';
+
+              return (
+                <Card key={app.id} className="p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="space-y-3">
+                    {/* Header with Status Badge */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CircularProgress
+                          progress={app.progress || 100}
+                          size={52}
+                        >
+                          <div className="w-full h-full rounded-full bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center shadow-sm">
+                            <Users size={18} className="text-rose-600" />
+                          </div>
+                        </CircularProgress>
+                        <div>
+                          <p className="text-[10px] font-medium text-rose-600 uppercase tracking-wide">Couple</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {getStatusBadge(app.status)}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 uppercase">
+                          {app.divorceType || 'Talaq'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Husband & Wife Names */}
+                    {app.adminComment && (
+                      <div className="mb-2 bg-amber-50 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
+                        <div className="flex items-start gap-2.5">
+                          <div className="bg-amber-100 p-1 rounded-md mt-0.5">
+                            <StickyNote size={12} className="text-amber-700 fill-amber-300/50" />
+                          </div>
+                          <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                            {app.adminComment}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2 bg-gray-50/80 rounded-xl p-2.5">
+                      <div className="min-w-0">
+                        <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">Husband</p>
+                        <p className="text-xs font-semibold text-gray-900 truncate">🤵 {husbandName}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">Wife</p>
+                        <p className="text-xs font-semibold text-gray-900 truncate">👰 {wifeName}</p>
+                      </div>
+                    </div>
+
+                    {/* Contact Info */}
+                    <div className="space-y-1.5">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-gray-50/50 rounded-lg p-2">
+                          <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">Husband Phone</p>
+                          <p className="text-xs font-medium text-gray-800">{husbandPhone}</p>
+                        </div>
+                        <div className="bg-gray-50/50 rounded-lg p-2">
+                          <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">Wife Phone</p>
+                          <p className="text-xs font-medium text-gray-800">{wifePhone}</p>
+                        </div>
+                      </div>
+                      <div className="bg-gray-50/50 rounded-lg p-2">
+                        <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-0.5">Email</p>
+                        <p className="text-xs font-medium text-gray-800 truncate">{userEmail}</p>
+                      </div>
+                    </div>
+
+                    {/* Status Info Row */}
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="text-center p-2 bg-gray-50 rounded-lg">
+                        <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1">Updated</p>
+                        <p className="text-[10px] font-medium text-gray-700">
+                          {app.lastUpdated
+                            ? safeFormatDateObject(new Date(app.lastUpdated), 'dd-MM-yyyy')
+                            : '-'
+                          }
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Status with Verification */}
+                    <div className="bg-gray-50 rounded-lg p-2">
+                      <p className="text-[9px] text-gray-500 uppercase tracking-wide mb-1.5">Status</p>
+                      <div className="flex items-center justify-center gap-2">
+                        {getStatusBadge(app.status)}
+                        <Badge variant={app.verified ? 'success' : 'default'} className="!text-[9px] !px-1.5">
+                          {app.verified ? '✓ Verified' : 'Unverified'}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-gold-50 hover:bg-gold-100 text-gold-700 flex-1"
+                        onClick={() => navigate(`/admin/divorce/applications/${app.id}`)}
+                      >
+                        <Eye size={14} className="mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`!text-[11px] !px-3 !py-1.5 !rounded-lg ${app.adminComment ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'} flex-1`}
+                        onClick={() => {
+                          setCommentModalState({
+                            isOpen: true,
+                            applicationId: app.id,
+                            comment: app.adminComment || '',
+                          });
+                        }}
+                      >
+                        <StickyNote size={14} className={`mr-1 ${app.adminComment ? 'fill-current' : ''}`} />
+                        {app.adminComment ? 'Edit Note' : 'Add Note'}
+                      </Button>
+                      {app.verified ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex-1"
+                            onClick={() => handleUnverifyDivorce(app.id)}
+                          >
+                            <XCircle size={14} className="mr-1" />
+                            Unverify
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 flex-1"
+                            onClick={() => handleViewDivorceCert(app)}
+                          >
+                            <FileText size={14} className="mr-1" />
+                            View Cert
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex-1"
+                            onClick={() => handleDownloadDivorceCert(app)}
+                          >
+                            <FileCheck size={14} className="mr-1" />
+                            Download
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-green-50 hover:bg-green-100 text-green-700 flex-1"
+                          onClick={() => {
+                            setVerifyDivorceModalState({
+                              isOpen: true,
+                              applicationId: app.id,
+                              certificateNumber: app.certificateNumber,
+                              registrationDate: app.registrationDate,
+                              divorceDate: app.divorceDate,
+                              divorceType: app.divorceType,
+                            });
+                          }}
+                        >
+                          <CheckCircle size={14} className="mr-1" />
+                          Verify
+                        </Button>
+                      )}
+                      {app.status === 'draft' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="!text-[11px] !px-3 !py-1.5 !rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex-1"
+                          onClick={() => {
+                            setDeleteModalState({
+                              isOpen: true,
+                              applicationId: app.id,
+                              groomName: husbandName,
+                              brideName: wifeName,
+                            });
+                          }}
+                        >
+                          <Trash2 size={14} className="mr-1" />
+                          Delete
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })
+          ) : (
+            clients.map((client) => {
             const groomName = client.application?.userDetails
               ? `${client.application.userDetails.firstName}${client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''}`
               : '-';
@@ -797,7 +1137,8 @@ const ClientsPage: React.FC = () => {
                 </div>
               </Card>
             );
-          })}
+          })
+        )}
         </div>
 
         {/* Desktop Table View */}
@@ -805,7 +1146,7 @@ const ClientsPage: React.FC = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Groom & Bride</th>
+                <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">{creatorFilter === 'divorce' ? 'Husband & Wife' : 'Groom & Bride'}</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Phone & Email</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Source</th>
                 <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-700">Status</th>
@@ -814,7 +1155,184 @@ const ClientsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {clients.map((client) => {
+              {creatorFilter === 'divorce' ? (
+                divorceApplications.map((app) => {
+                  const husbandName = app.userDetails
+                    ? `${app.userDetails.firstName}${app.userDetails.lastName ? ' ' + app.userDetails.lastName : ''}`
+                    : '-';
+                  const wifeName = app.partnerForm
+                    ? `${app.partnerForm.firstName}${app.partnerForm.lastName ? ' ' + app.partnerForm.lastName : ''}`
+                    : '-';
+                  const husbandPhone = app.userDetails?.mobileNumber || '-';
+                  const wifePhone = app.partnerForm?.mobileNumber || '-';
+                  const userEmail = app.proxyUserEmail || app.userDetails?.email || '-';
+
+                  return (
+                    <tr key={app.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                          <CircularProgress
+                            progress={app.progress || 100}
+                            size={46}
+                          >
+                            <div className="w-full h-full rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
+                              <Users size={16} className="text-rose-600" />
+                            </div>
+                          </CircularProgress>
+                          <div className="flex flex-col">
+                            {app.adminComment && (
+                              <div className="mb-1.5 flex items-start gap-1.5 p-1.5 bg-amber-50/80 border border-amber-200/60 rounded-md shadow-sm w-fit max-w-[240px]">
+                                <StickyNote size={11} className="mt-0.5 text-amber-600 fill-amber-100 flex-shrink-0" />
+                                <span className="text-[10px] text-amber-900 font-medium line-clamp-2 leading-tight" title={app.adminComment}>
+                                  {app.adminComment}
+                                </span>
+                              </div>
+                            )}
+                            <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">🤵 {husbandName}</span>
+                            <span className="font-medium text-[10px] sm:text-xs lg:text-sm text-gray-900 truncate">👰 {wifeName}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
+                        <div className="flex flex-col text-[10px] sm:text-xs lg:text-sm text-gray-600 gap-2">
+                          <div>
+                            <span className="font-medium truncate">🤵 {husbandPhone}</span>
+                          </div>
+                          <div>
+                            <span className="font-medium truncate">👰 {wifePhone}</span>
+                          </div>
+                          <div>
+                            <span className="truncate text-[9px] sm:text-[10px] lg:text-xs text-gray-500">📧 {userEmail}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                            <ShieldCheck size={11} className="flex-shrink-0" />
+                            Admin
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 uppercase">
+                            {app.divorceType || 'Talaq'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
+                        <div className="flex flex-col gap-1.5">
+                          {getStatusBadge(app.status)}
+                          <Badge variant={app.verified ? 'success' : 'default'} className="!text-[10px] sm:text-xs">
+                            {app.verified ? '✓ Verified' : 'Unverified'}
+                          </Badge>
+                        </div>
+                      </td>
+                      <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4">
+                        <div className="flex flex-wrap gap-1 sm:gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
+                            onClick={() => navigate(`/admin/divorce/applications/${app.id}`)}
+                          >
+                            <Eye size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                            <span className="hidden sm:inline">View</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 ${app.adminComment ? 'text-amber-700 hover:bg-amber-50' : ''}`}
+                            onClick={() => {
+                              setCommentModalState({
+                                isOpen: true,
+                                applicationId: app.id,
+                                comment: app.adminComment || '',
+                              });
+                            }}
+                            title={app.adminComment}
+                          >
+                            <StickyNote size={12} className={`sm:w-4 sm:h-4 mr-0.5 sm:mr-1 ${app.adminComment ? 'fill-current' : ''}`} />
+                            <span className="hidden sm:inline">Note</span>
+                          </Button>
+                          {app.verified ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
+                                onClick={() => handleUnverifyDivorce(app.id)}
+                              >
+                                <XCircle size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                <span className="hidden sm:inline">Unverify</span>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-blue-600 hover:bg-blue-50"
+                                onClick={() => handleViewDivorceCert(app)}
+                              >
+                                <FileText size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                <span className="hidden sm:inline">View</span>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-indigo-600 hover:bg-indigo-50"
+                                onClick={() => handleDownloadDivorceCert(app)}
+                              >
+                                <FileCheck size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                                <span className="hidden sm:inline">Download</span>
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2"
+                              onClick={() => {
+                                setVerifyDivorceModalState({
+                                  isOpen: true,
+                                  applicationId: app.id,
+                                  certificateNumber: app.certificateNumber,
+                                  registrationDate: app.registrationDate,
+                                  divorceDate: app.divorceDate,
+                                  divorceType: app.divorceType,
+                                });
+                              }}
+                            >
+                              <CheckCircle size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                              <span className="hidden sm:inline">Verify</span>
+                            </Button>
+                          )}
+                          {app.status === 'draft' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="!text-[10px] sm:!text-xs !px-1.5 sm:!px-2 text-red-600 hover:bg-red-50"
+                              onClick={() => {
+                                setDeleteModalState({
+                                  isOpen: true,
+                                  applicationId: app.id,
+                                  groomName: husbandName,
+                                  brideName: wifeName,
+                                });
+                              }}
+                            >
+                              <Trash2 size={12} className="sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                              <span className="hidden sm:inline">Delete</span>
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-2 sm:py-3 lg:py-4 px-2 sm:px-4 text-[10px] sm:text-xs lg:text-sm text-gray-600">
+                        {app.lastUpdated
+                          ? safeFormatDateObject(new Date(app.lastUpdated), 'dd-MM-yyyy')
+                          : '-'
+                        }
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                clients.map((client) => {
                 const groomName = client.application?.userDetails
                   ? `${client.application.userDetails.firstName}${client.application.userDetails.lastName ? ' ' + client.application.userDetails.lastName : ''}`
                   : '-';
@@ -1032,15 +1550,18 @@ const ClientsPage: React.FC = () => {
                     </td>
                   </tr>
                 );
-              })}
+              })
+            )}
             </tbody>
           </table>
         </div>
 
-        {clients.length === 0 && (
+        {((creatorFilter === 'divorce' && divorceApplications.length === 0) || (creatorFilter !== 'divorce' && clients.length === 0)) && (
           <div className="text-center py-6 sm:py-8 lg:py-12">
             <Users size={32} className="sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3 lg:mb-4" />
-            <p className="text-xs sm:text-sm text-gray-500">No clients found</p>
+            <p className="text-xs sm:text-sm text-gray-500">
+              {creatorFilter === 'divorce' ? 'No divorce applications found' : 'No clients found'}
+            </p>
           </div>
         )}
 
@@ -1173,6 +1694,18 @@ const ClientsPage: React.FC = () => {
         marriageDate={verifyModalState.marriageDate}
         groomDob={verifyModalState.groomDob}
         brideDob={verifyModalState.brideDob}
+      />
+
+      {/* Verify Divorce Application Modal */}
+      <VerifyDivorceApplicationModal
+        isOpen={verifyDivorceModalState.isOpen}
+        onClose={() => setVerifyDivorceModalState({ isOpen: false, applicationId: '' })}
+        onConfirm={handleVerifyDivorce}
+        applicationId={verifyDivorceModalState.applicationId}
+        currentCertificateNumber={verifyDivorceModalState.certificateNumber}
+        currentRegistrationDate={verifyDivorceModalState.registrationDate}
+        divorceDate={verifyDivorceModalState.divorceDate}
+        divorceType={verifyDivorceModalState.divorceType}
       />
 
       {/* Delete Application Confirmation Modal */}

@@ -8,7 +8,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
-import { Users, FileText, CheckCircle, XCircle, Search, UserPlus, ChevronLeft, ChevronRight, QrCode, CalendarCheck, Award } from 'lucide-react';
+import { Users, FileText, CheckCircle, XCircle, Search, UserPlus, ChevronLeft, ChevronRight, QrCode, CalendarCheck, Award, FileX } from 'lucide-react';
 import { safeFormatDateObject } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
 
@@ -17,6 +17,7 @@ const AdminDashboardPage: React.FC = () => {
   // State for data
   const [applications, setApplications] = useState<Application[]>([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, verified: 0, unverified: 0, draft: 0 });
+  const [divorceTotal, setDivorceTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   // State for pagination and filters
@@ -36,6 +37,8 @@ const AdminDashboardPage: React.FC = () => {
       try {
         const statsData = await adminService.getApplicationStats();
         setStats(statsData);
+        const dStats = await adminService.getDivorceApplicationStats().catch(() => ({ total: 0 }));
+        setDivorceTotal(dStats.total || 0);
       } catch (error) {
         console.error('Failed to load stats:', error);
       }
@@ -94,13 +97,23 @@ const AdminDashboardPage: React.FC = () => {
             <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Admin Dashboard</h1>
             <p className="text-xs sm:text-sm text-gray-600">Manage marriage registration applications</p>
           </div>
-          <Button
-            onClick={() => navigate('/admin/create-application')}
-            className="w-full sm:w-auto"
-          >
-            <UserPlus size={16} className="mr-2" />
-            Create Application for Offline User
-          </Button>
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/admin/create-application?type=divorce')}
+              className="w-full sm:w-auto"
+            >
+              <FileX size={16} className="mr-2" />
+              Apply For Divorce
+            </Button>
+            <Button
+              onClick={() => navigate('/admin/create-application')}
+              className="w-full sm:w-auto"
+            >
+              <UserPlus size={16} className="mr-2" />
+              Create Marriage Application
+            </Button>
+          </div>
         </div>
       </div>
 

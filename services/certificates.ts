@@ -74,17 +74,51 @@ export const certificateService = {
   },
 
   async getCertificateByCertificateNumber(certificateNumber: string): Promise<any | null> {
-    // Normalize input: remove all hyphens to match database format
-    // This allows both old format (WB-MSD-BRW-...) and new format (WBMSDBRW...) to work
-    const normalizedCertNumber = certificateNumber.trim().toUpperCase().replace(/-/g, '');
+    const rawNumber = certificateNumber.trim();
+    const normalizedCertNumber = rawNumber.toUpperCase().replace(/-/g, '');
 
-    // Find the application by certificate_number with all details
-    const { data: application, error: appError } = await supabase
+    // 1. Match certificate_number case-insensitively
+    let { data: application, error: appError } = await supabase
       .from('applications')
       .select('*')
-      .eq('certificate_number', normalizedCertNumber)
+      .ilike('certificate_number', normalizedCertNumber)
       .eq('verified', true)
       .maybeSingle();
+
+    // 2. If not found and input differs, try rawNumber
+    if (!application && rawNumber !== normalizedCertNumber) {
+      const { data: fallbackApp } = await supabase
+        .from('applications')
+        .select('*')
+        .ilike('certificate_number', rawNumber)
+        .eq('verified', true)
+        .maybeSingle();
+      if (fallbackApp) {
+        application = fallbackApp;
+      }
+    }
+
+    // 3. Fallback: check by verification_id in certificates table
+    if (!application) {
+      const { data: cert } = await supabase
+        .from('certificates')
+        .select('*')
+        .ilike('verification_id', rawNumber)
+        .eq('verified', true)
+        .maybeSingle();
+
+      if (cert?.application_id) {
+        const { data: appFromCert } = await supabase
+          .from('applications')
+          .select('*')
+          .eq('id', cert.application_id)
+          .eq('verified', true)
+          .maybeSingle();
+        if (appFromCert) {
+          application = appFromCert;
+        }
+      }
+    }
 
     if (appError) {
       if (appError.code === 'PGRST116') {

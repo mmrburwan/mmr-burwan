@@ -200,7 +200,7 @@ export interface Notification {
   userId: string;
   applicationId?: string;
   documentId?: string;
-  type: 'document_rejected' | 'document_approved' | 'application_approved' | 'application_rejected' | 'application_verified' | 'certificate_ready' | 'other';
+  type: 'document_rejected' | 'document_approved' | 'application_approved' | 'application_rejected' | 'application_verified' | 'certificate_ready' | 'divorce_verified' | 'divorce_certificate_ready' | 'other';
   title: string;
   message: string;
   read: boolean;
@@ -218,4 +218,64 @@ export interface PaginatedResponse<T> {
 export interface FilterOptions {
   search?: string;
   verified?: 'all' | 'verified' | 'unverified' | 'submitted' | 'draft';
+}
+
+
+export type DivorceType = 'talaq' | 'khula' | 'mutual' | 'mubarat' | 'other';
+
+export interface DivorceApplication {
+  id: string;
+  userId: string;
+  status: 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected';
+  progress: number;
+  marriageApplicationId?: string;
+  marriageCertificateNumber?: string;
+  userDetails?: UserDetails;
+  partnerForm?: PartnerDetails;
+  userAddress?: Address;
+  userCurrentAddress?: Address;
+  partnerAddress?: Address;
+  partnerCurrentAddress?: Address;
+  divorceDate?: string;
+  divorceReason?: string;
+  divorceType?: DivorceType;
+  declarations?: Record<string, boolean | string>;
+  documents: Document[];
+  verified?: boolean;
+  verifiedAt?: string;
+  verifiedBy?: string;
+  certificateNumber?: string;
+  registrationDate?: string;
+  registrarName?: string;
+  certificateDetails?: CertificateDetails;
+  adminComment?: string;
+  createdByAdminId?: string;
+  isProxyApplication?: boolean;
+  offlineApplicantContact?: {
+    phone?: string;
+    address?: string;
+    notes?: string;
+    contactPerson?: string;
+  };
+  proxyUserEmail?: string;
+  submittedAt?: string;
+  createdAt?: string;
+  lastUpdated: string;
+}
+
+export interface DivorceCertificate {
+  id: string;
+  userId: string;
+  divorceApplicationId?: string;
+  verificationId: string;
+  name: string;
+  issuedOn: string;
+  pdfUrl?: string;
+  verified: boolean;
+  expiresAt?: string;
+  certificateNumber?: string;
+  registrationDate?: string;
+  husbandName?: string;
+  wifeName?: string;
+  canDownload?: boolean;
 }

@@ -1,3 +1,5 @@
+import './polyfills';
+import { registerCertificateFonts } from './pdfFonts';
 import { Application } from '../types';
 import { pdf } from '@react-pdf/renderer';
 import React from 'react';
@@ -340,6 +342,7 @@ const imageUrlToDataUrl = async (imageUrl: string): Promise<string | null> => {
 
 // Generate certificate PDF blob (used for both download and upload)
 const generateCertificatePDFBlob = async (application: Application): Promise<{ blob: Blob; certificateData: any }> => {
+  registerCertificateFonts();
   const certificateData = generateCertificateData(application);
 
   // Convert static certificate images to data URLs

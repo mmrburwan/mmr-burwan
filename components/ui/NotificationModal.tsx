@@ -75,6 +75,8 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
       case 'application_verified':
         return <Award size={18} className="sm:w-6 sm:h-6 text-gold-600" />;
       case 'certificate_ready':
+      case 'divorce_verified':
+      case 'divorce_certificate_ready':
         return <Award size={18} className="sm:w-6 sm:h-6 text-gold-600" />;
       default:
         return <Info size={18} className="sm:w-6 sm:h-6 text-blue-600" />;
@@ -159,6 +161,20 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
             >
               <Upload size={14} className="sm:w-4 sm:h-4 mr-1.5" />
               Upload Doc
+            </Button>
+          )}
+          {(notification.type === 'divorce_verified' || notification.type === 'divorce_certificate_ready') && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                onClose();
+                if (onNavigate) onNavigate();
+                navigate('/dashboard');
+              }}
+              className="flex-1 !text-xs sm:!text-sm"
+            >
+              View on Dashboard
             </Button>
           )}
           {notification.type === 'certificate_ready' && user && (
