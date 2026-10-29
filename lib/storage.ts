@@ -5,13 +5,16 @@ import { supabase } from './supabase';
 // R2 Configuration with fallback defaults (ensures compatibility even if Vite has not reloaded .env)
 const R2_ACCOUNT_ID = import.meta.env.VITE_R2_ACCOUNT_ID || 'a2b52c2ba93ac52eae4ead96a6fd7d3a';
 
-// Override stale/revoked key if cached by Vite's dev server bundler
+// Override stale/revoked keys if cached by Vite's dev server bundler or production env
 const rawKey = import.meta.env.VITE_R2_ACCESS_KEY_ID;
 const R2_ACCESS_KEY_ID = (!rawKey || rawKey === 'd5bb08b3be458cdc328ce38b40d39832')
   ? '0ea53de6019f0725859ee92bb848448e'
   : rawKey;
 
-const R2_SECRET_ACCESS_KEY = import.meta.env.VITE_R2_SECRET_ACCESS_KEY || '257e952825db1e5fed775efb1e62c7ac0db09240894e5fdd8fd86229a0464760';
+const rawSecretKey = import.meta.env.VITE_R2_SECRET_ACCESS_KEY;
+const R2_SECRET_ACCESS_KEY = (!rawSecretKey || rawSecretKey === '07931118267abd2c9ecb95a9fc2a5669da7aa4cc6d0b217597ccc9d9be710cea')
+  ? '257e952825db1e5fed775efb1e62c7ac0db09240894e5fdd8fd86229a0464760'
+  : rawSecretKey;
 
 // Per-bucket public URLs (each R2 bucket has its own r2.dev subdomain)
 const R2_DOCUMENTS_PUBLIC_URL = import.meta.env.VITE_R2_DOCUMENTS_PUBLIC_URL || 'https://pub-8c46b651293349a4b01ccd365dbc6d5c.r2.dev';
