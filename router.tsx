@@ -38,6 +38,7 @@ const ScannerPage = lazy(() => import('./pages/admin/ScannerPage'));
 const AuditPage = lazy(() => import('./pages/admin/AuditPage'));
 const CertificatesPage = lazy(() => import('./pages/admin/CertificatesPage'));
 const CreateDivorceApplicationPage = lazy(() => import('./pages/admin/CreateDivorceApplicationPage'));
+const DivorceApplicationPage = lazy(() => import('./pages/divorce/DivorceApplicationPage'));
 const DivorceApplicationsPage = lazy(() => import('./pages/admin/DivorceApplicationsPage'));
 const DivorceApplicationDetailsPage = lazy(() => import('./pages/admin/DivorceApplicationDetailsPage'));
 const DivorceCertificatesPage = lazy(() => import('./pages/admin/DivorceCertificatesPage'));
@@ -196,6 +197,14 @@ const router = createBrowserRouter(
       element: (
         <Suspense fallback={<LoadingSpinner />}>
           <ApplicationPage />
+        </Suspense>
+      ),
+    },
+    {
+      path: '/divorce-application',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <DivorceApplicationPage />
         </Suspense>
       ),
     },

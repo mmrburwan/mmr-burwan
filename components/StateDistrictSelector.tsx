@@ -4,17 +4,23 @@ import SearchableSelect from './ui/SearchableSelect';
 import { getDistrictsByState, getAllStates } from '../data/indianStatesDistricts';
 
 interface StateDistrictSelectorProps {
-  stateValue: string;
-  districtValue: string;
-  stateRegister: UseFormRegisterReturn;
-  districtRegister: UseFormRegisterReturn;
-  setValue: UseFormSetValue<any>;
+  stateValue?: string;
+  districtValue?: string;
+  stateRegister?: UseFormRegisterReturn;
+  districtRegister?: UseFormRegisterReturn;
+  setValue?: UseFormSetValue<any>;
   stateError?: string;
   districtError?: string;
   disabled?: boolean;
   stateLabel?: string;
   districtLabel?: string;
   required?: boolean;
+
+  // Controlled component mode
+  selectedState?: string;
+  selectedDistrict?: string;
+  onStateChange?: (state: string) => void;
+  onDistrictChange?: (district: string) => void;
 }
 
 const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
@@ -29,7 +35,14 @@ const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
   stateLabel = 'State',
   districtLabel = 'District',
   required = true,
+  selectedState,
+  selectedDistrict,
+  onStateChange,
+  onDistrictChange,
 }) => {
+  const effectiveState = stateValue ?? selectedState ?? '';
+  const effectiveDistrict = districtValue ?? selectedDistrict ?? '';
+
   // Get all states for the dropdown
   const stateOptions = useMemo(() => {
     const states = getAllStates();
@@ -41,53 +54,89 @@ const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
 
   // Get districts based on selected state
   const districtOptions = useMemo(() => {
-    if (!stateValue) {
+    if (!effectiveState) {
       return [{ value: '', label: 'Select District' }];
     }
-    const districts = getDistrictsByState(stateValue);
+    const districts = getDistrictsByState(effectiveState);
     return [
       { value: '', label: 'Select District' },
       ...districts.map(district => ({ value: district, label: district }))
     ];
-  }, [stateValue]);
+  }, [effectiveState]);
 
   // Reset district when state changes
   useEffect(() => {
-    if (stateValue && districtValue) {
-      const districts = getDistrictsByState(stateValue);
+    if (effectiveState && effectiveDistrict) {
+      const districts = getDistrictsByState(effectiveState);
       // If current district is not in the new state's districts, reset it
-      if (!districts.includes(districtValue)) {
+      if (!districts.includes(effectiveDistrict)) {
+        if (districtRegister?.name && setValue) {
+          setValue(districtRegister.name, '');
+        }
+        if (onDistrictChange) {
+          onDistrictChange('');
+        }
+      }
+    } else if (!effectiveState && effectiveDistrict) {
+      // If state is cleared, clear district too
+      if (districtRegister?.name && setValue) {
         setValue(districtRegister.name, '');
       }
-    } else if (!stateValue) {
-      // If state is cleared, clear district too
-      setValue(districtRegister.name, '');
+      if (onDistrictChange) {
+        onDistrictChange('');
+      }
     }
-  }, [stateValue, districtValue, setValue, districtRegister.name]);
+  }, [effectiveState, effectiveDistrict, setValue, districtRegister?.name, onDistrictChange]);
+
+  const handleStateChange = (value: string) => {
+    if (stateRegister?.onChange) {
+      const event = {
+        target: {
+          value,
+          name: stateRegister.name
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      stateRegister.onChange(event);
+    }
+    if (onStateChange) {
+      onStateChange(value);
+    }
+    // Clear district when state changes
+    if (value !== effectiveState) {
+      if (districtRegister?.name && setValue) {
+        setValue(districtRegister.name, '');
+      }
+      if (onDistrictChange) {
+        onDistrictChange('');
+      }
+    }
+  };
+
+  const handleDistrictChange = (value: string) => {
+    if (districtRegister?.onChange) {
+      const event = {
+        target: {
+          value,
+          name: districtRegister.name
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      districtRegister.onChange(event);
+    }
+    if (onDistrictChange) {
+      onDistrictChange(value);
+    }
+  };
 
   return (
     <>
       <SearchableSelect
         label={stateLabel}
         options={stateOptions.filter(opt => opt.value !== '')} // Remove empty option for searchable
-        value={stateValue || ''}
-        onChange={(value) => {
-          // Create a synthetic event for react-hook-form
-          const event = {
-            target: {
-              value,
-              name: stateRegister.name
-            }
-          } as React.ChangeEvent<HTMLInputElement>;
-          stateRegister.onChange(event);
-          // Clear district when state changes
-          if (value !== stateValue) {
-            setValue(districtRegister.name, '');
-          }
-        }}
-        onBlur={stateRegister.onBlur}
-        name={stateRegister.name}
-        ref={stateRegister.ref}
+        value={effectiveState}
+        onChange={handleStateChange}
+        onBlur={stateRegister?.onBlur}
+        name={stateRegister?.name || 'state'}
+        ref={stateRegister?.ref}
         disabled={disabled}
         error={stateError}
         required={required}
@@ -98,21 +147,12 @@ const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
       <SearchableSelect
         label={districtLabel}
         options={districtOptions.filter(opt => opt.value !== '')} // Remove empty option for searchable
-        value={districtValue || ''}
-        onChange={(value) => {
-          // Create a synthetic event for react-hook-form
-          const event = {
-            target: {
-              value,
-              name: districtRegister.name
-            }
-          } as React.ChangeEvent<HTMLInputElement>;
-          districtRegister.onChange(event);
-        }}
-        onBlur={districtRegister.onBlur}
-        name={districtRegister.name}
-        ref={districtRegister.ref}
-        disabled={disabled || !stateValue}
+        value={effectiveDistrict}
+        onChange={handleDistrictChange}
+        onBlur={districtRegister?.onBlur}
+        name={districtRegister?.name || 'district'}
+        ref={districtRegister?.ref}
+        disabled={disabled || !effectiveState}
         error={districtError}
         required={required}
         allowCustom={false}

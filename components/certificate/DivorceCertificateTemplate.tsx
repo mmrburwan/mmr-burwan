@@ -126,6 +126,7 @@ interface DivorceCertificateTemplateProps {
   marriageCertificateNumber?: string;
   registrarName: string;
   registrarLicense: string;
+  registrarQualifications?: string;
   registrarOffice: string;
   registrarPhone: string;
   registrarEmail: string;
@@ -145,6 +146,7 @@ const DivorceCertificateTemplate: React.FC<DivorceCertificateTemplateProps> = ({
   marriageCertificateNumber,
   registrarName,
   registrarLicense,
+  registrarQualifications,
   registrarOffice,
   registrarPhone,
   registrarEmail,
@@ -449,11 +451,23 @@ const DivorceCertificateTemplate: React.FC<DivorceCertificateTemplateProps> = ({
             marginBottom: '12px',
             color: '#8b6914'
           }}>
-            Muhammadan Marriage Registrar & Qaazi Details
+            Muhammadan Marriage Registrar & Qaazi Details:
           </h3>
           <div style={{ fontSize: '11px', lineHeight: '1.8' }}>
-            <p><strong>Name:</strong> {registrarName}</p>
-            <p><strong>Licence No:</strong> {registrarLicense}</p>
+            {registrarQualifications ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <p><strong>SENIOR MUFTI MAULANA AL-HAJJ MD ISMAIL KHAN</strong></p>
+                  <p><strong>License and Sanad No:</strong> {registrarLicense}</p>
+                </div>
+                <p>{registrarQualifications}</p>
+              </>
+            ) : (
+              <>
+                <p><strong>Name:</strong> {registrarName}</p>
+                <p><strong>Licence No:</strong> {registrarLicense}</p>
+              </>
+            )}
             <p><strong>Office Address:</strong> {registrarOffice}</p>
             <p style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '20px' }}>
               <span><strong>Contact:</strong> ✉️ {registrarEmail}</span>

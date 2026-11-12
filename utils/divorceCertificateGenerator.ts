@@ -122,7 +122,7 @@ export const generateDivorceCertificateData = (application: DivorceApplication) 
 
   if (certDetails && (certDetails.bookNumber || certDetails.volumeNumber)) {
     parsedCert = {
-      book: certDetails.bookNumber || 'I',
+      book: certDetails.bookNumber || 'II',
       volumeNumber: certDetails.volumeNumber || '1',
       volumeLetter: certDetails.volumeLetter || '',
       volumeYear: certDetails.volumeYear || '',
@@ -134,34 +134,75 @@ export const generateDivorceCertificateData = (application: DivorceApplication) 
     parsedCert = parseCertificateNumber(application.certificateNumber);
   }
 
-  const volNoParts = [parsedCert.volumeNumber, parsedCert.volumeLetter, parsedCert.volumeYear].filter(Boolean);
-  const volNo = volNoParts.join('-');
+  // Format volume number matching certificateGenerator.ts
+  const volNo = (() => {
+    if (application.certificateDetails) {
+      const { volumeNumber, volumeLetter, volumeYear } = application.certificateDetails;
+      const volumeStr = [volumeNumber, volumeLetter].filter(Boolean).join('-');
+      return volumeYear ? `${volumeStr}/${volumeYear}` : volumeStr;
+    }
+    const parts = [parsedCert.volumeNumber, parsedCert.volumeLetter].filter(Boolean);
+    const basePart = parts.join('-');
+    return parsedCert.volumeYear ? `${basePart}/${parsedCert.volumeYear}` : (basePart || '1');
+  })();
 
-  const serialNoParts = [parsedCert.serialNumber, parsedCert.serialYear].filter(Boolean);
-  const serialNo = serialNoParts.join('-');
+  // Format serial number matching certificateGenerator.ts
+  const serialNo = (() => {
+    if (application.certificateDetails) {
+      const { serialNumber, serialYear } = application.certificateDetails;
+      return serialYear ? `${serialNumber}/${serialYear}` : serialNumber;
+    }
+    return parsedCert.serialYear
+      ? `${parsedCert.serialNumber}/${parsedCert.serialYear}`
+      : (parsedCert.serialNumber || '1');
+  })();
 
-  const defaultCertNumber = application.certificateNumber || 'WBMSDBRWI12024120241';
+  const defaultCertNumber = application.certificateNumber || 'WBMSDBRWII12024120241';
   // Keep MMR standard verification ID format as requested
   const verificationId = `MMR-BW-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
-  const isMinhajul = application.registrarName !== 'md_ismail_khan';
+  // Determine registrar information based on application.registrarName
+  // Matching certificateGenerator.ts for BOTH registrars!
+  const registrarNameValue = application.registrarName || 'minhajul_islam_khan';
+
+  const registrarInfo = {
+    minhajul_islam_khan: {
+      name: 'MINHAJUL ISLAM KHAN',
+      license: '04L(St.)/LW/O/St./4M-123/2019',
+      qualifications: undefined,
+      office: 'VILL. & P.O- GRAMSHALIKA, P.S- BURWAN, DIST- MURSHIDABAD, WEST BENGAL, PIN-742132',
+      phone: '9647724532',
+      email: 'mmrburwan@gmail.com',
+    },
+    md_ismail_khan: {
+      name: 'SENIOR MUFTI MAULANA AL-HAJJ MD ISMAIL KHAN',
+      qualifications: 'M.M.M.F. (CAL), M.A. ALIGARH MUSLIM UNIVERSITY',
+      license: '2203, 2204',
+      office: 'VILL & PO- GRAMSHALIKA, PS- BURWAN, DIST- MURSHIDABAD, WEST BENGAL, PIN- 742132',
+      phone: '9732688698',
+      email: 'mmrburwan@gmail.com',
+    },
+  };
+
+  const selectedRegistrar = registrarInfo[registrarNameValue as keyof typeof registrarInfo] || registrarInfo.minhajul_islam_khan;
 
   return {
     verificationId,
     registrationDate: application.registrationDate || new Date().toISOString(),
     consecutiveNumber: defaultCertNumber,
-    book: parsedCert.book,
+    book: parsedCert.book || 'II',
     volNo: volNo || '1',
     serialNo: serialNo || '1',
     page: parsedCert.pageNumber || '1',
     divorceDate: application.divorceDate,
     divorceType: application.divorceType || 'talaq',
     marriageCertificateNumber: application.marriageCertificateNumber,
-    registrarName: isMinhajul ? 'Minhajul Islam Khan' : 'MD Ismail Khan',
-    registrarLicense: isMinhajul ? '03 OF 2017' : '02 OF 2015',
-    registrarOffice: 'Vill.& P.O. Gramshalika, P.S. Burwan, Dist. Murshidabad, PIN- 742132',
-    registrarPhone: '+91 97335 14125',
-    registrarEmail: 'mmrburwan@gmail.com',
+    registrarName: selectedRegistrar.name,
+    registrarLicense: selectedRegistrar.license,
+    registrarQualifications: selectedRegistrar.qualifications,
+    registrarOffice: selectedRegistrar.office,
+    registrarPhone: selectedRegistrar.phone,
+    registrarEmail: selectedRegistrar.email,
     husbandFirstName: userDetails.firstName || 'Husband',
     husbandLastName: userDetails.lastName || '',
     husbandFatherName: (userDetails as any).fatherName || 'N/A',
@@ -191,6 +232,20 @@ export const generateDivorceCertificatePDFBlob = async (application: DivorceAppl
     console.error('Failed to load emblem image:', error);
   }
 
+  // Find joint photograph and convert to data URL if it exists
+  const jointPhotograph = (application.documents as any)?.find(
+    (doc: any) => doc.type === 'photo' && doc.belongsTo === 'joint'
+  );
+
+  let jointPhotoDataUrl: string | null = null;
+  if (jointPhotograph && jointPhotograph.url) {
+    try {
+      jointPhotoDataUrl = await imageUrlToDataUrl(jointPhotograph.url);
+    } catch (error) {
+      console.error('Failed to load joint photograph for divorce:', error);
+    }
+  }
+
   const certificateNumber = application.certificateNumber || certificateData.consecutiveNumber;
   const verificationUrl = `${baseUrl}/verify/${certificateNumber}`;
 
@@ -211,6 +266,7 @@ export const generateDivorceCertificatePDFBlob = async (application: DivorceAppl
   const doc = React.createElement(DivorceCertificatePDF, {
     application,
     certificateData,
+    jointPhotoDataUrl,
     qrCodeImage,
     borderImageDataUrl,
     emblemImageDataUrl,

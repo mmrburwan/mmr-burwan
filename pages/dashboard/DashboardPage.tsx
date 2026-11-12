@@ -616,6 +616,23 @@ const DashboardPage: React.FC = () => {
                   </div>
                 )}
               </div>
+            ) : divorceApplication?.status === 'draft' ? (
+              <div className="space-y-2">
+                <div>
+                  <p className="text-[11px] sm:text-xs text-gray-500">Status</p>
+                  <p className="font-medium text-xs sm:text-sm text-gray-900">
+                    Draft Application in Progress ({divorceApplication.progress || 0}%)
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="!text-xs sm:!text-sm w-full bg-rose-600 hover:bg-rose-700"
+                  onClick={() => navigate('/divorce-application')}
+                >
+                  Continue Divorce Application
+                </Button>
+              </div>
             ) : (
               <div>
                 <p className="text-[11px] sm:text-xs text-gray-500">Status</p>

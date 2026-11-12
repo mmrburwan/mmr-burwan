@@ -1132,6 +1132,139 @@ export const adminService = {
     }
   },
 
+  async createDivorceApplicationForOfflineUser(
+    applicantData: {
+      email: string;
+      password: string;
+    },
+    adminId: string,
+    adminName: string
+  ): Promise<{ application: DivorceApplication; credentials: { email: string; password: string } }> {
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+
+      const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+      const functionUrl = `${supabaseUrl}/functions/v1/create-proxy-user`;
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': (import.meta as any).env.VITE_SUPABASE_ANON_KEY || '',
+        },
+        body: JSON.stringify({
+          email: applicantData.email,
+          password: applicantData.password,
+          adminId: adminId,
+          adminName: adminName,
+        }),
+      });
+
+      const responseText = await response.text();
+      let functionData: any = null;
+      try {
+        functionData = JSON.parse(responseText);
+      } catch (parseErr) {
+        throw new Error(responseText || 'Failed to create user account');
+      }
+
+      if (!response.ok || !functionData?.success) {
+        const errorMessage = functionData?.error || functionData?.message || 'Failed to create user account';
+        if (errorMessage.toLowerCase().includes('already exists') || errorMessage.toLowerCase().includes('already registered')) {
+          throw new Error('A user with this email address already exists. Please use a different email.');
+        }
+        throw new Error(errorMessage);
+      }
+
+      const { userId, email: userEmail, password } = functionData;
+
+      // Create draft divorce application
+      const { data: draftData, error: draftError } = await supabase
+        .from('divorce_applications')
+        .insert({
+          user_id: userId,
+          status: 'draft',
+          progress: 0,
+          created_by_admin_id: adminId,
+          is_proxy_application: true,
+          proxy_user_email: userEmail,
+          offline_applicant_contact: {
+            email: userEmail,
+            password: applicantData.password,
+          },
+          user_details: {},
+          partner_form: {},
+          user_address: {},
+          user_current_address: {},
+          partner_address: {},
+          partner_current_address: {},
+          declarations: {},
+        })
+        .select(`
+          *,
+          documents:divorce_documents (*)
+        `)
+        .single();
+
+      if (draftError) {
+        throw new Error(`Failed to create divorce application: ${draftError.message}`);
+      }
+
+      await auditService.createLog({
+        actorId: adminId,
+        actorName: adminName,
+        actorRole: 'admin',
+        action: 'proxy_divorce_application_created',
+        resourceType: 'divorce_application',
+        resourceId: draftData.id,
+        details: {
+          proxyUserEmail: userEmail,
+          isProxyApplication: true,
+        },
+      });
+
+      return {
+        application: divorceApplicationService.mapDivorceApplication(draftData),
+        credentials: {
+          email: userEmail,
+          password: password,
+        },
+      };
+    } catch (error: any) {
+      console.error('Error creating proxy divorce application:', error);
+      throw error;
+    }
+  },
+
+  async getPendingDivorceApplications(adminId: string): Promise<DivorceApplication[]> {
+    const { data, error } = await supabase
+      .from('divorce_applications')
+      .select(`
+        *,
+        documents:divorce_documents (*)
+      `)
+      .eq('created_by_admin_id', adminId)
+      .in('status', ['draft', 'under_review'])
+      .order('last_updated', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching pending divorce applications:', error);
+      return [];
+    }
+
+    return (data || []).map(app => {
+      const mapped = divorceApplicationService.mapDivorceApplication(app);
+      return {
+        ...mapped,
+        progress: divorceApplicationService.calculateActualProgress(mapped),
+      };
+    });
+  },
+
   async deleteApplication(applicationId: string, actorId: string, actorName: string): Promise<void> {
     const { data: appData, error: fetchError } = await supabase
       .from('applications')
@@ -1610,6 +1743,28 @@ export const adminService = {
 
   async deleteDivorceApplication(applicationId: string, actorId: string, actorName: string): Promise<void> {
     try {
+      const { data: appData } = await supabase
+        .from('divorce_applications')
+        .select('user_id, is_proxy_application')
+        .eq('id', applicationId)
+        .maybeSingle();
+
+      if (appData?.is_proxy_application && appData?.user_id) {
+        try {
+          await supabase.functions.invoke('delete-application', {
+            body: {
+              applicationId: applicationId,
+              userId: appData.user_id,
+              actorId: actorId,
+              actorName: actorName,
+              actorRole: 'admin',
+            },
+          });
+        } catch (fnErr) {
+          console.warn('Edge function delete-application failed:', fnErr);
+        }
+      }
+
       await supabase.from('divorce_documents').delete().eq('divorce_application_id', applicationId);
       await supabase.from('divorce_certificates').delete().eq('divorce_application_id', applicationId);
       const { error } = await supabase.from('divorce_applications').delete().eq('id', applicationId);

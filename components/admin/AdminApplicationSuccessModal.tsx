@@ -78,7 +78,7 @@ const AdminApplicationSuccessModal: React.FC<AdminApplicationSuccessModalProps> 
       onClick={handleBackdropClick}
     >
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-      
+
       <div
         className="relative z-10 w-full max-w-md sm:max-w-lg my-auto bg-white rounded-xl sm:rounded-2xl shadow-2xl animate-fade-up"
         onClick={(e) => e.stopPropagation()}
@@ -95,7 +95,7 @@ const AdminApplicationSuccessModal: React.FC<AdminApplicationSuccessModalProps> 
             <X size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
-        
+
         <div className="p-4 sm:p-6">
           <div className="flex justify-center mb-4">
             <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-green-50 flex items-center justify-center">
@@ -187,7 +187,7 @@ const AdminApplicationSuccessModal: React.FC<AdminApplicationSuccessModalProps> 
               variant="primary"
               size="sm"
               onClick={() => {
-                navigate(`/admin/applications/${applicationId}`);
+                navigate(isDivorce ? `/admin/divorce/applications/${applicationId}` : `/admin/applications/${applicationId}`);
                 onClose();
               }}
               className="text-xs sm:text-sm"

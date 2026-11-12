@@ -4,7 +4,61 @@ import React from 'react';
 import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer';
 import { DivorceApplication } from '../../types';
 import { safeFormatDate } from '../../utils/dateUtils';
-import { formatAadhaar } from '../../utils/formatUtils';
+
+// Helper function to get image URL for local assets
+const getImageUrl = (path: string): string => {
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  const baseUrl = typeof window !== 'undefined'
+    ? window.location.origin
+    : 'https://mmrburwan.netlify.app';
+  return `${baseUrl}${path}`;
+};
+
+// Register Times font family
+Font.register({
+  family: 'Times',
+  fonts: [
+    { src: '/fonts/times.ttf', fontWeight: 'normal', fontStyle: 'normal' },
+    { src: '/fonts/timesbd.ttf', fontWeight: 'bold', fontStyle: 'normal' },
+    { src: '/fonts/timesi.ttf', fontWeight: 'normal', fontStyle: 'italic' },
+    { src: '/fonts/timesbi.ttf', fontWeight: 'bold', fontStyle: 'italic' },
+  ],
+});
+
+// Register Arial font family
+Font.register({
+  family: 'Arial',
+  fonts: [
+    { src: '/fonts/arial.ttf', fontWeight: 'normal' },
+    { src: '/fonts/arialbd.ttf', fontWeight: 'bold' },
+  ],
+});
+
+// Register Calibri font family
+Font.register({
+  family: 'Calibri',
+  fonts: [
+    { src: '/fonts/calibri.ttf', fontWeight: 'normal' },
+    { src: '/fonts/calibrib.ttf', fontWeight: 'bold' },
+  ],
+});
+
+// Register Old English font
+Font.register({
+  family: 'OldEnglish',
+  src: '/fonts/OLDENGL.TTF',
+});
+
+// Register Script MT Bold font
+Font.register({
+  family: 'ScriptMTBold',
+  src: '/fonts/SCRIPTBL.TTF',
+});
+
+// Prevent words from splitting/hyphenating across lines in the certificate
+Font.registerHyphenationCallback((word) => [word]);
 
 export interface FormattedAddressLines {
   line1: string;
@@ -120,6 +174,18 @@ const getAddressFontSize = (addr: FormattedAddressLines): number => {
   return 11;
 };
 
+const formatAadhaar = (aadhaar: string | undefined): string => {
+  if (!aadhaar || aadhaar === 'N/A') return 'N/A';
+  const cleaned = aadhaar.replace(/\D/g, '');
+  if (cleaned.length === 12) {
+    return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 8)} ${cleaned.slice(8, 12)}`;
+  }
+  if (cleaned.length > 4) {
+    return cleaned.match(/.{1,4}/g)?.join(' ') || aadhaar;
+  }
+  return aadhaar;
+};
+
 interface DivorceCertificatePDFProps {
   application: DivorceApplication;
   certificateData: {
@@ -135,6 +201,7 @@ interface DivorceCertificatePDFProps {
     marriageCertificateNumber?: string;
     registrarName: string;
     registrarLicense: string;
+    registrarQualifications?: string;
     registrarOffice: string;
     registrarPhone: string;
     registrarEmail: string;
@@ -145,6 +212,7 @@ interface DivorceCertificatePDFProps {
     wifeLastName: string;
     wifeFatherName: string;
   };
+  jointPhotoDataUrl?: string | null;
   qrCodeImage?: string | null;
   borderImageDataUrl?: string | null;
   emblemImageDataUrl?: string | null;
@@ -177,6 +245,8 @@ const styles = StyleSheet.create({
     zIndex: 1,
     padding: '48 45 30 45',
   },
+
+  // ===== HEADER =====
   header: {
     textAlign: 'center',
     marginBottom: 4,
@@ -232,6 +302,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: BLACK,
   },
+
+  // ===== CERTIFICATE TITLE =====
   titleSection: {
     textAlign: 'center',
     marginTop: 2,
@@ -254,6 +326,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 4,
   },
+
+  // ===== CONSECUTIVE ROW =====
   consecutiveRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -268,6 +342,8 @@ const styles = StyleSheet.create({
   boldText: {
     fontWeight: 'bold',
   },
+
+  // ===== DETAILS BOXES =====
   detailsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -324,10 +400,10 @@ const styles = StyleSheet.create({
     color: BLACK,
     lineHeight: 1.1,
   },
+
+  // ===== SECTION BOXES =====
   sectionBox: {
-    marginBottom: 4,
-    border: `1 solid ${GOLD}`,
-    padding: '4 8',
+    marginBottom: 2,
   },
   sectionTitle: {
     fontFamily: 'Times',
@@ -335,15 +411,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#833C0B',
     textDecoration: 'underline',
-    marginBottom: 2,
   },
   sectionRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 15,
-  },
-  sectionItem: {
-    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 0.5,
   },
   sectionLabel: {
     fontFamily: 'Times',
@@ -356,6 +428,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: BLACK,
   },
+
+  // ===== REGISTRATION & DIVORCE DETAILS CONTENT =====
+  regDetailsContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 1,
+  },
+  regItem: {
+    flexDirection: 'row',
+  },
+
+  // ===== REGISTRAR BOX =====
   registrarBox: {
     marginBottom: 4,
   },
@@ -371,6 +456,7 @@ const styles = StyleSheet.create({
   registrarRow: {
     flexDirection: 'row',
     marginBottom: 0.5,
+    flexWrap: 'nowrap',
   },
   registrarLabel: {
     fontFamily: 'Times',
@@ -383,11 +469,40 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: BLACK,
   },
+  registrarValueBold: {
+    fontFamily: 'Times',
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: BLACK,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 0.5,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  icon: {
+    width: 14,
+    height: 14,
+    marginRight: 6,
+    objectFit: 'contain',
+  },
+
+  // ===== BOTTOM SECTION =====
   bottomSection: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginTop: 10,
+    marginTop: 3,
+  },
+  couplePhotoBox: {
+    width: 127.5,
+    height: 85,
+    border: `1.5 solid ${GOLD}`,
+    backgroundColor: '#f5f5f5',
   },
   qrSection: {
     alignItems: 'flex-end',
@@ -398,6 +513,8 @@ const styles = StyleSheet.create({
     border: `1.5 solid ${GOLD}`,
     backgroundColor: '#f5f5f5',
   },
+
+  // ===== SIGNATURE =====
   signatureSection: {
     position: 'absolute',
     bottom: 50,
@@ -421,6 +538,7 @@ const styles = StyleSheet.create({
 export const DivorceCertificatePDF: React.FC<DivorceCertificatePDFProps> = ({
   application,
   certificateData,
+  jointPhotoDataUrl,
   qrCodeImage,
   borderImageDataUrl,
   emblemImageDataUrl,
@@ -476,7 +594,7 @@ export const DivorceCertificatePDF: React.FC<DivorceCertificatePDFProps> = ({
             <Text style={styles.actText}>Under The Bengal Muhammadan Marriages and Divorces Registration Act- 1876.</Text>
           </View>
 
-          {/* Title */}
+          {/* Certificate Title */}
           <View style={styles.titleSection}>
             <Text style={styles.certificateTitle}>Certificate Of Divorce</Text>
             <Text style={styles.introText}>
@@ -522,17 +640,35 @@ export const DivorceCertificatePDF: React.FC<DivorceCertificatePDFProps> = ({
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Present Address:</Text>
                   {userPresentAddr.line1 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(userPresentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(userPresentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {userPresentAddr.line1}
                     </Text>
                   ) : null}
                   {userPresentAddr.line2 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(userPresentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(userPresentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {userPresentAddr.line2}
                     </Text>
                   ) : null}
                   {userPresentAddr.line3 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(userPresentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(userPresentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {userPresentAddr.line3}
                     </Text>
                   ) : null}
@@ -541,17 +677,35 @@ export const DivorceCertificatePDF: React.FC<DivorceCertificatePDFProps> = ({
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Permanent Address:</Text>
                   {userPermanentAddr.line1 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(userPermanentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(userPermanentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {userPermanentAddr.line1}
                     </Text>
                   ) : null}
                   {userPermanentAddr.line2 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(userPermanentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(userPermanentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {userPermanentAddr.line2}
                     </Text>
                   ) : null}
                   {userPermanentAddr.line3 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(userPermanentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(userPermanentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {userPermanentAddr.line3}
                     </Text>
                   ) : null}
@@ -585,17 +739,35 @@ export const DivorceCertificatePDF: React.FC<DivorceCertificatePDFProps> = ({
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Present Address:</Text>
                   {partnerPresentAddr.line1 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(partnerPresentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(partnerPresentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {partnerPresentAddr.line1}
                     </Text>
                   ) : null}
                   {partnerPresentAddr.line2 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(partnerPresentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(partnerPresentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {partnerPresentAddr.line2}
                     </Text>
                   ) : null}
                   {partnerPresentAddr.line3 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(partnerPresentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(partnerPresentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {partnerPresentAddr.line3}
                     </Text>
                   ) : null}
@@ -604,17 +776,35 @@ export const DivorceCertificatePDF: React.FC<DivorceCertificatePDFProps> = ({
                 <View style={styles.addressBlock}>
                   <Text style={styles.addressTitle}>Permanent Address:</Text>
                   {partnerPermanentAddr.line1 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(partnerPermanentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(partnerPermanentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {partnerPermanentAddr.line1}
                     </Text>
                   ) : null}
                   {partnerPermanentAddr.line2 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(partnerPermanentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(partnerPermanentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {partnerPermanentAddr.line2}
                     </Text>
                   ) : null}
                   {partnerPermanentAddr.line3 ? (
-                    <Text style={{ ...styles.addressValue, fontSize: getAddressFontSize(partnerPermanentAddr) }}>
+                    <Text
+                      style={{
+                        ...styles.addressValue,
+                        fontSize: getAddressFontSize(partnerPermanentAddr),
+                      }}
+                      hyphenationCallback={(word) => [word]}
+                    >
                       {partnerPermanentAddr.line3}
                     </Text>
                   ) : null}
@@ -625,95 +815,144 @@ export const DivorceCertificatePDF: React.FC<DivorceCertificatePDFProps> = ({
 
           {/* Divorce Particulars */}
           <View style={styles.sectionBox}>
-            <Text style={styles.sectionTitle}>Divorce Particulars</Text>
-            <View style={styles.sectionRow}>
-              <View style={styles.sectionItem}>
+            <Text style={styles.sectionTitle}>Divorce Particulars:</Text>
+            <View style={styles.regDetailsContent}>
+              <View style={styles.regItem}>
                 <Text style={styles.sectionLabel}>Date of Divorce: </Text>
                 <Text style={styles.sectionValue}>
                   {certificateData.divorceDate ? safeFormatDate(certificateData.divorceDate, 'dd-MM-yyyy') : 'N/A'}
                 </Text>
               </View>
-              <View style={styles.sectionItem}>
+              <View style={styles.regItem}>
                 <Text style={styles.sectionLabel}>Type of Divorce: </Text>
                 <Text style={styles.sectionValue}>
                   {certificateData.divorceType ? certificateData.divorceType.toUpperCase() : 'TALAQ'}
                 </Text>
               </View>
-              {certificateData.marriageCertificateNumber && (
-                <View style={styles.sectionItem}>
+              {certificateData.marriageCertificateNumber ? (
+                <View style={styles.regItem}>
                   <Text style={styles.sectionLabel}>Marriage Certificate: </Text>
                   <Text style={styles.sectionValue}>{certificateData.marriageCertificateNumber}</Text>
                 </View>
-              )}
+              ) : null}
             </View>
           </View>
 
           {/* Registration Details */}
           <View style={styles.sectionBox}>
-            <Text style={styles.sectionTitle}>Registration Details</Text>
-            <View style={styles.sectionRow}>
-              <View style={styles.sectionItem}>
+            <Text style={styles.sectionTitle}>Registration Details:</Text>
+            <View style={styles.regDetailsContent}>
+              <View style={styles.regItem}>
                 <Text style={styles.sectionLabel}>Date: </Text>
                 <Text style={styles.sectionValue}>{safeFormatDate(certificateData.registrationDate, 'dd-MM-yyyy')}</Text>
               </View>
-              <View style={styles.sectionItem}>
+              <View style={styles.regItem}>
                 <Text style={styles.sectionLabel}>Book: </Text>
                 <Text style={styles.sectionValue}>{certificateData.book}</Text>
               </View>
-              <View style={styles.sectionItem}>
+              <View style={styles.regItem}>
                 <Text style={styles.sectionLabel}>Vol No: </Text>
                 <Text style={styles.sectionValue}>{certificateData.volNo}</Text>
               </View>
-              <View style={styles.sectionItem}>
+              <View style={styles.regItem}>
                 <Text style={styles.sectionLabel}>Serial No: </Text>
                 <Text style={styles.sectionValue}>{certificateData.serialNo}</Text>
               </View>
-              <View style={styles.sectionItem}>
+              <View style={styles.regItem}>
                 <Text style={styles.sectionLabel}>Page: </Text>
-                <Text style={styles.sectionValue}>{certificateData.page}</Text>
+                <Text style={styles.sectionValue}>{certificateData.page}.</Text>
               </View>
             </View>
           </View>
 
           {/* Registrar Details */}
           <View style={styles.registrarBox}>
-            <Text style={styles.registrarTitle}>Muhammadan Marriage Registrar & Qaazi Details</Text>
-            <View style={styles.registrarRow}>
-              <Text style={styles.registrarLabel}>Name: </Text>
-              <Text style={styles.registrarValue}>{certificateData.registrarName}</Text>
-            </View>
-            <View style={styles.registrarRow}>
-              <Text style={styles.registrarLabel}>Licence No: </Text>
-              <Text style={styles.registrarValue}>{certificateData.registrarLicense}</Text>
-            </View>
+            <Text style={styles.registrarTitle}>Muhammadan Marriage Registrar & Qaazi Details:</Text>
+
+            {/* Conditional rendering based on registrar type */}
+            {certificateData.registrarQualifications ? (
+              // MD Ismail Khan format: Name (left) with License and Sanad No (right) on same line, then Qualifications below
+              <>
+                <View style={[styles.registrarRow, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
+                  <View style={{ flex: 2, paddingRight: 15 }}>
+                    <Text style={styles.registrarValue}>
+                      SENIOR MUFTI MAULANA AL-HAJJ <Text style={styles.registrarValueBold}>MD ISMAIL KHAN</Text>
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, flexShrink: 0 }}>
+                    <Text style={styles.registrarValue}>
+                      <Text style={styles.registrarValueBold}>License and Sanad No:</Text> {certificateData.registrarLicense}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.registrarRow}>
+                  <Text style={styles.registrarValue}>{certificateData.registrarQualifications}</Text>
+                </View>
+              </>
+            ) : (
+              // Minhajul Islam Khan format: Name, Licence No
+              <>
+                <View style={styles.registrarRow}>
+                  <Text style={styles.registrarLabel}>Name: </Text>
+                  <Text style={styles.registrarValue}>{certificateData.registrarName}</Text>
+                </View>
+                <View style={styles.registrarRow}>
+                  <Text style={styles.registrarLabel}>Licence No: </Text>
+                  <Text style={styles.registrarValue}>{certificateData.registrarLicense}</Text>
+                </View>
+              </>
+            )}
             <View style={styles.registrarRow}>
               <Text style={styles.registrarLabel}>Office Address: </Text>
               <Text style={styles.registrarValue}>{certificateData.registrarOffice}</Text>
             </View>
-            <View style={styles.registrarRow}>
-              <Text style={styles.registrarLabel}>Contact: </Text>
-              <Text style={styles.registrarValue}>{certificateData.registrarEmail}  |  mmrburwan.com</Text>
+            <View style={styles.contactRow}>
+              <Text style={[styles.registrarLabel, { marginRight: 6 }]}>Contact: </Text>
+              <View style={[styles.contactItem, { marginRight: 20 }]}>
+                <Image
+                  src={getImageUrl("/icons/mail.png")}
+                  style={styles.icon}
+                  cache={false}
+                />
+                <Text style={styles.registrarValue}>{certificateData.registrarEmail}</Text>
+              </View>
+              <View style={styles.contactItem}>
+                <Image
+                  src={getImageUrl("/icons/world.png")}
+                  style={styles.icon}
+                  cache={false}
+                />
+                <Text style={styles.registrarValue}>mmrburwan.com</Text>
+              </View>
             </View>
           </View>
 
-          {/* QR Code Section */}
+          {/* Bottom - Couple Photo and QR */}
           <View style={styles.bottomSection}>
-            <View style={styles.qrSection}>
-              {qrCodeImage && (
+            <View style={styles.couplePhotoBox}>
+              {jointPhotoDataUrl ? (
                 <Image
-                  src={qrCodeImage}
-                  style={styles.qrBox}
+                  src={jointPhotoDataUrl}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   cache={false}
                 />
+              ) : null}
+            </View>
+            <View style={styles.qrSection}>
+              {qrCodeImage ? (
+                <Image
+                  src={qrCodeImage}
+                  style={{ width: 68, height: 68 }}
+                  cache={false}
+                />
+              ) : (
+                <View style={styles.qrBox} />
               )}
-              <Text style={{ fontSize: 8, marginTop: 3, color: '#666' }}>
-                Verification ID: {certificateData.verificationId}
-              </Text>
             </View>
           </View>
         </View>
 
-        {/* Signature */}
+        {/* Signature - Fixed in place on the page for every application */}
         <View style={styles.signatureSection}>
           <View style={styles.signatureLine} />
           <Text style={styles.signatureText}>Signature of Registrar with Seal</Text>
@@ -724,4 +963,3 @@ export const DivorceCertificatePDF: React.FC<DivorceCertificatePDFProps> = ({
 };
 
 export default DivorceCertificatePDF;
-

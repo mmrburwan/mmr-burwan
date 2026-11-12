@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { DivorceApplication, Document } from '../types';
+import { DivorceApplication, Document, DivorceType } from '../types';
 
 export const divorceApplicationService = {
   async getDivorceApplication(userId: string): Promise<DivorceApplication | null> {
@@ -42,6 +42,195 @@ export const divorceApplicationService = {
     }
 
     if (!data) return null;
+    return this.mapDivorceApplication(data);
+  },
+
+  async createDraft(
+    userId: string,
+    proxyData?: {
+      adminId?: string;
+      proxyEmail?: string;
+      offlineContact?: any;
+    }
+  ): Promise<DivorceApplication> {
+    // Check if an existing draft already exists
+    const { data: existingDraft } = await supabase
+      .from('divorce_applications')
+      .select(`
+        *,
+        documents:divorce_documents (*)
+      `)
+      .eq('user_id', userId)
+      .eq('status', 'draft')
+      .maybeSingle();
+
+    if (existingDraft) {
+      return this.mapDivorceApplication(existingDraft);
+    }
+
+    const { data, error } = await supabase
+      .from('divorce_applications')
+      .insert({
+        user_id: userId,
+        status: 'draft',
+        progress: 0,
+        is_proxy_application: Boolean(proxyData?.adminId || proxyData?.proxyEmail),
+        created_by_admin_id: proxyData?.adminId || null,
+        proxy_user_email: proxyData?.proxyEmail || null,
+        offline_applicant_contact: proxyData?.offlineContact || null,
+        user_details: {},
+        partner_form: {},
+        user_address: {},
+        user_current_address: {},
+        partner_address: {},
+        partner_current_address: {},
+        declarations: {},
+      })
+      .select(`
+        *,
+        documents:divorce_documents (*)
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create divorce draft: ${error.message}`);
+    }
+
+    return this.mapDivorceApplication(data);
+  },
+
+  calculateActualProgress(app: Partial<DivorceApplication> | null): number {
+    if (!app) return 0;
+    let progress = 0;
+
+    const userDetails: any = app.userDetails || {};
+    if (userDetails.firstName && userDetails.fatherName && userDetails.dateOfBirth && userDetails.aadhaarNumber) {
+      progress += 20;
+    }
+
+    const partnerForm: any = app.partnerForm || {};
+    if (partnerForm.firstName && partnerForm.fatherName && partnerForm.dateOfBirth && partnerForm.aadhaarNumber) {
+      progress += 20;
+    }
+
+    const userAddress: any = app.userAddress || {};
+    const partnerAddress: any = app.partnerAddress || {};
+    if ((userAddress.villageStreet || userAddress.street) && (partnerAddress.villageStreet || partnerAddress.street)) {
+      progress += 20;
+    }
+
+    const declarations: any = app.declarations || {};
+    if (app.divorceDate && (declarations.accuracy === true || declarations.accuracy === 'true')) {
+      progress += 20;
+    }
+
+    const documents = app.documents || [];
+    if (documents.length >= 2) {
+      progress += 20;
+    }
+
+    return Math.min(progress, 100);
+  },
+
+  async updateDraft(
+    identifier: string,
+    updates: {
+      userDetails?: any;
+      partnerForm?: any;
+      userAddress?: any;
+      userCurrentAddress?: any;
+      partnerAddress?: any;
+      partnerCurrentAddress?: any;
+      divorceDate?: string;
+      divorceReason?: string;
+      divorceType?: string;
+      marriageCertificateNumber?: string;
+      marriageApplicationId?: string;
+      declarations?: Record<string, boolean | string>;
+    }
+  ): Promise<DivorceApplication> {
+    // Identifier can be application ID or user ID
+    let currentApp = await this.getDivorceApplicationById(identifier);
+    if (!currentApp) {
+      currentApp = await this.getDivorceApplication(identifier);
+    }
+    if (!currentApp) {
+      currentApp = await this.createDraft(identifier);
+    }
+
+    const mergedDeclarations = updates.declarations
+      ? { ...(currentApp.declarations || {}), ...updates.declarations }
+      : currentApp.declarations;
+
+    const dbUpdates: any = {
+      last_updated: new Date().toISOString(),
+    };
+
+    if (updates.userDetails !== undefined) dbUpdates.user_details = updates.userDetails;
+    if (updates.partnerForm !== undefined) dbUpdates.partner_form = updates.partnerForm;
+    if (updates.userAddress !== undefined) dbUpdates.user_address = updates.userAddress;
+    if (updates.userCurrentAddress !== undefined) dbUpdates.user_current_address = updates.userCurrentAddress;
+    if (updates.partnerAddress !== undefined) dbUpdates.partner_address = updates.partnerAddress;
+    if (updates.partnerCurrentAddress !== undefined) dbUpdates.partner_current_address = updates.partnerCurrentAddress;
+    if (updates.divorceDate !== undefined) dbUpdates.divorce_date = updates.divorceDate;
+    if (updates.divorceReason !== undefined) dbUpdates.divorce_reason = updates.divorceReason;
+    if (updates.divorceType !== undefined) dbUpdates.divorce_type = updates.divorceType;
+    if (updates.marriageCertificateNumber !== undefined) dbUpdates.marriage_certificate_number = updates.marriageCertificateNumber;
+    if (updates.marriageApplicationId !== undefined) dbUpdates.marriage_application_id = updates.marriageApplicationId;
+    if (mergedDeclarations !== undefined) dbUpdates.declarations = mergedDeclarations;
+
+    const draftPreview: Partial<DivorceApplication> = {
+      ...currentApp,
+      ...updates,
+      declarations: mergedDeclarations,
+    };
+    dbUpdates.progress = this.calculateActualProgress(draftPreview as DivorceApplication);
+
+    const { data, error } = await supabase
+      .from('divorce_applications')
+      .update(dbUpdates)
+      .eq('id', currentApp.id)
+      .select(`
+        *,
+        documents:divorce_documents (*)
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to update divorce draft: ${error.message}`);
+    }
+
+    return this.mapDivorceApplication(data);
+  },
+
+  async submitApplication(identifier: string): Promise<DivorceApplication> {
+    let currentApp = await this.getDivorceApplicationById(identifier);
+    if (!currentApp) {
+      currentApp = await this.getDivorceApplication(identifier);
+    }
+    if (!currentApp) {
+      throw new Error('Divorce application not found');
+    }
+
+    const { data, error } = await supabase
+      .from('divorce_applications')
+      .update({
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+        progress: 100,
+        last_updated: new Date().toISOString(),
+      })
+      .eq('id', currentApp.id)
+      .select(`
+        *,
+        documents:divorce_documents (*)
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to submit divorce application: ${error.message}`);
+    }
+
     return this.mapDivorceApplication(data);
   },
 
@@ -147,6 +336,17 @@ export const divorceApplicationService = {
     return this.mapDivorceApplication(data);
   },
 
+  async deleteApplication(applicationId: string): Promise<void> {
+    const { error } = await supabase
+      .from('divorce_applications')
+      .delete()
+      .eq('id', applicationId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  },
+
   async getAllDivorceApplications(): Promise<DivorceApplication[]> {
     const { data, error } = await supabase
       .from('divorce_applications')
@@ -168,19 +368,19 @@ export const divorceApplicationService = {
       id: data.id,
       userId: data.user_id,
       status: data.status,
-      progress: data.progress || 100,
+      progress: data.progress || 0,
       marriageApplicationId: data.marriage_application_id,
       marriageCertificateNumber: data.marriage_certificate_number,
-      userDetails: data.user_details,
-      partnerForm: data.partner_form,
-      userAddress: data.user_address,
-      userCurrentAddress: data.user_current_address,
-      partnerAddress: data.partner_address,
-      partnerCurrentAddress: data.partner_current_address,
+      userDetails: data.user_details || {},
+      partnerForm: data.partner_form || {},
+      userAddress: data.user_address || {},
+      userCurrentAddress: data.user_current_address || {},
+      partnerAddress: data.partner_address || {},
+      partnerCurrentAddress: data.partner_current_address || {},
       divorceDate: data.divorce_date,
       divorceReason: data.divorce_reason,
       divorceType: data.divorce_type,
-      declarations: data.declarations,
+      declarations: data.declarations || {},
       documents: (data.documents || []).map((doc: any) => ({
         id: doc.id,
         applicationId: doc.divorce_application_id || doc.application_id,
@@ -208,8 +408,7 @@ export const divorceApplicationService = {
       proxyUserEmail: data.proxy_user_email,
       submittedAt: data.submitted_at,
       createdAt: data.created_at,
-      lastUpdated: data.last_updated || data.updated_at,
+      lastUpdated: data.last_updated || data.updated_at || data.created_at,
     };
   },
 };
-

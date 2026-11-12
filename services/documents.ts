@@ -493,4 +493,243 @@ export const documentService = {
 
     return document.url;
   },
+
+  async uploadDivorceDocument(
+    applicationId: string,
+    file: File,
+    type: Document['type'],
+    belongsTo?: 'user' | 'partner' | 'joint',
+    targetDocumentId?: string
+  ): Promise<Document> {
+    let existingDoc: { id: string; file_path?: string } | null = null;
+
+    if (targetDocumentId) {
+      const { data, error } = await supabase
+        .from('divorce_documents')
+        .select('id, file_path')
+        .eq('id', targetDocumentId)
+        .maybeSingle();
+      if (!error && data) {
+        existingDoc = data;
+      }
+    }
+
+    if (!existingDoc) {
+      const { data: existingDocs, error: checkError } = await supabase
+        .from('divorce_documents')
+        .select('id, file_path')
+        .eq('divorce_application_id', applicationId)
+        .eq('type', type)
+        .eq('belongs_to', belongsTo || 'user');
+
+      if (checkError) {
+        console.error('Error checking for existing divorce document:', checkError);
+      }
+
+      if (existingDocs && existingDocs.length > 0) {
+        existingDoc = existingDocs[0];
+      }
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `divorce/${applicationId}/${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    if (existingDoc) {
+      if (existingDoc.file_path) {
+        try {
+          await storage.from('documents').remove([existingDoc.file_path]);
+        } catch (storageError) {
+          console.error('Failed to delete old file from storage:', storageError);
+        }
+      }
+
+      const { data: uploadData, error: uploadError } = await storage.from('documents')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        const msg = (uploadError as Error).message;
+        throw new Error(msg.startsWith('Storage upload failed') ? msg : `Storage upload failed: ${msg}`);
+      }
+
+      const documentUrl = uploadData?.publicUrl || storage.from('documents').getPublicUrl(filePath).data.publicUrl;
+
+      const { data, error } = await supabase
+        .from('divorce_documents')
+        .update({
+          name: file.name,
+          url: documentUrl,
+          file_path: filePath,
+          size: file.size,
+          mime_type: file.type,
+          uploaded_at: new Date().toISOString(),
+          status: 'approved',
+          is_reuploaded: true,
+        })
+        .eq('id', existingDoc.id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`Database update failed: ${error.message}`);
+      }
+
+      return {
+        id: data.id,
+        applicationId: data.divorce_application_id,
+        type: data.type as Document['type'],
+        name: data.name,
+        url: data.url,
+        status: data.status,
+        uploadedAt: data.uploaded_at,
+        size: data.size,
+        mimeType: data.mime_type,
+        belongsTo: data.belongs_to,
+        isReuploaded: data.is_reuploaded || false,
+      };
+    }
+
+    // New document
+    const { data: uploadData, error: uploadError } = await storage.from('documents')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      const msg = (uploadError as Error).message;
+      throw new Error(msg.startsWith('Storage upload failed') ? msg : `Storage upload failed: ${msg}`);
+    }
+
+    const documentUrl = uploadData?.publicUrl || storage.from('documents').getPublicUrl(filePath).data.publicUrl;
+
+    const { data, error } = await supabase
+      .from('divorce_documents')
+      .insert({
+        divorce_application_id: applicationId,
+        type: type,
+        name: file.name,
+        url: documentUrl,
+        file_path: filePath,
+        size: file.size,
+        mime_type: file.type,
+        belongs_to: belongsTo || 'user',
+        status: 'approved',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      try {
+        await storage.from('documents').remove([filePath]);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup uploaded file:', cleanupError);
+      }
+      throw new Error(`Database insert failed: ${error.message}`);
+    }
+
+    return {
+      id: data.id,
+      applicationId: data.divorce_application_id,
+      type: data.type as Document['type'],
+      name: data.name,
+      url: data.url,
+      status: data.status,
+      uploadedAt: data.uploaded_at,
+      size: data.size,
+      mimeType: data.mime_type,
+      belongsTo: data.belongs_to,
+      isReuploaded: data.is_reuploaded || false,
+    };
+  },
+
+  async deleteDivorceDocument(documentId: string): Promise<void> {
+    const { data: document, error: fetchError } = await supabase
+      .from('divorce_documents')
+      .select('file_path')
+      .eq('id', documentId)
+      .single();
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch document: ${fetchError.message}`);
+    }
+
+    if (document?.file_path) {
+      try {
+        await storage.from('documents').remove([document.file_path]);
+      } catch (storageError) {
+        console.error('Failed to delete file from storage:', storageError);
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from('divorce_documents')
+      .delete()
+      .eq('id', documentId);
+
+    if (deleteError) {
+      throw new Error(`Failed to delete document record: ${deleteError.message}`);
+    }
+  },
+
+  async getDivorceSignedUrl(documentId: string): Promise<string> {
+    const { data: document, error } = await supabase
+      .from('divorce_documents')
+      .select('url, file_path')
+      .eq('id', documentId)
+      .single();
+
+    if (error || !document) {
+      throw new Error('Document not found');
+    }
+
+    let filePath = document.file_path;
+    if (!filePath && document.url) {
+      if (document.url.includes('/documents/')) {
+        filePath = document.url.split('/documents/')[1]?.split('?')[0];
+      } else if (document.url.includes('.r2.dev/')) {
+        filePath = document.url.split('.r2.dev/')[1]?.split('?')[0];
+      }
+    }
+
+    if (filePath) {
+      const r2BaseUrl = (import.meta as any).env.VITE_R2_DOCUMENTS_PUBLIC_URL || DEFAULT_R2_DOCS_URL;
+      if (r2BaseUrl) {
+        return `${r2BaseUrl.replace(/\/$/, '')}/${filePath}`;
+      }
+    }
+
+    return document.url;
+  },
+
+  async getDivorceDocuments(applicationId: string): Promise<Document[]> {
+    const { data, error } = await supabase
+      .from('divorce_documents')
+      .select('*')
+      .eq('divorce_application_id', applicationId)
+      .order('uploaded_at', { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data || []).map((doc) => ({
+      id: doc.id,
+      applicationId: doc.divorce_application_id,
+      type: doc.type as Document['type'],
+      name: doc.name,
+      url: doc.url,
+      status: doc.status,
+      uploadedAt: doc.uploaded_at,
+      size: doc.size,
+      mimeType: doc.mime_type,
+      belongsTo: doc.belongs_to,
+      isReuploaded: doc.is_reuploaded || false,
+    }));
+  },
 };
