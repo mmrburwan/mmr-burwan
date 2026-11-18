@@ -149,13 +149,12 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
     };
 
     const handleClear = (e: React.MouseEvent) => {
+      e.preventDefault();
       e.stopPropagation();
       onChange('');
       setSearchTerm('');
       setIsOpen(false);
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
+      setHighlightedIndex(-1);
     };
 
     const displayValue = isOpen
@@ -208,8 +207,12 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
             {value && !disabled && (
               <button
                 type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
                 onClick={handleClear}
-                className="absolute right-7 sm:right-10 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 active:text-gray-700 transition-colors z-10 p-1 touch-manipulation"
+                className="absolute right-7 sm:right-10 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 active:text-gray-700 transition-colors z-10 p-1 touch-manipulation cursor-pointer"
                 aria-label="Clear"
               >
                 <X size={14} className="sm:w-4 sm:h-4" />

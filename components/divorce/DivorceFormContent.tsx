@@ -63,7 +63,7 @@ const createHusbandSchema = (isAdmin: boolean) =>
     dateOfBirth: z.string().min(1, 'Husband date of birth is required'),
     aadhaarNumber: z
       .string()
-      .refine((val) => val.replace(/\s/g, '').length === 12, 'Aadhaar number must be exactly 12 digits'),
+      .refine((val) => (val || '').replace(/\s/g, '').length === 12, 'Aadhaar number must be exactly 12 digits'),
     mobileNumber: z.string().regex(/^\d{10}$/, 'Mobile number must be exactly 10 digits'),
     voterOrRollNo: isAdmin ? z.string().optional() : z.string().min(1, 'Voter EPIC No or Roll No is required'),
 
@@ -103,7 +103,7 @@ const createWifeSchema = (isAdmin: boolean) =>
     dateOfBirth: z.string().min(1, 'Wife date of birth is required'),
     aadhaarNumber: z
       .string()
-      .refine((val) => val.replace(/\s/g, '').length === 12, 'Aadhaar number must be exactly 12 digits'),
+      .refine((val) => (val || '').replace(/\s/g, '').length === 12, 'Aadhaar number must be exactly 12 digits'),
     mobileNumber: z.string().regex(/^\d{10}$/, 'Mobile number must be exactly 10 digits'),
     voterOrRollNo: isAdmin ? z.string().optional() : z.string().min(1, 'Voter EPIC No or Roll No is required'),
 
@@ -135,6 +135,11 @@ const declarationsSchema = z.object({
 type HusbandFormData = z.infer<ReturnType<typeof createHusbandSchema>>;
 type WifeFormData = z.infer<ReturnType<typeof createWifeSchema>>;
 type DeclarationsFormData = z.infer<typeof declarationsSchema>;
+
+const formatAadhaarForInput = (val?: string | null): string => {
+  if (!val || typeof val !== 'string' || val.trim() === '' || val.trim().toUpperCase() === 'N/A') return '';
+  return handleAadhaarInput(val);
+};
 
 export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
   onComplete,
@@ -274,7 +279,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
           lastName: application.userDetails.lastName || '',
           fatherName: application.userDetails.fatherName || '',
           dateOfBirth: application.userDetails.dateOfBirth || '',
-          aadhaarNumber: formatAadhaar(application.userDetails.aadhaarNumber || ''),
+          aadhaarNumber: formatAadhaarForInput(application.userDetails.aadhaarNumber),
           mobileNumber: application.userDetails.mobileNumber || '',
           voterOrRollNo: application.userDetails.voterOrRollNo || '',
           permanentVillageStreet: application.userAddress?.villageStreet || '',
@@ -305,7 +310,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
           lastName: application.partnerForm.lastName || '',
           fatherName: application.partnerForm.fatherName || '',
           dateOfBirth: application.partnerForm.dateOfBirth || '',
-          aadhaarNumber: formatAadhaar(application.partnerForm.aadhaarNumber || application.partnerForm.idNumber || ''),
+          aadhaarNumber: formatAadhaarForInput(application.partnerForm.aadhaarNumber || application.partnerForm.idNumber),
           mobileNumber: application.partnerForm.mobileNumber || '',
           voterOrRollNo: application.partnerForm.voterOrRollNo || '',
           permanentVillageStreet: application.partnerAddress?.villageStreet || '',
@@ -392,7 +397,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
           husbandForm.setValue('lastName', app.user_details.lastName || '');
           husbandForm.setValue('fatherName', app.user_details.fatherName || '');
           husbandForm.setValue('dateOfBirth', app.user_details.dateOfBirth || '');
-          husbandForm.setValue('aadhaarNumber', formatAadhaar(app.user_details.aadhaarNumber || ''));
+          husbandForm.setValue('aadhaarNumber', formatAadhaarForInput(app.user_details.aadhaarNumber), { shouldValidate: true });
           husbandForm.setValue('mobileNumber', app.user_details.mobileNumber || '');
           husbandForm.setValue('voterOrRollNo', app.user_details.voterOrRollNo || '');
         }
@@ -411,7 +416,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
           wifeForm.setValue('lastName', app.partner_form.lastName || '');
           wifeForm.setValue('fatherName', app.partner_form.fatherName || '');
           wifeForm.setValue('dateOfBirth', app.partner_form.dateOfBirth || '');
-          wifeForm.setValue('aadhaarNumber', formatAadhaar(app.partner_form.aadhaarNumber || app.partner_form.idNumber || ''));
+          wifeForm.setValue('aadhaarNumber', formatAadhaarForInput(app.partner_form.aadhaarNumber || app.partner_form.idNumber), { shouldValidate: true });
           wifeForm.setValue('mobileNumber', app.partner_form.mobileNumber || '');
           wifeForm.setValue('voterOrRollNo', app.partner_form.voterOrRollNo || '');
         }
@@ -627,14 +632,14 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
       const userCurrentAddress = hValues.sameAsPermanent
         ? userAddress
         : {
-            villageStreet: hValues.currentVillageStreet || '',
-            postOffice: hValues.currentPostOffice || '',
-            policeStation: hValues.currentPoliceStation || '',
-            district: hValues.currentDistrict || 'MURSHIDABAD',
-            state: hValues.currentState || 'WEST BENGAL',
-            zipCode: hValues.currentZipCode || '',
-            country: hValues.currentCountry || 'India',
-          };
+          villageStreet: hValues.currentVillageStreet || '',
+          postOffice: hValues.currentPostOffice || '',
+          policeStation: hValues.currentPoliceStation || '',
+          district: hValues.currentDistrict || 'MURSHIDABAD',
+          state: hValues.currentState || 'WEST BENGAL',
+          zipCode: hValues.currentZipCode || '',
+          country: hValues.currentCountry || 'India',
+        };
 
       const partnerAddress = {
         villageStreet: wValues.permanentVillageStreet || '',
@@ -649,14 +654,14 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
       const partnerCurrentAddress = wValues.sameAsPermanent
         ? partnerAddress
         : {
-            villageStreet: wValues.currentVillageStreet || '',
-            postOffice: wValues.currentPostOffice || '',
-            policeStation: wValues.currentPoliceStation || '',
-            district: wValues.currentDistrict || 'MURSHIDABAD',
-            state: wValues.currentState || 'WEST BENGAL',
-            zipCode: wValues.currentZipCode || '',
-            country: wValues.currentCountry || 'India',
-          };
+          villageStreet: wValues.currentVillageStreet || '',
+          postOffice: wValues.currentPostOffice || '',
+          policeStation: wValues.currentPoliceStation || '',
+          district: wValues.currentDistrict || 'MURSHIDABAD',
+          state: wValues.currentState || 'WEST BENGAL',
+          zipCode: wValues.currentZipCode || '',
+          country: wValues.currentCountry || 'India',
+        };
 
       await updateDraft({
         userDetails: {
@@ -664,7 +669,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
           lastName: hValues.lastName,
           fatherName: hValues.fatherName,
           dateOfBirth: hValues.dateOfBirth,
-          aadhaarNumber: hValues.aadhaarNumber.replace(/\s/g, ''),
+          aadhaarNumber: (hValues.aadhaarNumber || '').replace(/\s/g, ''),
           mobileNumber: hValues.mobileNumber,
           voterOrRollNo: hValues.voterOrRollNo,
         },
@@ -673,8 +678,8 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
           lastName: wValues.lastName,
           fatherName: wValues.fatherName,
           dateOfBirth: wValues.dateOfBirth,
-          aadhaarNumber: wValues.aadhaarNumber.replace(/\s/g, ''),
-          idNumber: wValues.aadhaarNumber.replace(/\s/g, ''),
+          aadhaarNumber: (wValues.aadhaarNumber || '').replace(/\s/g, ''),
+          idNumber: (wValues.aadhaarNumber || '').replace(/\s/g, ''),
           mobileNumber: wValues.mobileNumber,
           voterOrRollNo: wValues.voterOrRollNo,
         },
@@ -911,21 +916,24 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                 <Input
                   placeholder="0000 0000 0000"
                   maxLength={14}
-                  value={husbandForm.watch('aadhaarNumber') || ''}
-                  onChange={(e) => handleAadhaarInput(e, (val) => husbandForm.setValue('aadhaarNumber', val, { shouldValidate: true }))}
+                  {...husbandForm.register('aadhaarNumber', {
+                    onChange: (e) => {
+                      e.target.value = handleAadhaarInput(e.target.value);
+                    },
+                  })}
                   error={husbandForm.formState.errors.aadhaarNumber?.message}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Mobile Number <span className="text-rose-500">*</span>
-                </label>
-                <Input
-                  placeholder="10-digit mobile number"
-                  maxLength={10}
-                  {...husbandForm.register('mobileNumber')}
+                <PhoneInput
+                  label="Mobile Number"
+                  value={husbandForm.watch('mobileNumber') || ''}
+                  onChange={(val) => {
+                    husbandForm.setValue('mobileNumber', val, { shouldValidate: true });
+                  }}
                   error={husbandForm.formState.errors.mobileNumber?.message}
+                  required
                 />
               </div>
 
@@ -1037,8 +1045,8 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
               </div>
 
               <StateDistrictSelector
-                stateValue={husbandForm.watch('permanentState') || 'WEST BENGAL'}
-                districtValue={husbandForm.watch('permanentDistrict') || 'MURSHIDABAD'}
+                stateValue={husbandForm.watch('permanentState') || ''}
+                districtValue={husbandForm.watch('permanentDistrict') || ''}
                 stateRegister={husbandForm.register('permanentState')}
                 districtRegister={husbandForm.register('permanentDistrict')}
                 setValue={husbandForm.setValue}
@@ -1091,8 +1099,8 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                     <Input {...husbandForm.register('currentPoliceStation')} />
                   </div>
                   <StateDistrictSelector
-                    stateValue={husbandForm.watch('currentState') || 'WEST BENGAL'}
-                    districtValue={husbandForm.watch('currentDistrict') || 'MURSHIDABAD'}
+                    stateValue={husbandForm.watch('currentState') || ''}
+                    districtValue={husbandForm.watch('currentDistrict') || ''}
                     stateRegister={husbandForm.register('currentState')}
                     districtRegister={husbandForm.register('currentDistrict')}
                     setValue={husbandForm.setValue}
@@ -1175,21 +1183,24 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                 <Input
                   placeholder="0000 0000 0000"
                   maxLength={14}
-                  value={wifeForm.watch('aadhaarNumber') || ''}
-                  onChange={(e) => handleAadhaarInput(e, (val) => wifeForm.setValue('aadhaarNumber', val, { shouldValidate: true }))}
+                  {...wifeForm.register('aadhaarNumber', {
+                    onChange: (e) => {
+                      e.target.value = handleAadhaarInput(e.target.value);
+                    },
+                  })}
                   error={wifeForm.formState.errors.aadhaarNumber?.message}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Mobile Number <span className="text-rose-500">*</span>
-                </label>
-                <Input
-                  placeholder="10-digit mobile number"
-                  maxLength={10}
-                  {...wifeForm.register('mobileNumber')}
+                <PhoneInput
+                  label="Mobile Number"
+                  value={wifeForm.watch('mobileNumber') || ''}
+                  onChange={(val) => {
+                    wifeForm.setValue('mobileNumber', val, { shouldValidate: true });
+                  }}
                   error={wifeForm.formState.errors.mobileNumber?.message}
+                  required
                 />
               </div>
 
@@ -1246,8 +1257,8 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
               </div>
 
               <StateDistrictSelector
-                stateValue={wifeForm.watch('permanentState') || 'WEST BENGAL'}
-                districtValue={wifeForm.watch('permanentDistrict') || 'MURSHIDABAD'}
+                stateValue={wifeForm.watch('permanentState') || ''}
+                districtValue={wifeForm.watch('permanentDistrict') || ''}
                 stateRegister={wifeForm.register('permanentState')}
                 districtRegister={wifeForm.register('permanentDistrict')}
                 setValue={wifeForm.setValue}
@@ -1300,8 +1311,8 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                     <Input {...wifeForm.register('currentPoliceStation')} />
                   </div>
                   <StateDistrictSelector
-                    stateValue={wifeForm.watch('currentState') || 'WEST BENGAL'}
-                    districtValue={wifeForm.watch('currentDistrict') || 'MURSHIDABAD'}
+                    stateValue={wifeForm.watch('currentState') || ''}
+                    districtValue={wifeForm.watch('currentDistrict') || ''}
                     stateRegister={wifeForm.register('currentState')}
                     districtRegister={wifeForm.register('currentDistrict')}
                     setValue={wifeForm.setValue}
@@ -2622,7 +2633,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                 </div>
               ) : previewUrl ? (
                 (previewDocument.file?.type || previewDocument.mimeType || '').startsWith('image/') ||
-                (previewDocument.file?.name || previewDocument.name || '').match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
+                  (previewDocument.file?.name || previewDocument.name || '').match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
                   <img
                     src={previewUrl}
                     alt="Preview"
