@@ -13,6 +13,7 @@ interface AdminApplicationSuccessModalProps {
     email: string;
     password: string;
   };
+  isDivorce?: boolean;
 }
 
 const AdminApplicationSuccessModal: React.FC<AdminApplicationSuccessModalProps> = ({
@@ -20,6 +21,7 @@ const AdminApplicationSuccessModal: React.FC<AdminApplicationSuccessModalProps> 
   onClose,
   applicationId,
   credentials,
+  isDivorce = false,
 }) => {
   const navigate = useNavigate();
   const [copiedField, setCopiedField] = useState<string | null>(null);

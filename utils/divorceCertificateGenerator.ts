@@ -5,6 +5,7 @@ import { pdf } from '@react-pdf/renderer';
 import React from 'react';
 import { DivorceCertificatePDF } from '../components/certificate/DivorceCertificatePDF';
 import QRCodeLib from 'qrcode';
+import { formatDivorceTypeDisplay } from './divorceUtils';
 
 const parseCertificateNumber = (certNumber: string | undefined) => {
   const defaults = {
@@ -195,7 +196,10 @@ export const generateDivorceCertificateData = (application: DivorceApplication) 
     serialNo: serialNo || '1',
     page: parsedCert.pageNumber || '1',
     divorceDate: application.divorceDate,
-    divorceType: application.divorceType || 'talaq',
+    divorceType: formatDivorceTypeDisplay(application.divorceType),
+    talaqDate1: (application.certificateDetails as any)?.talaqDate1 || application.talaqDate1 || (application.declarations as any)?.talaqDate1 || application.divorceDate,
+    talaqDate2: (application.certificateDetails as any)?.talaqDate2 || application.talaqDate2 || (application.declarations as any)?.talaqDate2 || application.divorceDate,
+    talaqDate3: (application.certificateDetails as any)?.talaqDate3 || application.talaqDate3 || (application.declarations as any)?.talaqDate3 || application.divorceDate,
     marriageCertificateNumber: application.marriageCertificateNumber,
     registrarName: selectedRegistrar.name,
     registrarLicense: selectedRegistrar.license,

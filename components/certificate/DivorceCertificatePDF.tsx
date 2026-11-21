@@ -4,6 +4,7 @@ import React from 'react';
 import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer';
 import { DivorceApplication } from '../../types';
 import { safeFormatDate } from '../../utils/dateUtils';
+import { isTripleTalaq, formatDivorceTypeDisplay } from '../../utils/divorceUtils';
 
 // Helper function to get image URL for local assets
 const getImageUrl = (path: string): string => {
@@ -198,6 +199,9 @@ interface DivorceCertificatePDFProps {
     page: string;
     divorceDate?: string;
     divorceType?: string;
+    talaqDate1?: string;
+    talaqDate2?: string;
+    talaqDate3?: string;
     marriageCertificateNumber?: string;
     registrarName: string;
     registrarLicense: string;
@@ -439,6 +443,18 @@ const styles = StyleSheet.create({
   regItem: {
     flexDirection: 'row',
   },
+  divorceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  divorceDatesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+    gap: 16,
+    marginTop: 1.5,
+  },
 
   // ===== REGISTRAR BOX =====
   registrarBox: {
@@ -501,7 +517,6 @@ const styles = StyleSheet.create({
   couplePhotoBox: {
     width: 127.5,
     height: 85,
-    border: `1.5 solid ${GOLD}`,
     backgroundColor: '#f5f5f5',
   },
   qrSection: {
@@ -816,26 +831,46 @@ export const DivorceCertificatePDF: React.FC<DivorceCertificatePDFProps> = ({
           {/* Divorce Particulars */}
           <View style={styles.sectionBox}>
             <Text style={styles.sectionTitle}>Divorce Particulars:</Text>
-            <View style={styles.regDetailsContent}>
-              <View style={styles.regItem}>
-                <Text style={styles.sectionLabel}>Date of Divorce: </Text>
-                <Text style={styles.sectionValue}>
-                  {certificateData.divorceDate ? safeFormatDate(certificateData.divorceDate, 'dd-MM-yyyy') : 'N/A'}
-                </Text>
-              </View>
-              <View style={styles.regItem}>
-                <Text style={styles.sectionLabel}>Type of Divorce: </Text>
-                <Text style={styles.sectionValue}>
-                  {certificateData.divorceType ? certificateData.divorceType.toUpperCase() : 'TALAQ'}
-                </Text>
-              </View>
-              {certificateData.marriageCertificateNumber ? (
-                <View style={styles.regItem}>
-                  <Text style={styles.sectionLabel}>Marriage Certificate: </Text>
-                  <Text style={styles.sectionValue}>{certificateData.marriageCertificateNumber}</Text>
-                </View>
-              ) : null}
+            {/* First Line: Type of Divorce */}
+            <View style={styles.divorceRow}>
+              <Text style={styles.sectionLabel}>Type of Divorce: </Text>
+              <Text style={styles.sectionValue}>
+                {formatDivorceTypeDisplay(certificateData.divorceType)}
+              </Text>
             </View>
+
+            {/* Second Line: Date(s) */}
+            {isTripleTalaq(certificateData.divorceType) || certificateData.talaqDate2 || certificateData.talaqDate3 ? (
+              <View style={styles.divorceDatesRow}>
+                <View style={styles.regItem}>
+                  <Text style={styles.sectionLabel}>Date of 1st Talaq: </Text>
+                  <Text style={styles.sectionValue}>
+                    {certificateData.talaqDate1 ? safeFormatDate(certificateData.talaqDate1, 'dd-MM-yyyy') : (certificateData.divorceDate ? safeFormatDate(certificateData.divorceDate, 'dd-MM-yyyy') : 'N/A')}
+                  </Text>
+                </View>
+                <View style={styles.regItem}>
+                  <Text style={styles.sectionLabel}>Date of 2nd Talaq: </Text>
+                  <Text style={styles.sectionValue}>
+                    {certificateData.talaqDate2 ? safeFormatDate(certificateData.talaqDate2, 'dd-MM-yyyy') : (certificateData.divorceDate ? safeFormatDate(certificateData.divorceDate, 'dd-MM-yyyy') : 'N/A')}
+                  </Text>
+                </View>
+                <View style={styles.regItem}>
+                  <Text style={styles.sectionLabel}>Date of 3rd Talaq: </Text>
+                  <Text style={styles.sectionValue}>
+                    {certificateData.talaqDate3 ? safeFormatDate(certificateData.talaqDate3, 'dd-MM-yyyy') : (certificateData.divorceDate ? safeFormatDate(certificateData.divorceDate, 'dd-MM-yyyy') : 'N/A')}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.divorceDatesRow}>
+                <View style={styles.regItem}>
+                  <Text style={styles.sectionLabel}>Date of Divorce: </Text>
+                  <Text style={styles.sectionValue}>
+                    {certificateData.divorceDate ? safeFormatDate(certificateData.divorceDate, 'dd-MM-yyyy') : 'N/A'}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Registration Details */}
@@ -929,15 +964,17 @@ export const DivorceCertificatePDF: React.FC<DivorceCertificatePDFProps> = ({
 
           {/* Bottom - Couple Photo and QR */}
           <View style={styles.bottomSection}>
-            <View style={styles.couplePhotoBox}>
-              {jointPhotoDataUrl ? (
+            {jointPhotoDataUrl ? (
+              <View style={styles.couplePhotoBox}>
                 <Image
                   src={jointPhotoDataUrl}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   cache={false}
                 />
-              ) : null}
-            </View>
+              </View>
+            ) : (
+              <View style={{ width: 127.5, height: 85 }} />
+            )}
             <View style={styles.qrSection}>
               {qrCodeImage ? (
                 <Image

@@ -8,12 +8,14 @@ interface ApplicationSuccessModalProps {
   isOpen: boolean;
   onClose: () => void;
   applicationId?: string;
+  isDivorce?: boolean;
 }
 
 const ApplicationSuccessModal: React.FC<ApplicationSuccessModalProps> = ({
   isOpen,
   onClose,
   applicationId,
+  isDivorce = false,
 }) => {
   const navigate = useNavigate();
 
@@ -94,52 +96,79 @@ const ApplicationSuccessModal: React.FC<ApplicationSuccessModalProps> = ({
 
           {/* Title - Compact for mobile */}
           <h2 className="font-serif text-lg sm:text-xl font-semibold text-gray-900 mb-2 sm:mb-3 px-1">
-            Application Submitted Successfully
+            {isDivorce ? 'Divorce Application Submitted Successfully' : 'Application Submitted Successfully'}
           </h2>
 
           {/* Message - Compact for mobile */}
           <p className="text-gray-600 text-xs sm:text-sm mb-4 sm:mb-6 leading-relaxed px-1">
-            Your marriage registration application has been submitted successfully.
-            To proceed with the next steps, please book an appointment in the appointments section.
+            {isDivorce
+              ? 'Your divorce registration application has been submitted successfully and is now under review. You can view your application status and details from your dashboard.'
+              : 'Your marriage registration application has been submitted successfully. To proceed with the next steps, please book an appointment in the appointments section.'}
           </p>
 
           {/* Buttons - Compact for mobile */}
           <div className="flex flex-col gap-2 sm:gap-3 justify-center items-stretch sm:items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClose}
-              className="w-full sm:w-auto sm:min-w-[120px] text-xs sm:text-sm"
-            >
-              Close
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleGoToAppointments}
-              className="w-full sm:w-auto sm:min-w-[160px] text-xs sm:text-sm"
-            >
-              <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-              Go to Appointments
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (applicationId) {
-                  navigate(`/application/${applicationId}/acknowledgement`);
-                  onClose();
-                } else {
-                  console.error("No application ID found for redirect");
-                  navigate('/dashboard');
-                  onClose();
-                }
-              }}
-              className="w-full sm:w-auto sm:min-w-[160px] text-xs sm:text-sm"
-              disabled={!applicationId}
-            >
-              View Acknowledgement Slip
-            </Button>
+            {isDivorce ? (
+              <>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    navigate('/divorce-application/view');
+                    onClose();
+                  }}
+                  className="w-full sm:w-auto sm:min-w-[160px] text-xs sm:text-sm"
+                >
+                  View Submitted Application
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClose}
+                  className="w-full sm:w-auto sm:min-w-[120px] text-xs sm:text-sm"
+                >
+                  Go to Dashboard
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClose}
+                  className="w-full sm:w-auto sm:min-w-[120px] text-xs sm:text-sm"
+                >
+                  Close
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleGoToAppointments}
+                  className="w-full sm:w-auto sm:min-w-[160px] text-xs sm:text-sm"
+                >
+                  <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                  Go to Appointments
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (applicationId) {
+                      navigate(`/application/${applicationId}/acknowledgement`);
+                      onClose();
+                    } else {
+                      console.error("No application ID found for redirect");
+                      navigate('/dashboard');
+                      onClose();
+                    }
+                  }}
+                  className="w-full sm:w-auto sm:min-w-[160px] text-xs sm:text-sm"
+                  disabled={!applicationId}
+                >
+                  View Acknowledgement Slip
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

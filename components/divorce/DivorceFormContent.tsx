@@ -19,6 +19,9 @@ import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import StateDistrictSelector from '../../components/StateDistrictSelector';
 import ImageCropModal from '../../components/ui/ImageCropModal';
+import ApplicationSuccessModal from '../../components/ApplicationSuccessModal';
+import { getAllStates, getDistrictsByState } from '../../data/indianStatesDistricts';
+import { DIVORCE_TYPES, isTripleTalaq, formatDivorceTypeDisplay } from '../../utils/divorceUtils';
 import {
   ArrowRight,
   ArrowLeft,
@@ -86,13 +89,72 @@ const createHusbandSchema = (isAdmin: boolean) =>
     currentCountry: z.string().optional(),
 
     // Divorce Particulars
-    divorceDate: z.string().min(1, 'Date of divorce is required').refine((val) => {
-      const today = new Date().toISOString().split('T')[0];
-      return val <= today;
-    }, 'Divorce date cannot be in the future'),
-    divorceType: z.enum(['talaq', 'khula', 'mutual', 'mubarat', 'other']),
+    divorceType: z.string().min(1, 'Type of divorce is required'),
+    divorceDate: z.string().optional(),
+    talaqDate1: z.string().optional(),
+    talaqDate2: z.string().optional(),
+    talaqDate3: z.string().optional(),
     divorceReason: z.string().optional(),
     marriageCertificateNumber: z.string().optional(),
+  }).superRefine((data, ctx) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (isTripleTalaq(data.divorceType)) {
+      if (!data.talaqDate1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['talaqDate1'],
+          message: 'Date of 1st Talaq is required',
+        });
+      } else if (data.talaqDate1 > today) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['talaqDate1'],
+          message: 'Date cannot be in the future',
+        });
+      }
+
+      if (!data.talaqDate2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['talaqDate2'],
+          message: 'Date of 2nd Talaq is required',
+        });
+      } else if (data.talaqDate2 > today) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['talaqDate2'],
+          message: 'Date cannot be in the future',
+        });
+      }
+
+      if (!data.talaqDate3) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['talaqDate3'],
+          message: 'Date of 3rd Talaq is required',
+        });
+      } else if (data.talaqDate3 > today) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['talaqDate3'],
+          message: 'Date cannot be in the future',
+        });
+      }
+    } else {
+      if (!data.divorceDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['divorceDate'],
+          message: 'Date of divorce is required',
+        });
+      } else if (data.divorceDate > today) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['divorceDate'],
+          message: 'Divorce date cannot be in the future',
+        });
+      }
+    }
   });
 
 const createWifeSchema = (isAdmin: boolean) =>
@@ -137,8 +199,24 @@ type WifeFormData = z.infer<ReturnType<typeof createWifeSchema>>;
 type DeclarationsFormData = z.infer<typeof declarationsSchema>;
 
 const formatAadhaarForInput = (val?: string | null): string => {
-  if (!val || typeof val !== 'string' || val.trim() === '' || val.trim().toUpperCase() === 'N/A') return '';
-  return handleAadhaarInput(val);
+  if (!val || typeof val !== 'string') return '';
+  const digitsOnly = val.replace(/\D/g, '');
+  if (!digitsOnly) return '';
+  return handleAadhaarInput(digitsOnly);
+};
+
+const getCanonicalState = (s?: string | null): string => {
+  if (!s) return 'West Bengal';
+  const all = getAllStates();
+  const match = all.find((item) => item.toLowerCase() === s.trim().toLowerCase());
+  return match || s;
+};
+
+const getCanonicalDistrict = (stateName: string, d?: string | null): string => {
+  if (!d) return 'Murshidabad';
+  const districts = getDistrictsByState(stateName);
+  const match = districts.find((item) => item.toLowerCase() === d.trim().toLowerCase());
+  return match || d;
 };
 
 export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
@@ -149,6 +227,15 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
   const { user } = useAuth();
   const { showToast } = useNotification();
   const { application, updateDraft, submitApplication, isLoading, refreshApplication } = useDivorceApplication();
+
+  const isSubmitted = !isAdminContext && Boolean(
+    application?.status === 'submitted' ||
+    application?.status === 'under_review' ||
+    application?.status === 'approved' ||
+    application?.verified
+  );
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const steps = [
     { id: 'husband', label: 'Husband Details' },
@@ -161,6 +248,14 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // If application is already submitted for regular users, lock to Review step
+  useEffect(() => {
+    if (isSubmitted && currentStep !== 4) {
+      setCurrentStep(4);
+      showToast('Divorce application has been submitted and cannot be edited', 'info');
+    }
+  }, [isSubmitted, currentStep, showToast]);
 
   // Marriage Certificate Search
   const [searchCertNumber, setSearchCertNumber] = useState('');
@@ -196,20 +291,23 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
       permanentVillageStreet: '',
       permanentPostOffice: '',
       permanentPoliceStation: '',
-      permanentDistrict: 'MURSHIDABAD',
-      permanentState: 'WEST BENGAL',
+      permanentDistrict: 'Murshidabad',
+      permanentState: 'West Bengal',
       permanentZipCode: '',
       permanentCountry: 'India',
       sameAsPermanent: true,
       currentVillageStreet: '',
       currentPostOffice: '',
       currentPoliceStation: '',
-      currentDistrict: 'MURSHIDABAD',
-      currentState: 'WEST BENGAL',
+      currentDistrict: 'Murshidabad',
+      currentState: 'West Bengal',
       currentZipCode: '',
       currentCountry: 'India',
       divorceDate: new Date().toISOString().split('T')[0],
-      divorceType: 'talaq',
+      divorceType: 'TALAQ (HUSBAND: REGISTER B)',
+      talaqDate1: new Date().toISOString().split('T')[0],
+      talaqDate2: '',
+      talaqDate3: '',
       divorceReason: '',
       marriageCertificateNumber: '',
     },
@@ -230,16 +328,16 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
       permanentVillageStreet: '',
       permanentPostOffice: '',
       permanentPoliceStation: '',
-      permanentDistrict: 'MURSHIDABAD',
-      permanentState: 'WEST BENGAL',
+      permanentDistrict: 'Murshidabad',
+      permanentState: 'West Bengal',
       permanentZipCode: '',
       permanentCountry: 'India',
       sameAsPermanent: true,
       currentVillageStreet: '',
       currentPostOffice: '',
       currentPoliceStation: '',
-      currentDistrict: 'MURSHIDABAD',
-      currentState: 'WEST BENGAL',
+      currentDistrict: 'Murshidabad',
+      currentState: 'West Bengal',
       currentZipCode: '',
       currentCountry: 'India',
     },
@@ -285,20 +383,23 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
           permanentVillageStreet: application.userAddress?.villageStreet || '',
           permanentPostOffice: application.userAddress?.postOffice || '',
           permanentPoliceStation: application.userAddress?.policeStation || '',
-          permanentDistrict: application.userAddress?.district || 'MURSHIDABAD',
-          permanentState: application.userAddress?.state || 'WEST BENGAL',
+          permanentDistrict: getCanonicalDistrict(getCanonicalState(application.userAddress?.state), application.userAddress?.district),
+          permanentState: getCanonicalState(application.userAddress?.state),
           permanentZipCode: application.userAddress?.zipCode || '',
           permanentCountry: application.userAddress?.country || 'India',
           sameAsPermanent: !application.userCurrentAddress || application.userCurrentAddress.villageStreet === application.userAddress?.villageStreet,
           currentVillageStreet: application.userCurrentAddress?.villageStreet || '',
           currentPostOffice: application.userCurrentAddress?.postOffice || '',
           currentPoliceStation: application.userCurrentAddress?.policeStation || '',
-          currentDistrict: application.userCurrentAddress?.district || 'MURSHIDABAD',
-          currentState: application.userCurrentAddress?.state || 'WEST BENGAL',
+          currentDistrict: getCanonicalDistrict(getCanonicalState(application.userCurrentAddress?.state), application.userCurrentAddress?.district),
+          currentState: getCanonicalState(application.userCurrentAddress?.state),
           currentZipCode: application.userCurrentAddress?.zipCode || '',
           currentCountry: application.userCurrentAddress?.country || 'India',
           divorceDate: application.divorceDate ? new Date(application.divorceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          divorceType: (application.divorceType as any) || 'talaq',
+          divorceType: formatDivorceTypeDisplay(application.divorceType),
+          talaqDate1: application.talaqDate1 || (application.declarations as any)?.talaqDate1 || (application.divorceDate ? new Date(application.divorceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+          talaqDate2: application.talaqDate2 || (application.declarations as any)?.talaqDate2 || '',
+          talaqDate3: application.talaqDate3 || (application.declarations as any)?.talaqDate3 || '',
           divorceReason: application.divorceReason || '',
           marriageCertificateNumber: application.marriageCertificateNumber || '',
         });
@@ -316,16 +417,16 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
           permanentVillageStreet: application.partnerAddress?.villageStreet || '',
           permanentPostOffice: application.partnerAddress?.postOffice || '',
           permanentPoliceStation: application.partnerAddress?.policeStation || '',
-          permanentDistrict: application.partnerAddress?.district || 'MURSHIDABAD',
-          permanentState: application.partnerAddress?.state || 'WEST BENGAL',
+          permanentDistrict: getCanonicalDistrict(getCanonicalState(application.partnerAddress?.state), application.partnerAddress?.district),
+          permanentState: getCanonicalState(application.partnerAddress?.state),
           permanentZipCode: application.partnerAddress?.zipCode || '',
           permanentCountry: application.partnerAddress?.country || 'India',
           sameAsPermanent: !application.partnerCurrentAddress || application.partnerCurrentAddress.villageStreet === application.partnerAddress?.villageStreet,
           currentVillageStreet: application.partnerCurrentAddress?.villageStreet || '',
           currentPostOffice: application.partnerCurrentAddress?.postOffice || '',
           currentPoliceStation: application.partnerCurrentAddress?.policeStation || '',
-          currentDistrict: application.partnerCurrentAddress?.district || 'MURSHIDABAD',
-          currentState: application.partnerCurrentAddress?.state || 'WEST BENGAL',
+          currentDistrict: getCanonicalDistrict(getCanonicalState(application.partnerCurrentAddress?.state), application.partnerCurrentAddress?.district),
+          currentState: getCanonicalState(application.partnerCurrentAddress?.state),
           currentZipCode: application.partnerCurrentAddress?.zipCode || '',
           currentCountry: application.partnerCurrentAddress?.country || 'India',
         });
@@ -403,11 +504,13 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
         }
 
         if (app.user_address) {
+          const uState = getCanonicalState(app.user_address.state);
+          const uDist = getCanonicalDistrict(uState, app.user_address.district);
           husbandForm.setValue('permanentVillageStreet', app.user_address.villageStreet || '');
           husbandForm.setValue('permanentPostOffice', app.user_address.postOffice || '');
           husbandForm.setValue('permanentPoliceStation', app.user_address.policeStation || '');
-          husbandForm.setValue('permanentDistrict', app.user_address.district || 'MURSHIDABAD');
-          husbandForm.setValue('permanentState', app.user_address.state || 'WEST BENGAL');
+          husbandForm.setValue('permanentDistrict', uDist);
+          husbandForm.setValue('permanentState', uState);
           husbandForm.setValue('permanentZipCode', app.user_address.zipCode || '');
         }
 
@@ -422,11 +525,13 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
         }
 
         if (app.partner_address) {
+          const pState = getCanonicalState(app.partner_address.state);
+          const pDist = getCanonicalDistrict(pState, app.partner_address.district);
           wifeForm.setValue('permanentVillageStreet', app.partner_address.villageStreet || '');
           wifeForm.setValue('permanentPostOffice', app.partner_address.postOffice || '');
           wifeForm.setValue('permanentPoliceStation', app.partner_address.policeStation || '');
-          wifeForm.setValue('permanentDistrict', app.partner_address.district || 'MURSHIDABAD');
-          wifeForm.setValue('permanentState', app.partner_address.state || 'WEST BENGAL');
+          wifeForm.setValue('permanentDistrict', pDist);
+          wifeForm.setValue('permanentState', pState);
           wifeForm.setValue('permanentZipCode', app.partner_address.zipCode || '');
         }
 
@@ -623,8 +728,8 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
         villageStreet: hValues.permanentVillageStreet || '',
         postOffice: hValues.permanentPostOffice || '',
         policeStation: hValues.permanentPoliceStation || '',
-        district: hValues.permanentDistrict || 'MURSHIDABAD',
-        state: hValues.permanentState || 'WEST BENGAL',
+        district: getCanonicalDistrict(getCanonicalState(hValues.permanentState), hValues.permanentDistrict),
+        state: getCanonicalState(hValues.permanentState),
         zipCode: hValues.permanentZipCode || '',
         country: hValues.permanentCountry || 'India',
       };
@@ -635,8 +740,8 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
           villageStreet: hValues.currentVillageStreet || '',
           postOffice: hValues.currentPostOffice || '',
           policeStation: hValues.currentPoliceStation || '',
-          district: hValues.currentDistrict || 'MURSHIDABAD',
-          state: hValues.currentState || 'WEST BENGAL',
+          district: getCanonicalDistrict(getCanonicalState(hValues.currentState), hValues.currentDistrict),
+          state: getCanonicalState(hValues.currentState),
           zipCode: hValues.currentZipCode || '',
           country: hValues.currentCountry || 'India',
         };
@@ -645,8 +750,8 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
         villageStreet: wValues.permanentVillageStreet || '',
         postOffice: wValues.permanentPostOffice || '',
         policeStation: wValues.permanentPoliceStation || '',
-        district: wValues.permanentDistrict || 'MURSHIDABAD',
-        state: wValues.permanentState || 'WEST BENGAL',
+        district: getCanonicalDistrict(getCanonicalState(wValues.permanentState), wValues.permanentDistrict),
+        state: getCanonicalState(wValues.permanentState),
         zipCode: wValues.permanentZipCode || '',
         country: wValues.permanentCountry || 'India',
       };
@@ -657,8 +762,8 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
           villageStreet: wValues.currentVillageStreet || '',
           postOffice: wValues.currentPostOffice || '',
           policeStation: wValues.currentPoliceStation || '',
-          district: wValues.currentDistrict || 'MURSHIDABAD',
-          state: wValues.currentState || 'WEST BENGAL',
+          district: getCanonicalDistrict(getCanonicalState(wValues.currentState), wValues.currentDistrict),
+          state: getCanonicalState(wValues.currentState),
           zipCode: wValues.currentZipCode || '',
           country: wValues.currentCountry || 'India',
         };
@@ -687,16 +792,21 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
         userCurrentAddress,
         partnerAddress,
         partnerCurrentAddress,
-        divorceDate: hValues.divorceDate,
+        divorceDate: isTripleTalaq(hValues.divorceType)
+          ? (hValues.talaqDate3 || hValues.talaqDate1 || hValues.divorceDate)
+          : hValues.divorceDate,
         divorceType: hValues.divorceType,
+        talaqDate1: hValues.talaqDate1,
+        talaqDate2: hValues.talaqDate2,
+        talaqDate3: hValues.talaqDate3,
         divorceReason: hValues.divorceReason,
         marriageCertificateNumber: hValues.marriageCertificateNumber || linkedMarriageData?.certificate_number,
         marriageApplicationId: linkedMarriageData?.id,
         declarations: dValues,
       });
 
-      // Upload any unsaved documents if on documents step
-      if (currentStep === 2 && documents.length > 0) {
+      // Always upload any unsaved documents regardless of step so files are never lost
+      if (documents.length > 0) {
         await uploadUnsavedDocuments();
       }
 
@@ -753,6 +863,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
   };
 
   const handleBack = () => {
+    if (isSubmitted) return;
     setCurrentStep((prev) => Math.max(prev - 1, 0));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -770,13 +881,18 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
 
     setIsSubmitting(true);
     try {
+      if (documents.length > 0) {
+        await uploadUnsavedDocuments();
+      }
       await saveCurrentStepDraft(true);
       await submitApplication();
       showToast('Divorce application submitted successfully!', 'success');
       if (onComplete && application) {
         onComplete(application.id);
-      } else {
+      } else if (isAdminContext) {
         navigate(`/admin/divorce/applications/${application?.id || ''}`);
+      } else {
+        setShowSuccessModal(true);
       }
     } catch (err: any) {
       console.error('Failed to submit application:', err);
@@ -801,13 +917,40 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
         steps={steps}
         currentStep={currentStep}
         onStepClick={(step) => {
-          if (step <= currentStep) setCurrentStep(step);
+          if (!isSubmitted && step <= currentStep) setCurrentStep(step);
         }}
       />
+
+      {isSubmitted && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="text-amber-600 flex-shrink-0" size={20} />
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                Divorce Application Submitted
+              </p>
+              <p className="text-xs text-amber-700">
+                This application has already been submitted and is under review. Details cannot be edited.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/divorce-application/view')}
+            className="border-amber-300 text-amber-900 hover:bg-amber-100 flex-shrink-0 text-xs"
+          >
+            <Eye size={14} className="mr-1.5" />
+            View Full Application
+          </Button>
+        </div>
+      )}
 
       {/* STEP 0: HUSBAND DETAILS */}
       {currentStep === 0 && (
         <form className="space-y-6">
+          <fieldset disabled={isSubmitted} className="space-y-6 border-0 p-0 m-0 min-w-0">
           {/* Marriage Certificate Search Box */}
           <Card className="p-4 sm:p-6 bg-gradient-to-r from-amber-50/50 to-gold-50/30 border border-gold-200">
             <div className="flex items-center gap-2 mb-2">
@@ -958,29 +1101,72 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Date of Divorce / Pronouncement <span className="text-rose-500">*</span>
-                </label>
-                <Input
-                  type="date"
-                  {...husbandForm.register('divorceDate')}
-                  error={husbandForm.formState.errors.divorceDate?.message}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Type of Divorce <span className="text-rose-500">*</span>
                 </label>
                 <select
                   {...husbandForm.register('divorceType')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gold-500 font-medium"
                 >
-                  <option value="talaq">Talaq (By Husband)</option>
-                  <option value="khula">Khula (At Instance of Wife)</option>
-                  <option value="mutual">Mubarat / Mutual Consent</option>
-                  <option value="other">Other / Judicial Dissolution</option>
+                  <option value="TALAQ (HUSBAND: REGISTER B)">TALAQ (HUSBAND: REGISTER B)</option>
+                  <option value="KHULA- TALAQ (MUTUAL: REGISTER C)">KHULA- TALAQ (MUTUAL: REGISTER C)</option>
+                  <option value="TALAQ-I-TAFWEEZ (WIFE: REGISTER D)">TALAQ-I-TAFWEEZ (WIFE: REGISTER D)</option>
+                  <option value="OTHERS">OTHERS</option>
                 </select>
               </div>
+
+              {isTripleTalaq(husbandForm.watch('divorceType')) ? (
+                <div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3 bg-amber-50/70 border border-amber-200 rounded-lg p-3">
+                  <div className="col-span-full">
+                    <span className="font-semibold text-xs text-amber-900">
+                      TALAQ (HUSBAND: REGISTER B) - Triple Talaq
+                    </span>
+                    <p className="text-[11px] text-amber-700">
+                      Please enter the dates of all 3 pronouncements:
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Date of 1st Talaq <span className="text-rose-500">*</span>
+                    </label>
+                    <Input
+                      type="date"
+                      {...husbandForm.register('talaqDate1')}
+                      error={husbandForm.formState.errors.talaqDate1?.message}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Date of 2nd Talaq <span className="text-rose-500">*</span>
+                    </label>
+                    <Input
+                      type="date"
+                      {...husbandForm.register('talaqDate2')}
+                      error={husbandForm.formState.errors.talaqDate2?.message}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Date of 3rd Talaq <span className="text-rose-500">*</span>
+                    </label>
+                    <Input
+                      type="date"
+                      {...husbandForm.register('talaqDate3')}
+                      error={husbandForm.formState.errors.talaqDate3?.message}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Date of Divorce / Pronouncement <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    type="date"
+                    {...husbandForm.register('divorceDate')}
+                    error={husbandForm.formState.errors.divorceDate?.message}
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -1052,6 +1238,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                 setValue={husbandForm.setValue}
                 stateError={husbandForm.formState.errors.permanentState?.message}
                 districtError={husbandForm.formState.errors.permanentDistrict?.message}
+                disabled={isSubmitted}
                 required
               />
 
@@ -1106,6 +1293,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                     setValue={husbandForm.setValue}
                     stateError={husbandForm.formState.errors.currentState?.message}
                     districtError={husbandForm.formState.errors.currentDistrict?.message}
+                    disabled={isSubmitted || husbandForm.watch('sameAsPermanent')}
                   />
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">PIN Code</label>
@@ -1115,12 +1303,14 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
               </div>
             )}
           </Card>
+          </fieldset>
         </form>
       )}
 
       {/* STEP 1: WIFE DETAILS */}
       {currentStep === 1 && (
         <form className="space-y-6">
+          <fieldset disabled={isSubmitted} className="space-y-6 border-0 p-0 m-0 min-w-0">
           <Card className="p-4 sm:p-6 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-gray-200">
               <h2 className="font-serif text-base sm:text-lg font-bold text-gray-900">
@@ -1264,6 +1454,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                 setValue={wifeForm.setValue}
                 stateError={wifeForm.formState.errors.permanentState?.message}
                 districtError={wifeForm.formState.errors.permanentDistrict?.message}
+                disabled={isSubmitted}
                 required
               />
 
@@ -1318,6 +1509,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                     setValue={wifeForm.setValue}
                     stateError={wifeForm.formState.errors.currentState?.message}
                     districtError={wifeForm.formState.errors.currentDistrict?.message}
+                    disabled={isSubmitted || wifeForm.watch('sameAsPermanent')}
                   />
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">PIN Code</label>
@@ -1327,6 +1519,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
               </div>
             )}
           </Card>
+          </fieldset>
         </form>
       )}
 
@@ -2143,6 +2336,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
       {/* STEP 3: DECLARATIONS */}
       {currentStep === 3 && (
         <form className="space-y-6">
+          <fieldset disabled={isSubmitted} className="space-y-6 border-0 p-0 m-0 min-w-0">
           <Card className="p-4 sm:p-6 space-y-4">
             <div className="pb-3 border-b border-gray-200">
               <h2 className="font-serif text-base sm:text-lg font-bold text-gray-900">
@@ -2194,6 +2388,7 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
               </div>
             </div>
           </Card>
+          </fieldset>
         </form>
       )}
 
@@ -2210,8 +2405,15 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                   Please review all entered details thoroughly before final submission.
                 </p>
               </div>
-              <Badge variant="outline" className="text-xs text-gold-700 bg-gold-50 border-gold-300">
-                Ready for submission
+              <Badge
+                variant="outline"
+                className={`text-xs ${
+                  isSubmitted
+                    ? 'text-blue-700 bg-blue-50 border-blue-300'
+                    : 'text-gold-700 bg-gold-50 border-gold-300'
+                }`}
+              >
+                {isSubmitted ? 'Submitted - Under Review' : 'Ready for submission'}
               </Badge>
             </div>
 
@@ -2222,15 +2424,17 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                   <User size={16} className="text-gold-600" />
                   Husband: {husbandForm.watch('firstName')} {husbandForm.watch('lastName')}
                 </h3>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCurrentStep(0)}
-                  className="text-xs text-gold-700 hover:text-gold-800"
-                >
-                  <Edit size={14} className="mr-1" /> Edit
-                </Button>
+                {!isSubmitted && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentStep(0)}
+                    className="text-xs text-gold-700 hover:text-gold-800"
+                  >
+                    <Edit size={14} className="mr-1" /> Edit
+                  </Button>
+                )}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                 <div>
@@ -2272,15 +2476,17 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                   <Users size={16} className="text-rose-600" />
                   Wife: {wifeForm.watch('firstName')} {wifeForm.watch('lastName')}
                 </h3>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCurrentStep(1)}
-                  className="text-xs text-gold-700 hover:text-gold-800"
-                >
-                  <Edit size={14} className="mr-1" /> Edit
-                </Button>
+                {!isSubmitted && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentStep(1)}
+                    className="text-xs text-gold-700 hover:text-gold-800"
+                  >
+                    <Edit size={14} className="mr-1" /> Edit
+                  </Button>
+                )}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                 <div>
@@ -2318,27 +2524,54 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
             {/* Divorce Particulars Summary */}
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/40 space-y-2">
               <h3 className="font-semibold text-sm text-gray-900">Divorce Details</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <div>
-                  <span className="text-gray-500">Date of Divorce:</span>{' '}
-                  <span className="font-medium text-gray-900">{husbandForm.watch('divorceDate')}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Divorce Type:</span>{' '}
-                  <span className="font-semibold uppercase text-rose-700">
-                    {husbandForm.watch('divorceType')}
+                  <span className="text-gray-500">Type of Divorce:</span>{' '}
+                  <span className="font-semibold uppercase text-rose-700 block mt-0.5">
+                    {formatDivorceTypeDisplay(husbandForm.watch('divorceType'))}
                   </span>
                 </div>
-                <div>
-                  <span className="text-gray-500">Marriage Certificate:</span>{' '}
-                  <span className="font-medium text-gray-900">
-                    {husbandForm.watch('marriageCertificateNumber') || 'None'}
-                  </span>
-                </div>
+                {isTripleTalaq(husbandForm.watch('divorceType')) ? (
+                  <>
+                    <div>
+                      <span className="text-gray-500">Date of 1st Talaq:</span>{' '}
+                      <span className="font-medium text-gray-900 block mt-0.5">
+                        {husbandForm.watch('talaqDate1') || 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Date of 2nd Talaq:</span>{' '}
+                      <span className="font-medium text-gray-900 block mt-0.5">
+                        {husbandForm.watch('talaqDate2') || 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Date of 3rd Talaq:</span>{' '}
+                      <span className="font-medium text-gray-900 block mt-0.5">
+                        {husbandForm.watch('talaqDate3') || 'N/A'}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <span className="text-gray-500">Date of Divorce:</span>{' '}
+                    <span className="font-medium text-gray-900 block mt-0.5">
+                      {husbandForm.watch('divorceDate') || 'N/A'}
+                    </span>
+                  </div>
+                )}
+                {husbandForm.watch('marriageCertificateNumber') && (
+                  <div>
+                    <span className="text-gray-500">Marriage Certificate:</span>{' '}
+                    <span className="font-medium text-gray-900 block mt-0.5">
+                      {husbandForm.watch('marriageCertificateNumber')}
+                    </span>
+                  </div>
+                )}
                 {husbandForm.watch('divorceReason') && (
-                  <div className="col-span-2 sm:col-span-3">
+                  <div className="col-span-full">
                     <span className="text-gray-500">Reason / Notes:</span>{' '}
-                    <span className="font-medium text-gray-900">{husbandForm.watch('divorceReason')}</span>
+                    <span className="font-medium text-gray-900 block mt-0.5">{husbandForm.watch('divorceReason')}</span>
                   </div>
                 )}
               </div>
@@ -2351,15 +2584,17 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
                   <FileText size={16} className="text-gold-600" />
                   Uploaded Documents
                 </h3>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCurrentStep(2)}
-                  className="text-xs text-gold-700 hover:text-gold-800"
-                >
-                  <Edit size={14} className="mr-1" /> Edit
-                </Button>
+                {!isSubmitted && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentStep(2)}
+                    className="text-xs text-gold-700 hover:text-gold-800"
+                  >
+                    <Edit size={14} className="mr-1" /> Edit
+                  </Button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2555,50 +2790,75 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
           variant="outline"
           size="sm"
           onClick={handleBack}
-          disabled={currentStep === 0 || isSaving || isSubmitting}
+          disabled={currentStep === 0 || isSaving || isSubmitting || isSubmitted}
         >
           <ArrowLeft size={16} className="mr-1.5" />
           Previous
         </Button>
 
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => saveCurrentStepDraft(false)}
-            isLoading={isSaving}
-            disabled={isSaving || isSubmitting}
-          >
-            <Save size={16} className="mr-1.5" />
-            Save Draft
-          </Button>
-
-          {currentStep < steps.length - 1 ? (
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={handleNext}
-              isLoading={isSaving}
-              disabled={isSaving}
-            >
-              Save & Continue
-              <ArrowRight size={16} className="ml-1.5" />
-            </Button>
+          {isSubmitted ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/dashboard')}
+              >
+                Back to Dashboard
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => navigate('/divorce-application/view')}
+                className="bg-gold-600 hover:bg-gold-700 text-white"
+              >
+                <Eye size={16} className="mr-1.5" />
+                View Full Application
+              </Button>
+            </>
           ) : (
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={handleFinalSubmit}
-              isLoading={isSubmitting}
-              disabled={isSubmitting || isSaving}
-              className="bg-gold-600 hover:bg-gold-700 text-white"
-            >
-              <CheckCircle size={16} className="mr-1.5" />
-              Submit Application
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => saveCurrentStepDraft(false)}
+                isLoading={isSaving}
+                disabled={isSaving || isSubmitting}
+              >
+                <Save size={16} className="mr-1.5" />
+                Save Draft
+              </Button>
+
+              {currentStep < steps.length - 1 ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleNext}
+                  isLoading={isSaving}
+                  disabled={isSaving}
+                >
+                  Save & Continue
+                  <ArrowRight size={16} className="ml-1.5" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleFinalSubmit}
+                  isLoading={isSubmitting}
+                  disabled={isSubmitting || isSaving}
+                  className="bg-gold-600 hover:bg-gold-700 text-white"
+                >
+                  <CheckCircle size={16} className="mr-1.5" />
+                  Submit Application
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -2678,6 +2938,16 @@ export const DivorceFormContent: React.FC<DivorceFormContentProps> = ({
         onCropComplete={handleCropComplete}
         onSkip={handleCropSkip}
       />
+
+      {/* Submission Success Modal */}
+      {showSuccessModal && (
+        <ApplicationSuccessModal
+          isOpen={showSuccessModal}
+          onClose={() => setShowSuccessModal(false)}
+          applicationId={application?.id}
+          isDivorce={true}
+        />
+      )}
     </div>
   );
 };

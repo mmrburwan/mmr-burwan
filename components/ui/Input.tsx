@@ -80,7 +80,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         {error && (
           <p className="mt-1 text-xs sm:text-sm text-rose-600 flex items-center gap-1">
             <AlertCircle size={12} className="sm:w-3.5 sm:h-3.5" />
-            {error}
+            {typeof error === 'string' ? error : (error as any)?.message || String(error)}
           </p>
         )}
         {helperText && !error && (

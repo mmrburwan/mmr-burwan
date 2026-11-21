@@ -607,12 +607,32 @@ const DashboardPage: React.FC = () => {
                         </p>
                       </div>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full !text-xs sm:!text-sm text-gray-600 hover:text-gray-900"
+                      onClick={() => navigate('/divorce-application/view')}
+                    >
+                      <Eye size={14} className="mr-1.5" />
+                      View Application Details
+                    </Button>
                   </div>
                 ) : (
-                  <div className="p-2 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-[10px] sm:text-xs text-amber-800 text-center">
-                      Certificate is being prepared by registrar office.
-                    </p>
+                  <div className="space-y-2">
+                    <div className="p-2 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-[10px] sm:text-xs text-amber-800 text-center">
+                        Certificate is being prepared by registrar office.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full !text-xs sm:!text-sm"
+                      onClick={() => navigate('/divorce-application/view')}
+                    >
+                      <Eye size={14} className="mr-1.5" />
+                      View Application Details
+                    </Button>
                   </div>
                 )}
               </div>
@@ -634,16 +654,27 @@ const DashboardPage: React.FC = () => {
                 </Button>
               </div>
             ) : (
-              <div>
-                <p className="text-[11px] sm:text-xs text-gray-500">Status</p>
-                <p className="font-medium text-xs sm:text-sm text-gray-900">
-                  {divorceApplication?.status === 'submitted' || divorceApplication?.status === 'under_review'
-                    ? 'Application Under Review by Admin'
-                    : 'Divorce Registration in Process'}
-                </p>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-1 leading-relaxed">
-                  Your divorce application has been recorded and will be verified by the registrar.
-                </p>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] sm:text-xs text-gray-500">Status</p>
+                  <p className="font-medium text-xs sm:text-sm text-gray-900">
+                    {divorceApplication?.status === 'submitted' || divorceApplication?.status === 'under_review'
+                      ? 'Application Under Review by Admin'
+                      : 'Divorce Registration in Process'}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-1 leading-relaxed">
+                    Your divorce application has been recorded and will be verified by the registrar.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full !text-xs sm:!text-sm"
+                  onClick={() => navigate('/divorce-application/view')}
+                >
+                  <Eye size={14} className="sm:w-4 sm:h-4 mr-1.5" />
+                  View Divorce Application
+                </Button>
               </div>
             )}
           </Card>

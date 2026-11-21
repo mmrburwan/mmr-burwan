@@ -2,6 +2,7 @@ import React from 'react';
 import { DivorceApplication } from '../../types';
 import { safeFormatDate } from '../../utils/dateUtils';
 import { formatAadhaar } from '../../utils/formatUtils';
+import { isTripleTalaq, formatDivorceTypeDisplay } from '../../utils/divorceUtils';
 
 export interface FormattedAddressDisplayLines {
   line1: string;
@@ -403,11 +404,23 @@ const DivorceCertificateTemplate: React.FC<DivorceCertificateTemplateProps> = ({
           }}>
             Divorce Particulars
           </h3>
-          <div style={{ fontSize: '12px', display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-            <p><strong>Date of Divorce:</strong> {divorceDate ? safeFormatDate(divorceDate, 'dd-MM-yyyy') : 'N/A'}</p>
-            <p><strong>Type of Divorce:</strong> {formatDivorceTypeLabel(divorceType || application.divorceType)}</p>
-            {marriageCertificateNumber && (
-              <p><strong>Original Marriage Certificate No:</strong> {marriageCertificateNumber}</p>
+          <div style={{ fontSize: '12px' }}>
+            {/* First Line: Type of Divorce */}
+            <div style={{ marginBottom: '6px' }}>
+              <p><strong>Type of Divorce:</strong> {formatDivorceTypeDisplay(divorceType || application.divorceType)}</p>
+            </div>
+
+            {/* Second Line: Dates */}
+            {isTripleTalaq(divorceType || application.divorceType) || application.talaqDate2 || application.talaqDate3 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+                <p><strong>Date of 1st Talaq:</strong> {application.talaqDate1 ? safeFormatDate(application.talaqDate1, 'dd-MM-yyyy') : (divorceDate ? safeFormatDate(divorceDate, 'dd-MM-yyyy') : 'N/A')}</p>
+                <p><strong>Date of 2nd Talaq:</strong> {application.talaqDate2 ? safeFormatDate(application.talaqDate2, 'dd-MM-yyyy') : (divorceDate ? safeFormatDate(divorceDate, 'dd-MM-yyyy') : 'N/A')}</p>
+                <p><strong>Date of 3rd Talaq:</strong> {application.talaqDate3 ? safeFormatDate(application.talaqDate3, 'dd-MM-yyyy') : (divorceDate ? safeFormatDate(divorceDate, 'dd-MM-yyyy') : 'N/A')}</p>
+              </div>
+            ) : (
+              <div>
+                <p><strong>Date of Divorce:</strong> {divorceDate ? safeFormatDate(divorceDate, 'dd-MM-yyyy') : 'N/A'}</p>
+              </div>
             )}
           </div>
         </div>

@@ -530,22 +530,50 @@ const ApplicationDetailsPage: React.FC = () => {
                       size="sm"
                       onClick={async () => {
                         try {
-                          // Fetch credentials from database - RLS policy allows admins to view
+                          // 1. Check offlineApplicantContact first if stored directly on application
+                          let contact: any = application.offlineApplicantContact;
+                          if (typeof contact === 'string') {
+                            try {
+                              contact = JSON.parse(contact);
+                            } catch (e) {
+                              // ignore
+                            }
+                          }
+                          if (contact && typeof contact === 'object' && contact.email && contact.password) {
+                            setCredentials({ email: contact.email, password: contact.password });
+                            setShowCredentialsModal(true);
+                            return;
+                          }
+
+                          // 2. Fetch credentials from database - RLS policy allows admins to view
                           const { data, error } = await supabase
                             .from('proxy_user_credentials')
                             .select('email, password')
                             .eq('application_id', application.id)
-                            .single();
+                            .maybeSingle();
 
-                          if (error || !data) {
-                            console.error('Credentials fetch error:', error);
-                            showToast('Credentials not found or you do not have permission to view them', 'error');
+                          if (!error && data?.email && data?.password) {
+                            setCredentials({ email: data.email, password: data.password });
+                            setShowCredentialsModal(true);
                             return;
                           }
 
-                          // Show credentials in modal
-                          setCredentials({ email: data.email, password: data.password });
-                          setShowCredentialsModal(true);
+                          // 3. Fallback by user_id
+                          if (application.userId) {
+                            const { data: userCreds } = await supabase
+                              .from('proxy_user_credentials')
+                              .select('email, password')
+                              .eq('user_id', application.userId)
+                              .maybeSingle();
+
+                            if (userCreds?.email && userCreds?.password) {
+                              setCredentials({ email: userCreds.email, password: userCreds.password });
+                              setShowCredentialsModal(true);
+                              return;
+                            }
+                          }
+
+                          showToast('Credentials not found or you do not have permission to view them', 'error');
                         } catch (error: any) {
                           console.error('Failed to fetch credentials:', error);
                           showToast('Failed to fetch credentials', 'error');

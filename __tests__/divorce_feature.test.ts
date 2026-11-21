@@ -172,8 +172,53 @@ describe('Divorce Feature Tests', () => {
     // Check husband and wife
     expect(certData.husbandFirstName).toBe('Imran');
     expect(certData.wifeFirstName).toBe('Salma');
-    expect(certData.divorceType).toBe('khula');
+    expect(certData.divorceType).toBe('KHULA- TALAQ (MUTUAL: REGISTER C)');
     expect(certData.divorceDate).toBe('2026-10-25');
-    expect(certData.marriageCertificateNumber).toBe('WBMSDBRWI1C202410');
+  });
+
+  it('should format all 4 divorce types correctly and handle Triple Talaq 3 dates', () => {
+    const tripleApp: DivorceApplication = {
+      id: 'app-triple',
+      userId: 'user-triple',
+      status: 'submitted',
+      progress: 100,
+      divorceType: 'TALAQ (HUSBAND: REGISTER B)',
+      divorceDate: '2026-10-20',
+      talaqDate1: '2026-08-20',
+      talaqDate2: '2026-09-20',
+      talaqDate3: '2026-10-20',
+      documents: [],
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const certData = generateDivorceCertificateData(tripleApp);
+    expect(certData.divorceType).toBe('TALAQ (HUSBAND: REGISTER B)');
+    expect(certData.talaqDate1).toBe('2026-08-20');
+    expect(certData.talaqDate2).toBe('2026-09-20');
+    expect(certData.talaqDate3).toBe('2026-10-20');
+
+    // Test priority of admin-verified certificateDetails dates
+    const certDetailsApp: DivorceApplication = {
+      ...tripleApp,
+      talaqDate1: undefined,
+      talaqDate2: undefined,
+      talaqDate3: undefined,
+      certificateDetails: {
+        bookNumber: 'II',
+        volumeNumber: '1',
+        volumeLetter: '',
+        volumeYear: '2026',
+        serialNumber: '5',
+        serialYear: '2026',
+        pageNumber: '10',
+        talaqDate1: '2026-07-01',
+        talaqDate2: '2026-08-01',
+        talaqDate3: '2026-09-01',
+      },
+    };
+    const certDataFromDetails = generateDivorceCertificateData(certDetailsApp);
+    expect(certDataFromDetails.talaqDate1).toBe('2026-07-01');
+    expect(certDataFromDetails.talaqDate2).toBe('2026-08-01');
+    expect(certDataFromDetails.talaqDate3).toBe('2026-09-01');
   });
 });

@@ -12,6 +12,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { FileX, Search, CheckCircle2, AlertCircle, ArrowRight, User, Users, FileText } from 'lucide-react';
 import StateDistrictSelector from '../../components/StateDistrictSelector';
+import { isTripleTalaq, formatDivorceTypeDisplay } from '../../utils/divorceUtils';
 
 const divorceSchema = z.object({
   // Search / Link
@@ -51,9 +52,29 @@ const divorceSchema = z.object({
   wifePin: z.string().min(6, 'Valid 6-digit PIN code required'),
 
   // Divorce Particulars
-  divorceDate: z.string().min(1, 'Date of divorce is required'),
-  divorceType: z.enum(['talaq', 'khula', 'mutual', 'mubarat', 'other']),
+  divorceDate: z.string().optional(),
+  divorceType: z.string().min(1, 'Type of divorce is required'),
+  talaqDate1: z.string().optional(),
+  talaqDate2: z.string().optional(),
+  talaqDate3: z.string().optional(),
   divorceReason: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const today = new Date().toISOString().split('T')[0];
+  if (isTripleTalaq(data.divorceType)) {
+    if (!data.talaqDate1) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['talaqDate1'], message: 'Date of 1st Talaq is required' });
+    }
+    if (!data.talaqDate2) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['talaqDate2'], message: 'Date of 2nd Talaq is required' });
+    }
+    if (!data.talaqDate3) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['talaqDate3'], message: 'Date of 3rd Talaq is required' });
+    }
+  } else {
+    if (!data.divorceDate) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['divorceDate'], message: 'Date of divorce is required' });
+    }
+  }
 });
 
 type DivorceFormData = z.infer<typeof divorceSchema>;
@@ -81,8 +102,11 @@ const CreateDivorceApplicationPage: React.FC<CreateDivorceApplicationPageProps> 
   } = useForm<DivorceFormData>({
     resolver: zodResolver(divorceSchema),
     defaultValues: {
-      divorceType: 'talaq',
+      divorceType: 'TALAQ (HUSBAND: REGISTER B)',
       divorceDate: new Date().toISOString().split('T')[0],
+      talaqDate1: new Date().toISOString().split('T')[0],
+      talaqDate2: '',
+      talaqDate3: '',
       husbandState: 'WEST BENGAL',
       wifeState: 'WEST BENGAL',
     },
@@ -224,13 +248,21 @@ const CreateDivorceApplicationPage: React.FC<CreateDivorceApplicationPageProps> 
         userCurrentAddress: userAddress,
         partnerAddress,
         partnerCurrentAddress: partnerAddress,
-        divorceDate: formData.divorceDate,
+        divorceDate: isTripleTalaq(formData.divorceType)
+          ? (formData.talaqDate3 || formData.talaqDate1 || formData.divorceDate)
+          : formData.divorceDate,
         divorceReason: formData.divorceReason,
         divorceType: formData.divorceType,
+        talaqDate1: formData.talaqDate1,
+        talaqDate2: formData.talaqDate2,
+        talaqDate3: formData.talaqDate3,
         declarations: {
           accuracy: true,
           legal: true,
           divorceDate: formData.divorceDate,
+          talaqDate1: formData.talaqDate1 || '',
+          talaqDate2: formData.talaqDate2 || '',
+          talaqDate3: formData.talaqDate3 || '',
         },
         proxyUserEmail: formData.husbandEmail || undefined,
       });
@@ -351,13 +383,28 @@ const CreateDivorceApplicationPage: React.FC<CreateDivorceApplicationPageProps> 
             />
             <Input
               label="Aadhaar Number (12 digits)"
-              {...register('husbandAadhaar')}
+              maxLength={14}
+              {...register('husbandAadhaar', {
+                onChange: (e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 12);
+                  const parts = [];
+                  for (let i = 0; i < val.length; i += 4) {
+                    parts.push(val.slice(i, i + 4));
+                  }
+                  e.target.value = parts.join(' ');
+                },
+              })}
               error={errors.husbandAadhaar?.message}
               required
             />
             <Input
               label="Mobile Number"
-              {...register('husbandMobile')}
+              maxLength={10}
+              {...register('husbandMobile', {
+                onChange: (e) => {
+                  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                },
+              })}
               error={errors.husbandMobile?.message}
               required
             />
@@ -447,13 +494,28 @@ const CreateDivorceApplicationPage: React.FC<CreateDivorceApplicationPageProps> 
             />
             <Input
               label="Aadhaar / ID Number"
-              {...register('wifeAadhaar')}
+              maxLength={14}
+              {...register('wifeAadhaar', {
+                onChange: (e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 12);
+                  const parts = [];
+                  for (let i = 0; i < val.length; i += 4) {
+                    parts.push(val.slice(i, i + 4));
+                  }
+                  e.target.value = parts.join(' ');
+                },
+              })}
               error={errors.wifeAadhaar?.message}
               required
             />
             <Input
               label="Mobile Number (Optional)"
-              {...register('wifeMobile')}
+              maxLength={10}
+              {...register('wifeMobile', {
+                onChange: (e) => {
+                  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                },
+              })}
               error={errors.wifeMobile?.message}
             />
           </div>
@@ -510,29 +572,62 @@ const CreateDivorceApplicationPage: React.FC<CreateDivorceApplicationPageProps> 
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Input
-              label="Date of Divorce"
-              type="date"
-              {...register('divorceDate')}
-              error={errors.divorceDate?.message}
-              required
-            />
-
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Type of Divorce (তালাকের ধরন) *
               </label>
               <select
                 {...register('divorceType')}
-                className="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
+                className="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 font-medium"
               >
-                <option value="talaq">Talaq (বাই-ইন / রাজঈ)</option>
-                <option value="khula">Khula (খোলা)</option>
-                <option value="mutual">Mutual Consent (আপোষে)</option>
-                <option value="mubarat">Mubarat (মুবারাত)</option>
-                <option value="other">Other Legal Dissolution</option>
+                <option value="TALAQ (HUSBAND: REGISTER B)">TALAQ (HUSBAND: REGISTER B)</option>
+                <option value="KHULA- TALAQ (MUTUAL: REGISTER C)">KHULA- TALAQ (MUTUAL: REGISTER C)</option>
+                <option value="TALAQ-I-TAFWEEZ (WIFE: REGISTER D)">TALAQ-I-TAFWEEZ (WIFE: REGISTER D)</option>
+                <option value="OTHERS">OTHERS</option>
               </select>
             </div>
+
+            {isTripleTalaq(watch('divorceType')) ? (
+              <div className="col-span-full grid grid-cols-1 sm:grid-cols-3 gap-3 bg-amber-50/70 border border-amber-200 rounded-lg p-3">
+                <div className="col-span-full">
+                  <span className="font-semibold text-xs text-amber-900">
+                    TALAQ (HUSBAND: REGISTER B) - Triple Talaq
+                  </span>
+                  <p className="text-[11px] text-amber-700">
+                    Please enter the dates of all 3 pronouncements:
+                  </p>
+                </div>
+                <Input
+                  label="Date of 1st Talaq *"
+                  type="date"
+                  {...register('talaqDate1')}
+                  error={errors.talaqDate1?.message}
+                  required
+                />
+                <Input
+                  label="Date of 2nd Talaq *"
+                  type="date"
+                  {...register('talaqDate2')}
+                  error={errors.talaqDate2?.message}
+                  required
+                />
+                <Input
+                  label="Date of 3rd Talaq *"
+                  type="date"
+                  {...register('talaqDate3')}
+                  error={errors.talaqDate3?.message}
+                  required
+                />
+              </div>
+            ) : (
+              <Input
+                label="Date of Divorce *"
+                type="date"
+                {...register('divorceDate')}
+                error={errors.divorceDate?.message}
+                required
+              />
+            )}
 
             <Input
               label="Original Marriage Cert No (Optional)"

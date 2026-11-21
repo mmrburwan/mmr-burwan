@@ -110,6 +110,9 @@ export interface CertificateDetails {
   serialNumber: string;
   serialYear: string;
   pageNumber: string;
+  talaqDate1?: string;
+  talaqDate2?: string;
+  talaqDate3?: string;
 }
 
 export interface Document {
@@ -221,7 +224,16 @@ export interface FilterOptions {
 }
 
 
-export type DivorceType = 'talaq' | 'khula' | 'mutual' | 'mubarat' | 'other';
+export type DivorceType =
+  | 'TALAQ (HUSBAND: REGISTER B)'
+  | 'KHULA- TALAQ (MUTUAL: REGISTER C)'
+  | 'TALAQ-I-TAFWEEZ (WIFE: REGISTER D)'
+  | 'OTHERS'
+  | 'talaq'
+  | 'khula'
+  | 'mutual'
+  | 'mubarat'
+  | 'other';
 
 export interface DivorceApplication {
   id: string;
@@ -238,7 +250,10 @@ export interface DivorceApplication {
   partnerCurrentAddress?: Address;
   divorceDate?: string;
   divorceReason?: string;
-  divorceType?: DivorceType;
+  divorceType?: DivorceType | string;
+  talaqDate1?: string;
+  talaqDate2?: string;
+  talaqDate3?: string;
   declarations?: Record<string, boolean | string>;
   documents: Document[];
   verified?: boolean;

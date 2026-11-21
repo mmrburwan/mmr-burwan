@@ -144,6 +144,9 @@ export const divorceApplicationService = {
       divorceDate?: string;
       divorceReason?: string;
       divorceType?: string;
+      talaqDate1?: string;
+      talaqDate2?: string;
+      talaqDate3?: string;
       marriageCertificateNumber?: string;
       marriageApplicationId?: string;
       declarations?: Record<string, boolean | string>;
@@ -158,9 +161,21 @@ export const divorceApplicationService = {
       currentApp = await this.createDraft(identifier);
     }
 
-    const mergedDeclarations = updates.declarations
-      ? { ...(currentApp.declarations || {}), ...updates.declarations }
-      : currentApp.declarations;
+    const extraTalaqDates: Record<string, string> = {};
+    if (updates.talaqDate1 !== undefined) extraTalaqDates.talaqDate1 = updates.talaqDate1;
+    if (updates.talaqDate2 !== undefined) extraTalaqDates.talaqDate2 = updates.talaqDate2;
+    if (updates.talaqDate3 !== undefined) extraTalaqDates.talaqDate3 = updates.talaqDate3;
+
+    const mergedDeclarations = {
+      ...(currentApp.declarations || {}),
+      ...(updates.declarations || {}),
+      ...extraTalaqDates,
+    };
+
+    const effectiveDivorceDate =
+      updates.divorceDate !== undefined
+        ? updates.divorceDate
+        : updates.talaqDate3 || updates.talaqDate1 || currentApp.divorceDate;
 
     const dbUpdates: any = {
       last_updated: new Date().toISOString(),
@@ -172,7 +187,7 @@ export const divorceApplicationService = {
     if (updates.userCurrentAddress !== undefined) dbUpdates.user_current_address = updates.userCurrentAddress;
     if (updates.partnerAddress !== undefined) dbUpdates.partner_address = updates.partnerAddress;
     if (updates.partnerCurrentAddress !== undefined) dbUpdates.partner_current_address = updates.partnerCurrentAddress;
-    if (updates.divorceDate !== undefined) dbUpdates.divorce_date = updates.divorceDate;
+    if (effectiveDivorceDate !== undefined) dbUpdates.divorce_date = effectiveDivorceDate;
     if (updates.divorceReason !== undefined) dbUpdates.divorce_reason = updates.divorceReason;
     if (updates.divorceType !== undefined) dbUpdates.divorce_type = updates.divorceType;
     if (updates.marriageCertificateNumber !== undefined) dbUpdates.marriage_certificate_number = updates.marriageCertificateNumber;
@@ -182,6 +197,7 @@ export const divorceApplicationService = {
     const draftPreview: Partial<DivorceApplication> = {
       ...currentApp,
       ...updates,
+      divorceDate: effectiveDivorceDate,
       declarations: mergedDeclarations,
     };
     dbUpdates.progress = this.calculateActualProgress(draftPreview as DivorceApplication);
@@ -248,9 +264,25 @@ export const divorceApplicationService = {
     divorceDate?: string;
     divorceReason?: string;
     divorceType?: string;
+    talaqDate1?: string;
+    talaqDate2?: string;
+    talaqDate3?: string;
     declarations?: Record<string, boolean | string>;
     proxyUserEmail?: string;
   }): Promise<DivorceApplication> {
+    const extraTalaqDates: Record<string, string> = {};
+    if (payload.talaqDate1 !== undefined) extraTalaqDates.talaqDate1 = payload.talaqDate1;
+    if (payload.talaqDate2 !== undefined) extraTalaqDates.talaqDate2 = payload.talaqDate2;
+    if (payload.talaqDate3 !== undefined) extraTalaqDates.talaqDate3 = payload.talaqDate3;
+
+    const mergedDeclarations = {
+      ...(payload.declarations || {}),
+      ...extraTalaqDates,
+    };
+
+    const effectiveDivorceDate =
+      payload.divorceDate || payload.talaqDate3 || payload.talaqDate1 || null;
+
     const { data, error } = await supabase
       .from('divorce_applications')
       .insert({
@@ -265,10 +297,10 @@ export const divorceApplicationService = {
         user_current_address: payload.userCurrentAddress || null,
         partner_address: payload.partnerAddress || null,
         partner_current_address: payload.partnerCurrentAddress || null,
-        divorce_date: payload.divorceDate || null,
+        divorce_date: effectiveDivorceDate,
         divorce_reason: payload.divorceReason || null,
-        divorce_type: payload.divorceType || 'talaq',
-        declarations: payload.declarations || {},
+        divorce_type: payload.divorceType || 'TALAQ (HUSBAND: REGISTER B)',
+        declarations: mergedDeclarations,
         created_by_admin_id: payload.adminId,
         is_proxy_application: true,
         proxy_user_email: payload.proxyUserEmail || null,
@@ -299,6 +331,9 @@ export const divorceApplicationService = {
       divorceDate: string;
       divorceReason: string;
       divorceType: string;
+      talaqDate1: string;
+      talaqDate2: string;
+      talaqDate3: string;
       declarations: Record<string, boolean | string>;
       adminComment: string;
     }>
@@ -313,11 +348,29 @@ export const divorceApplicationService = {
     if (updates.userCurrentAddress !== undefined) dbUpdates.user_current_address = updates.userCurrentAddress;
     if (updates.partnerAddress !== undefined) dbUpdates.partner_address = updates.partnerAddress;
     if (updates.partnerCurrentAddress !== undefined) dbUpdates.partner_current_address = updates.partnerCurrentAddress;
-    if (updates.divorceDate !== undefined) dbUpdates.divorce_date = updates.divorceDate;
     if (updates.divorceReason !== undefined) dbUpdates.divorce_reason = updates.divorceReason;
     if (updates.divorceType !== undefined) dbUpdates.divorce_type = updates.divorceType;
-    if (updates.declarations !== undefined) dbUpdates.declarations = updates.declarations;
     if (updates.adminComment !== undefined) dbUpdates.admin_comment = updates.adminComment;
+
+    const extraTalaqDates: Record<string, string> = {};
+    if (updates.talaqDate1 !== undefined) extraTalaqDates.talaqDate1 = updates.talaqDate1;
+    if (updates.talaqDate2 !== undefined) extraTalaqDates.talaqDate2 = updates.talaqDate2;
+    if (updates.talaqDate3 !== undefined) extraTalaqDates.talaqDate3 = updates.talaqDate3;
+
+    if (updates.declarations !== undefined || Object.keys(extraTalaqDates).length > 0) {
+      const existing = await this.getDivorceApplicationById(applicationId);
+      dbUpdates.declarations = {
+        ...(existing?.declarations || {}),
+        ...(updates.declarations || {}),
+        ...extraTalaqDates,
+      };
+    }
+
+    const effectiveDivorceDate =
+      updates.divorceDate !== undefined
+        ? updates.divorceDate
+        : updates.talaqDate3 || updates.talaqDate1;
+    if (effectiveDivorceDate !== undefined) dbUpdates.divorce_date = effectiveDivorceDate;
 
     const { data, error } = await supabase
       .from('divorce_applications')
@@ -380,6 +433,9 @@ export const divorceApplicationService = {
       divorceDate: data.divorce_date,
       divorceReason: data.divorce_reason,
       divorceType: data.divorce_type,
+      talaqDate1: data.talaq_date_1 || data.declarations?.talaqDate1 || data.divorce_date,
+      talaqDate2: data.talaq_date_2 || data.declarations?.talaqDate2 || data.divorce_date,
+      talaqDate3: data.talaq_date_3 || data.declarations?.talaqDate3 || data.divorce_date,
       declarations: data.declarations || {},
       documents: (data.documents || []).map((doc: any) => ({
         id: doc.id,
@@ -405,7 +461,7 @@ export const divorceApplicationService = {
       createdByAdminId: data.created_by_admin_id,
       isProxyApplication: Boolean(data.is_proxy_application || data.created_by_admin_id),
       offlineApplicantContact: data.offline_applicant_contact,
-      proxyUserEmail: data.proxy_user_email,
+      proxyUserEmail: data.proxy_user_email || (typeof data.offline_applicant_contact === 'object' ? data.offline_applicant_contact?.email : null),
       submittedAt: data.submitted_at,
       createdAt: data.created_at,
       lastUpdated: data.last_updated || data.updated_at || data.created_at,

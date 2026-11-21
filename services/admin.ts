@@ -1214,6 +1214,21 @@ export const adminService = {
         throw new Error(`Failed to create divorce application: ${draftError.message}`);
       }
 
+      // Store credentials in proxy_user_credentials table as well
+      try {
+        await supabase
+          .from('proxy_user_credentials')
+          .insert({
+            user_id: userId,
+            application_id: draftData.id,
+            email: userEmail,
+            password: applicantData.password,
+            created_by_admin_id: adminId,
+          });
+      } catch (credErr) {
+        console.warn('Failed to insert into proxy_user_credentials (non-critical, stored in offline_applicant_contact):', credErr);
+      }
+
       await auditService.createLog({
         actorId: adminId,
         actorName: adminName,
@@ -1335,7 +1350,7 @@ export const adminService = {
 
   async getAgents(): Promise<{ id: string; email: string; name: string; createdAt: string; disabled?: boolean }[]> {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (sessionError || !session) {
       throw new Error('Authentication required.');
     }
@@ -1351,7 +1366,7 @@ export const adminService = {
 
   async promoteToAgent(email: string, actorId: string, actorName: string): Promise<{ id: string; email: string; name: string }> {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (sessionError || !session) {
       throw new Error('Authentication required.');
     }
@@ -1381,14 +1396,14 @@ export const adminService = {
 
   async toggleAgentStatus(agentId: string, disabled: boolean, actorId: string, actorName: string): Promise<any> {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (sessionError || !session) {
       throw new Error('Authentication required.');
     }
 
-    const { data, error } = await supabase.rpc('toggle_agent_status', { 
-      target_user_id: agentId, 
-      is_disabled: disabled 
+    const { data, error } = await supabase.rpc('toggle_agent_status', {
+      target_user_id: agentId,
+      is_disabled: disabled
     });
 
     if (error) {
@@ -1568,19 +1583,44 @@ export const adminService = {
     certificateNumber: string,
     registrationDate: string,
     registrarName: string,
-    certificateDetails: CertificateDetails
+    certificateDetails: CertificateDetails,
+    talaqDates?: { talaqDate1?: string; talaqDate2?: string; talaqDate3?: string }
   ): Promise<DivorceApplication> {
+    const updatePayload: any = {
+      verified: true,
+      verified_at: new Date().toISOString(),
+      verified_by: actorId,
+      certificate_number: certificateNumber,
+      registration_date: registrationDate,
+      registrar_name: registrarName,
+      certificate_details: {
+        ...certificateDetails,
+        ...(talaqDates || {}),
+      },
+    };
+
+    if (talaqDates?.talaqDate3 || talaqDates?.talaqDate1) {
+      updatePayload.divorce_date = talaqDates.talaqDate3 || talaqDates.talaqDate1;
+    }
+
+    if (talaqDates) {
+      const { data: existingApp } = await supabase
+        .from('divorce_applications')
+        .select('declarations')
+        .eq('id', applicationId)
+        .single();
+
+      updatePayload.declarations = {
+        ...(existingApp?.declarations || {}),
+        talaqDate1: talaqDates.talaqDate1,
+        talaqDate2: talaqDates.talaqDate2,
+        talaqDate3: talaqDates.talaqDate3,
+      };
+    }
+
     const { error } = await supabase
       .from('divorce_applications')
-      .update({
-        verified: true,
-        verified_at: new Date().toISOString(),
-        verified_by: actorId,
-        certificate_number: certificateNumber,
-        registration_date: registrationDate,
-        registrar_name: registrarName,
-        certificate_details: certificateDetails,
-      })
+      .update(updatePayload)
       .eq('id', applicationId);
 
     if (error) {
@@ -1782,5 +1822,102 @@ export const adminService = {
       console.error('Error deleting divorce application:', err);
       throw err;
     }
+  },
+
+  async approveDivorceDocument(documentId: string, actorId: string, actorName: string): Promise<void> {
+    await documentService.approveDivorceDocument(documentId);
+
+    await auditService.createLog({
+      actorId,
+      actorName,
+      actorRole: 'admin',
+      action: 'divorce_document_approved',
+      resourceType: 'divorce_document',
+      resourceId: documentId,
+    });
+  },
+
+  async rejectDivorceDocument(
+    documentId: string,
+    reason: string,
+    actorId: string,
+    actorName: string,
+    sendEmail: boolean = false,
+    userEmail?: string
+  ): Promise<void> {
+    const { data: documentData, error: docError } = await supabase
+      .from('divorce_documents')
+      .select('*, divorce_applications!inner(user_id, user_details)')
+      .eq('id', documentId)
+      .single();
+
+    if (docError || !documentData) {
+      throw new Error('Divorce document not found');
+    }
+
+    const application = documentData.divorce_applications as any;
+    const userId = application.user_id;
+
+    await documentService.rejectDivorceDocument(documentId);
+
+    const getDocumentTypeLabel = (type: string): string => {
+      const labels: Record<string, string> = {
+        aadhaar: 'Aadhaar Card',
+        tenth_certificate: 'Madhyamik Admit Card',
+        voter_id: 'Voter ID',
+        id: 'ID Document',
+        photo: 'Photo',
+        certificate: 'Certificate',
+        other: 'Other',
+      };
+      return labels[type] || type;
+    };
+
+    const getPersonLabel = (belongsTo?: string): string => {
+      if (!belongsTo) return '';
+      switch (belongsTo) {
+        case 'user':
+          return 'Husband\'s';
+        case 'partner':
+          return 'Wife\'s';
+        case 'joint':
+          return 'Joint / Marriage';
+        default:
+          return '';
+      }
+    };
+
+    const documentTypeLabel = getDocumentTypeLabel(documentData.type);
+    const personLabel = getPersonLabel(documentData.belongs_to);
+    const documentTitle = personLabel ? `${personLabel} ${documentTypeLabel}` : documentTypeLabel;
+
+    try {
+      await notificationService.createNotification({
+        userId,
+        applicationId: documentData.divorce_application_id,
+        documentId,
+        type: 'document_rejected',
+        title: `Document Rejected: ${documentTitle}`,
+        message: `Your ${documentTitle} has been rejected by the administrator. Reason: ${reason}. Please re-upload a valid document.`,
+      });
+    } catch (notifError) {
+      console.warn('Failed to send in-app notification:', notifError);
+    }
+
+    await auditService.createLog({
+      actorId,
+      actorName,
+      actorRole: 'admin',
+      action: 'divorce_document_rejected',
+      resourceType: 'divorce_document',
+      resourceId: documentId,
+      details: {
+        reason,
+        documentType: documentData.type,
+        belongsTo: documentData.belongs_to,
+        applicationId: documentData.divorce_application_id,
+        sendEmail,
+      },
+    });
   }
 };

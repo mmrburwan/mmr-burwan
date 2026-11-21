@@ -40,8 +40,8 @@ const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
   onStateChange,
   onDistrictChange,
 }) => {
-  const effectiveState = stateValue ?? selectedState ?? '';
-  const effectiveDistrict = districtValue ?? selectedDistrict ?? '';
+  const rawState = stateValue ?? selectedState ?? '';
+  const rawDistrict = districtValue ?? selectedDistrict ?? '';
 
   // Get all states for the dropdown
   const stateOptions = useMemo(() => {
@@ -51,6 +51,13 @@ const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
       ...states.map(state => ({ value: state, label: state }))
     ];
   }, []);
+
+  // Canonical matched state (case-insensitive)
+  const effectiveState = useMemo(() => {
+    if (!rawState) return '';
+    const match = stateOptions.find(opt => opt.value.toLowerCase() === rawState.toLowerCase());
+    return match ? match.value : rawState;
+  }, [rawState, stateOptions]);
 
   // Get districts based on selected state
   const districtOptions = useMemo(() => {
@@ -64,14 +71,29 @@ const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
     ];
   }, [effectiveState]);
 
+  // Canonical matched district (case-insensitive)
+  const effectiveDistrict = useMemo(() => {
+    if (!rawDistrict) return '';
+    const match = districtOptions.find(opt => opt.value.toLowerCase() === rawDistrict.toLowerCase());
+    return match ? match.value : rawDistrict;
+  }, [rawDistrict, districtOptions]);
+
   // Reset district when state changes
   useEffect(() => {
     if (effectiveState && effectiveDistrict) {
       const districts = getDistrictsByState(effectiveState);
-      // If current district is not in the new state's districts, reset it
-      if (!districts.includes(effectiveDistrict)) {
+      const isDistrictInState = districts.some(
+        d => d.toLowerCase() === effectiveDistrict.toLowerCase()
+      );
+      if (!isDistrictInState) {
         if (districtRegister?.name && setValue) {
           setValue(districtRegister.name, '', { shouldValidate: true, shouldDirty: true });
+        }
+        if (districtRegister?.onChange) {
+          const event = {
+            target: { value: '', name: districtRegister.name },
+          } as React.ChangeEvent<HTMLInputElement>;
+          districtRegister.onChange(event);
         }
         if (onDistrictChange) {
           onDistrictChange('');
@@ -82,56 +104,85 @@ const StateDistrictSelector: React.FC<StateDistrictSelectorProps> = ({
       if (districtRegister?.name && setValue) {
         setValue(districtRegister.name, '', { shouldValidate: true, shouldDirty: true });
       }
+      if (districtRegister?.onChange) {
+        const event = {
+          target: { value: '', name: districtRegister.name },
+        } as React.ChangeEvent<HTMLInputElement>;
+        districtRegister.onChange(event);
+      }
       if (onDistrictChange) {
         onDistrictChange('');
       }
     }
-  }, [effectiveState, effectiveDistrict, setValue, districtRegister?.name, onDistrictChange]);
+  }, [effectiveState, effectiveDistrict, setValue, districtRegister?.name, districtRegister?.onChange, onDistrictChange]);
 
   const handleStateChange = (value: string) => {
+    let canonicalVal = value;
+    if (value) {
+      const match = stateOptions.find(opt => opt.value.toLowerCase() === value.toLowerCase());
+      if (match) {
+        canonicalVal = match.value;
+      }
+    }
+
     if (stateRegister?.onChange) {
       const event = {
         target: {
-          value,
+          value: canonicalVal,
           name: stateRegister.name
         }
       } as React.ChangeEvent<HTMLInputElement>;
       stateRegister.onChange(event);
     }
     if (setValue && stateRegister?.name) {
-      setValue(stateRegister.name, value, { shouldValidate: true, shouldDirty: true });
+      setValue(stateRegister.name, canonicalVal, { shouldValidate: !!canonicalVal, shouldDirty: true });
     }
     if (onStateChange) {
-      onStateChange(value);
+      onStateChange(canonicalVal);
     }
-    // Clear district when state changes
-    if (value !== effectiveState) {
-        if (setValue && districtRegister?.name) {
-          setValue(districtRegister.name, '', { shouldValidate: true, shouldDirty: true });
-        }
-        if (onDistrictChange) {
-          onDistrictChange('');
-        }
+    // Clear district when state changes or is cleared
+    if (!canonicalVal || canonicalVal.toLowerCase() !== effectiveState.toLowerCase()) {
+      if (setValue && districtRegister?.name) {
+        setValue(districtRegister.name, '', { shouldValidate: false, shouldDirty: true });
       }
-    };
-
-    const handleDistrictChange = (value: string) => {
       if (districtRegister?.onChange) {
         const event = {
-          target: {
-            value,
-            name: districtRegister.name
-          }
+          target: { value: '', name: districtRegister.name },
         } as React.ChangeEvent<HTMLInputElement>;
         districtRegister.onChange(event);
       }
-      if (setValue && districtRegister?.name) {
-        setValue(districtRegister.name, value, { shouldValidate: true, shouldDirty: true });
-      }
       if (onDistrictChange) {
-        onDistrictChange(value);
+        onDistrictChange('');
       }
-    };
+    }
+  };
+
+  const handleDistrictChange = (value: string) => {
+    let canonicalVal = value;
+    if (value && effectiveState) {
+      const districts = getDistrictsByState(effectiveState);
+      const match = districts.find(d => d.toLowerCase() === value.toLowerCase());
+      if (match) {
+        canonicalVal = match;
+      }
+    }
+
+    if (districtRegister?.onChange) {
+      const event = {
+        target: {
+          value: canonicalVal,
+          name: districtRegister.name
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      districtRegister.onChange(event);
+    }
+    if (setValue && districtRegister?.name) {
+      setValue(districtRegister.name, canonicalVal, { shouldValidate: true, shouldDirty: true });
+    }
+    if (onDistrictChange) {
+      onDistrictChange(canonicalVal);
+    }
+  };
 
     return (
       <>

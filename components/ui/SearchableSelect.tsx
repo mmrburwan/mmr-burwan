@@ -42,9 +42,13 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
       option.value.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Check if current value exists in options
-    const currentValueExists = options.some(opt => opt.value === value);
-    const currentLabel = options.find(opt => opt.value === value)?.label || value;
+    // Check if current value exists in options (case-insensitive)
+    const currentOption = options.find(
+      opt => opt.value.toLowerCase() === (value || '').toLowerCase() ||
+             opt.label.toLowerCase() === (value || '').toLowerCase()
+    );
+    const currentValueExists = !!currentOption;
+    const currentLabel = currentOption ? currentOption.label : value;
 
     // Handle click outside
     useEffect(() => {
@@ -82,6 +86,8 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
             e.preventDefault();
             if (highlightedIndex >= 0 && filteredOptions[highlightedIndex]) {
               handleSelect(filteredOptions[highlightedIndex].value);
+            } else if (filteredOptions.length > 0) {
+              handleSelect(filteredOptions[0].value);
             }
             break;
           case 'Escape':
@@ -125,8 +131,14 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
       setIsOpen(true);
       setHighlightedIndex(-1);
 
-      // If allowCustom is true, update the value directly
-      if (allowCustom) {
+      // Check if typed text matches an option (case-insensitive)
+      const exactMatch = options.find(
+        opt => opt.value.toLowerCase() === newValue.trim().toLowerCase() ||
+               opt.label.toLowerCase() === newValue.trim().toLowerCase()
+      );
+      if (exactMatch) {
+        onChange(exactMatch.value);
+      } else if (allowCustom) {
         onChange(newValue);
       }
     };
@@ -139,6 +151,17 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
     const handleInputBlur = () => {
       // Delay to allow option click to register
       setTimeout(() => {
+        if (searchTerm.trim()) {
+          const match = options.find(
+            opt => opt.value.toLowerCase() === searchTerm.trim().toLowerCase() ||
+                   opt.label.toLowerCase() === searchTerm.trim().toLowerCase()
+          ) || (filteredOptions.length === 1 ? filteredOptions[0] : null);
+          if (match) {
+            onChange(match.value);
+          } else if (!allowCustom && !currentValueExists) {
+            onChange('');
+          }
+        }
         setIsOpen(false);
         setSearchTerm('');
         setHighlightedIndex(-1);
@@ -148,13 +171,16 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
       }, 200);
     };
 
-    const handleClear = (e: React.MouseEvent) => {
+    const handleClear = (e: React.MouseEvent | React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
       onChange('');
       setSearchTerm('');
       setIsOpen(false);
       setHighlightedIndex(-1);
+      if (inputRef.current) {
+        inputRef.current.value = '';
+      }
     };
 
     const displayValue = isOpen
@@ -207,12 +233,13 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
             {value && !disabled && (
               <button
                 type="button"
-                onMouseDown={(e) => {
+                onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  handleClear(e);
                 }}
                 onClick={handleClear}
-                className="absolute right-7 sm:right-10 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 active:text-gray-700 transition-colors z-10 p-1 touch-manipulation cursor-pointer"
+                className="absolute right-7 sm:right-10 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 active:text-gray-700 transition-colors z-20 p-1 touch-manipulation cursor-pointer"
                 aria-label="Clear"
               >
                 <X size={14} className="sm:w-4 sm:h-4" />
@@ -277,7 +304,7 @@ const SearchableSelect = forwardRef<HTMLInputElement, SearchableSelectProps>(
         {error && (
           <p className="mt-1 text-xs sm:text-sm text-rose-600 flex items-center gap-1">
             <AlertCircle size={12} className="sm:w-3.5 sm:h-3.5 flex-shrink-0" />
-            <span>{error}</span>
+            <span>{typeof error === 'string' ? error : (error as any)?.message || String(error)}</span>
           </p>
         )}
         {helperText && !error && (

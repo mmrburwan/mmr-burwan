@@ -43,7 +43,7 @@ export const documentService = {
 
     // If document already exists, update it instead of creating a duplicate
     if (existingDoc) {
-      
+
       // Delete old file from storage
       if (existingDoc.file_path) {
         try {
@@ -731,5 +731,59 @@ export const documentService = {
       belongsTo: doc.belongs_to,
       isReuploaded: doc.is_reuploaded || false,
     }));
+  },
+
+  async approveDivorceDocument(documentId: string): Promise<Document> {
+    const { data, error } = await supabase
+      .from('divorce_documents')
+      .update({ status: 'approved' })
+      .eq('id', documentId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return {
+      id: data.id,
+      applicationId: data.divorce_application_id,
+      type: data.type,
+      name: data.name,
+      url: data.url,
+      status: data.status,
+      uploadedAt: data.uploaded_at,
+      size: data.size,
+      mimeType: data.mime_type,
+      belongsTo: data.belongs_to,
+      isReuploaded: data.is_reuploaded || false,
+    };
+  },
+
+  async rejectDivorceDocument(documentId: string): Promise<Document> {
+    const { data, error } = await supabase
+      .from('divorce_documents')
+      .update({ status: 'rejected' })
+      .eq('id', documentId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return {
+      id: data.id,
+      applicationId: data.divorce_application_id,
+      type: data.type,
+      name: data.name,
+      url: data.url,
+      status: data.status,
+      uploadedAt: data.uploaded_at,
+      size: data.size,
+      mimeType: data.mime_type,
+      belongsTo: data.belongs_to,
+      isReuploaded: data.is_reuploaded || false,
+    };
   },
 };

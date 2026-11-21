@@ -9,6 +9,7 @@ import { CheckCircle, AlertTriangle } from 'lucide-react';
 import { adminService } from '../../services/admin';
 import { CertificateDetails } from '../../types';
 import { safeFormatDate } from '../../utils/dateUtils';
+import { isTripleTalaq, formatDivorceTypeDisplay } from '../../utils/divorceUtils';
 
 const generateRomanNumerals = (): string[] => {
   const romanNumerals: string[] = [];
@@ -157,17 +158,29 @@ const verifySchema = z.object({
   pageNumber: z.string(),
   registrationDate: z.string().min(1, 'Registration date is required'),
   registrarName: z.string().min(1, 'Registrar selection is required'),
+  talaqDate1: z.string().optional(),
+  talaqDate2: z.string().optional(),
+  talaqDate3: z.string().optional(),
 });
 
 interface VerifyDivorceApplicationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (certificateNumber: string, registrationDate: string, registrarName: string, certificateDetails: CertificateDetails) => Promise<void>;
+  onConfirm: (
+    certificateNumber: string,
+    registrationDate: string,
+    registrarName: string,
+    certificateDetails: CertificateDetails,
+    talaqDates?: { talaqDate1?: string; talaqDate2?: string; talaqDate3?: string }
+  ) => Promise<void>;
   applicationId: string;
   currentCertificateNumber?: string;
   currentRegistrationDate?: string;
   divorceDate?: string;
   divorceType?: string;
+  talaqDate1?: string;
+  talaqDate2?: string;
+  talaqDate3?: string;
 }
 
 const VerifyDivorceApplicationModal: React.FC<VerifyDivorceApplicationModalProps> = ({
@@ -179,6 +192,9 @@ const VerifyDivorceApplicationModal: React.FC<VerifyDivorceApplicationModalProps
   currentRegistrationDate,
   divorceDate,
   divorceType,
+  talaqDate1,
+  talaqDate2,
+  talaqDate3,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -203,6 +219,9 @@ const VerifyDivorceApplicationModal: React.FC<VerifyDivorceApplicationModalProps
       pageNumber: parsedCert.pageNumber,
       registrationDate: currentRegistrationDate || '',
       registrarName: 'minhajul_islam_khan',
+      talaqDate1: talaqDate1 || divorceDate || '',
+      talaqDate2: talaqDate2 || divorceDate || '',
+      talaqDate3: talaqDate3 || divorceDate || '',
     },
   });
 
@@ -239,259 +258,313 @@ const VerifyDivorceApplicationModal: React.FC<VerifyDivorceApplicationModalProps
         pageNumber: parsed.pageNumber,
         registrationDate: currentRegistrationDate || '',
         registrarName: 'minhajul_islam_khan',
+        talaqDate1: talaqDate1 || divorceDate || '',
+        talaqDate2: talaqDate2 || divorceDate || '',
+        talaqDate3: talaqDate3 || divorceDate || '',
       });
     }
-  }, [isOpen, currentCertificateNumber, currentRegistrationDate, reset]);
+}, [isOpen, currentCertificateNumber, currentRegistrationDate, divorceDate, talaqDate1, talaqDate2, talaqDate3, reset]);
 
-  const onSubmit = async (data: any) => {
-    setIsSubmitting(true);
-    try {
-      const parts = [
-        'WBMSDBRW',
-        data.bookNumber,
-        data.volumeNumber,
-        data.volumeLetter,
-        data.volumeYear,
-        data.serialNumber,
-        data.serialYear,
-        data.pageNumber
-      ].filter(Boolean);
-      const fullCertificateNumber = parts.join('').toUpperCase();
+const onSubmit = async (data: any) => {
+  setIsSubmitting(true);
+  try {
+    const parts = [
+      'WBMSDBRW',
+      data.bookNumber,
+      data.volumeNumber,
+      data.volumeLetter,
+      data.volumeYear,
+      data.serialNumber,
+      data.serialYear,
+      data.pageNumber
+    ].filter(Boolean);
+    const fullCertificateNumber = parts.join('').toUpperCase();
 
-      const exists = await adminService.checkDivorceCertificateNumber(fullCertificateNumber, applicationId);
+    const exists = await adminService.checkDivorceCertificateNumber(fullCertificateNumber, applicationId);
 
-      if (exists) {
-        setError('root', {
-          type: 'manual',
-          message: `Certificate number ${fullCertificateNumber} already exists. Please use a different number.`
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const certificateDetails: CertificateDetails = {
-        bookNumber: data.bookNumber ? String(data.bookNumber).toUpperCase() : '',
-        volumeNumber: data.volumeNumber ? String(data.volumeNumber).toUpperCase() : '',
-        volumeLetter: data.volumeLetter ? String(data.volumeLetter).toUpperCase() : '',
-        volumeYear: data.volumeYear || '',
-        serialNumber: data.serialNumber ? String(data.serialNumber).toUpperCase() : '',
-        serialYear: data.serialYear || '',
-        pageNumber: data.pageNumber,
-      };
-
-      await onConfirm(fullCertificateNumber, data.registrationDate, data.registrarName, certificateDetails);
-      reset();
-      onClose();
-    } catch (error: any) {
-      console.error('Divorce verification failed:', error);
-    } finally {
+    if (exists) {
+      setError('root', {
+        type: 'manual',
+        message: `Certificate number ${fullCertificateNumber} already exists. Please use a different number.`
+      });
       setIsSubmitting(false);
+      return;
     }
-  };
 
-  const handleClose = () => {
+    const certificateDetails: CertificateDetails = {
+      bookNumber: data.bookNumber ? String(data.bookNumber).toUpperCase() : '',
+      volumeNumber: data.volumeNumber ? String(data.volumeNumber).toUpperCase() : '',
+      volumeLetter: data.volumeLetter ? String(data.volumeLetter).toUpperCase() : '',
+      volumeYear: data.volumeYear || '',
+      serialNumber: data.serialNumber ? String(data.serialNumber).toUpperCase() : '',
+      serialYear: data.serialYear || '',
+      pageNumber: data.pageNumber,
+      talaqDate1: data.talaqDate1 || '',
+      talaqDate2: data.talaqDate2 || '',
+      talaqDate3: data.talaqDate3 || '',
+    };
+
+    await onConfirm(
+      fullCertificateNumber,
+      data.registrationDate,
+      data.registrarName,
+      certificateDetails,
+      {
+        talaqDate1: data.talaqDate1,
+        talaqDate2: data.talaqDate2,
+        talaqDate3: data.talaqDate3,
+      }
+    );
     reset();
     onClose();
-  };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title="Verify Divorce Application"
-      size="md"
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4 lg:space-y-6">
-        <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-          {certificateNumberPreview && (
-            <div className="bg-gold-50 border border-gold-200 rounded-lg p-3 sm:p-4">
-              <p className="text-[10px] sm:text-xs font-bold text-gold-700 uppercase tracking-wider mb-1">
-                Certificate Number Preview
-              </p>
-              <p className="text-sm sm:text-base font-mono font-bold text-gray-900 break-all bg-white border border-gold-100 rounded-md px-3 py-2">
-                {certificateNumberPreview}
-              </p>
-            </div>
-          )}
-
-          {/* Divorce Particulars Info */}
-          <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-2.5 sm:p-3">
-            <label className="block text-[10px] sm:text-xs font-semibold text-amber-800 uppercase tracking-wider mb-1">
-              Divorce Details (তালাক সংক্রান্ত বিবরণ)
-            </label>
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-white border border-amber-200 rounded-md px-3 py-2">
-              <p className="text-xs sm:text-sm font-medium text-amber-900">
-                Date: {divorceDate ? safeFormatDate(divorceDate, 'dd-MM-yyyy') : 'Not Provided'}
-              </p>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
-                Type: {divorceType ? divorceType.toUpperCase() : 'TALAQ'}
-              </span>
-            </div>
-          </div>
-
-          {errors.root && (
-            <div className="bg-rose-50 border-2 border-rose-300 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 animate-pulse">
-              <div className="flex items-start gap-2 sm:gap-3">
-                <AlertTriangle size={18} className="text-rose-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-xs sm:text-sm text-rose-900">
-                    Certificate Number Error
-                  </h3>
-                  <p className="text-[10px] sm:text-xs text-rose-800 mt-1">
-                    {errors.root.message}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Registration Date */}
-          <div>
-            <Input
-              label="Registration Date"
-              type="date"
-              {...register('registrationDate')}
-              error={errors.registrationDate?.message}
-              required
-              disabled={isSubmitting}
-            />
-            <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
-              This date will be displayed on the divorce certificate PDF
-            </p>
-          </div>
-
-          {/* Book Number */}
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-              Book Number
-            </label>
-            <select
-              {...register('bookNumber')}
-              disabled={isSubmitting}
-              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
-            >
-              {ROMAN_NUMERALS.map((roman, index) => (
-                <option key={index} value={roman}>
-                  {roman} ({index + 1})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Volume Number */}
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-              Volume Number
-            </label>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              <div>
-                <Input
-                  {...register('volumeNumber')}
-                  error={errors.volumeNumber?.message}
-                  disabled={isSubmitting}
-                  className="text-center"
-                />
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">Number</p>
-              </div>
-              <div>
-                <input
-                  {...register('volumeLetter')}
-                  disabled={isSubmitting}
-                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
-                />
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">Letter</p>
-              </div>
-              <div>
-                <input
-                  {...register('volumeYear')}
-                  disabled={isSubmitting}
-                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
-                />
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">Number (Optional)</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Serial Number */}
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-              Serial Number
-            </label>
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              <div>
-                <Input
-                  {...register('serialNumber')}
-                  error={errors.serialNumber?.message}
-                  disabled={isSubmitting}
-                  className="text-center"
-                />
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">Number</p>
-              </div>
-              <div>
-                <input
-                  {...register('serialYear')}
-                  disabled={isSubmitting}
-                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
-                />
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">Number (Optional)</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Page Number */}
-          <div>
-            <Input
-              label="Page Number"
-              {...register('pageNumber')}
-              error={errors.pageNumber?.message}
-              disabled={isSubmitting}
-              className="text-center"
-            />
-          </div>
-
-          {/* Registrar Selection */}
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-              Registrar Name
-            </label>
-            <select
-              {...register('registrarName')}
-              disabled={isSubmitting}
-              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
-            >
-              <option value="minhajul_islam_khan">Minhajul Islam Khan</option>
-              <option value="md_ismail_khan">MD Ismail Khan</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-200">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="flex-1 !text-xs sm:!text-sm"
-            size="sm"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            isLoading={isSubmitting}
-            disabled={isSubmitting}
-            className="flex-1 !text-xs sm:!text-sm"
-            size="sm"
-          >
-            <CheckCircle size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-            Verify Divorce Application
-          </Button>
-        </div>
-      </form>
-    </Modal>
-  );
+  } catch (error: any) {
+    console.error('Divorce verification failed:', error);
+  } finally {
+    setIsSubmitting(false);
+  }
 };
 
-export default VerifyDivorceApplicationModal;
+const handleClose = () => {
+  reset();
+  onClose();
+};
+
+return (
+  <Modal
+    isOpen={isOpen}
+    onClose={handleClose}
+    title="Verify Divorce Application"
+    size="md"
+  >
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4 lg:space-y-6">
+      <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+        {certificateNumberPreview && (
+          <div className="bg-gold-50 border border-gold-200 rounded-lg p-3 sm:p-4">
+            <p className="text-[10px] sm:text-xs font-bold text-gold-700 uppercase tracking-wider mb-1">
+              Certificate Number Preview
+            </p>
+            <p className="text-sm sm:text-base font-mono font-bold text-gray-900 break-all bg-white border border-gold-100 rounded-md px-3 py-2">
+              {certificateNumberPreview}
+            </p>
+          </div>
+        )}
+
+                {/* Divorce Particulars Info & Talaq Dates Inputs */}
+                <div className="bg-amber-50/70 border border-amber-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-semibold text-amber-900 uppercase tracking-wider">
+                      Type of Divorce:
+                    </label>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                      {formatDivorceTypeDisplay(divorceType)}
+                    </span>
+                  </div>
+
+                  <div className="pt-2 border-t border-amber-200/70">
+                    <p className="text-[11px] text-amber-800 font-medium mb-2">
+                      Pronouncement Dates (Printed directly to Certificate):
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                      <div>
+                        <label className="block text-[11px] font-medium text-gray-700 mb-0.5">
+                          1st Talaq Date
+                        </label>
+                        <input
+                          type="date"
+                          {...register('talaqDate1')}
+                          disabled={isSubmitting}
+                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:ring-2 focus:ring-gold-500 focus:border-gold-500 bg-white"
+                        />
+                      </div>
+                        <div>
+                          <label className="block text-[11px] font-medium text-gray-700 mb-0.5">
+                            2nd Talaq Date
+                          </label>
+                          <input
+                            type="date"
+                            {...register('talaqDate2')}
+                            disabled={isSubmitting}
+                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:ring-2 focus:ring-gold-500 focus:border-gold-500 bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-medium text-gray-700 mb-0.5">
+                            3rd Talaq Date
+                          </label>
+                          <input
+                            type="date"
+                            {...register('talaqDate3')}
+                            disabled={isSubmitting}
+                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:ring-2 focus:ring-gold-500 focus:border-gold-500 bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {errors.root && (
+                    <div className="bg-rose-50 border-2 border-rose-300 rounded-lg sm:rounded-xl p-2.5 sm:p-3 lg:p-4 animate-pulse">
+                      <div className="flex items-start gap-2 sm:gap-3">
+                        <AlertTriangle size={18} className="text-rose-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-xs sm:text-sm text-rose-900">
+                            Certificate Number Error
+                          </h3>
+                          <p className="text-[10px] sm:text-xs text-rose-800 mt-1">
+                            {errors.root.message}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Registration Date */}
+                  <div>
+                    <Input
+                      label="Registration Date"
+                      type="date"
+                      {...register('registrationDate')}
+                      error={errors.registrationDate?.message}
+                      required
+                      disabled={isSubmitting}
+                    />
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
+                      This date will be displayed on the divorce certificate PDF
+                    </p>
+                  </div>
+
+                  {/* Book Number */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                      Book Number
+                    </label>
+                    <select
+                      {...register('bookNumber')}
+                      disabled={isSubmitting}
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      {ROMAN_NUMERALS.map((roman, index) => (
+                        <option key={index} value={roman}>
+                          {roman} ({index + 1})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Volume Number */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                      Volume Number
+                    </label>
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                      <div>
+                        <Input
+                          {...register('volumeNumber')}
+                          error={errors.volumeNumber?.message}
+                          disabled={isSubmitting}
+                          className="text-center"
+                        />
+                        <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">Number</p>
+                      </div>
+                      <div>
+                        <input
+                          {...register('volumeLetter')}
+                          disabled={isSubmitting}
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
+                        />
+                        <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">Letter</p>
+                      </div>
+                      <div>
+                        <input
+                          {...register('volumeYear')}
+                          disabled={isSubmitting}
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
+                        />
+                        <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">Number (Optional)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Serial Number */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                      Serial Number
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                      <div>
+                        <Input
+                          {...register('serialNumber')}
+                          error={errors.serialNumber?.message}
+                          disabled={isSubmitting}
+                          className="text-center"
+                        />
+                        <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">Number</p>
+                      </div>
+                      <div>
+                        <input
+                          {...register('serialYear')}
+                          disabled={isSubmitting}
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
+                        />
+                        <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">Number (Optional)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Page Number */}
+                  <div>
+                    <Input
+                      label="Page Number"
+                      {...register('pageNumber')}
+                      error={errors.pageNumber?.message}
+                      disabled={isSubmitting}
+                      className="text-center"
+                    />
+                  </div>
+
+                  {/* Registrar Selection */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                      Registrar Name
+                    </label>
+                    <select
+                      {...register('registrarName')}
+                      disabled={isSubmitting}
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="minhajul_islam_khan">Minhajul Islam Khan</option>
+                      <option value="md_ismail_khan">MD Ismail Khan</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-200">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleClose}
+                    disabled={isSubmitting}
+                    className="flex-1 !text-xs sm:!text-sm"
+                    size="sm"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    isLoading={isSubmitting}
+                    disabled={isSubmitting}
+                    className="flex-1 !text-xs sm:!text-sm"
+                    size="sm"
+                  >
+                    <CheckCircle size={14} className="sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    Verify Divorce Application
+                  </Button>
+                </div>
+              </form>
+    </Modal>
+          );
+};
+
+          export default VerifyDivorceApplicationModal;
 

@@ -8,6 +8,7 @@ import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import ProtectedAgentRoute from './components/ProtectedAgentRoute';
 import LandingPage from './pages/LandingPage';
 import LoadingSpinner from './components/ui/LoadingSpinner';
+import RouteErrorBoundary from './components/RouteErrorBoundary';
 
 // Lazy load pages for code splitting
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
@@ -39,6 +40,7 @@ const AuditPage = lazy(() => import('./pages/admin/AuditPage'));
 const CertificatesPage = lazy(() => import('./pages/admin/CertificatesPage'));
 const CreateDivorceApplicationPage = lazy(() => import('./pages/admin/CreateDivorceApplicationPage'));
 const DivorceApplicationPage = lazy(() => import('./pages/divorce/DivorceApplicationPage'));
+const ViewDivorceApplicationPage = lazy(() => import('./pages/divorce/ViewDivorceApplicationPage'));
 const DivorceApplicationsPage = lazy(() => import('./pages/admin/DivorceApplicationsPage'));
 const DivorceApplicationDetailsPage = lazy(() => import('./pages/admin/DivorceApplicationDetailsPage'));
 const DivorceCertificatesPage = lazy(() => import('./pages/admin/DivorceCertificatesPage'));
@@ -59,6 +61,7 @@ const router = createBrowserRouter(
     {
       path: '/',
       element: <AppLayout />,
+      errorElement: <RouteErrorBoundary />,
       children: [
         {
           index: true,
@@ -125,6 +128,7 @@ const router = createBrowserRouter(
     {
       path: '/auth',
       element: <AuthLayout />,
+      errorElement: <RouteErrorBoundary />,
       children: [
         {
           path: 'login',
@@ -209,6 +213,14 @@ const router = createBrowserRouter(
       ),
     },
     {
+      path: '/divorce-application/view',
+      element: (
+        <Suspense fallback={<LoadingSpinner />}>
+          <ViewDivorceApplicationPage />
+        </Suspense>
+      ),
+    },
+    {
       path: '/application/:id/acknowledgement',
       element: (
         <Suspense fallback={<LoadingSpinner />}>
@@ -279,6 +291,7 @@ const router = createBrowserRouter(
           <AgentLayout />
         </ProtectedAgentRoute>
       ),
+      errorElement: <RouteErrorBoundary />,
       children: [
         {
           path: 'dashboard',
@@ -337,6 +350,7 @@ const router = createBrowserRouter(
           <AdminLayout />
         </ProtectedAdminRoute>
       ),
+      errorElement: <RouteErrorBoundary />,
       children: [
         {
           index: true,
